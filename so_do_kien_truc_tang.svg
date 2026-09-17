@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="852" viewBox="0 0 1240 852" role="img" aria-label="Kien truc he thong tong the chia nam tang: nguoi dung, giao dien ung dung, dieu phoi va giao tiep, xu ly chuyen biet gom nhom cot loi va nhom mo rong, loi AI va nen tang tri thuc">
+<defs>
+  <marker id="ka" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#2a78d6"/></marker>
+</defs>
+<rect width="1240" height="852" fill="#f4f6f8"/>
+
+<g font-family="'Be Vietnam Pro','Segoe UI','Helvetica Neue',Arial,sans-serif">
+  <text x="44" y="42" font-size="11" font-weight="600" fill="#7d8a97" letter-spacing="1.6">CHATBOT RAG GIÁO DỤC · SƠ ĐỒ KIẾN TRÚC</text>
+  <text x="44" y="80" font-size="27" font-weight="600" fill="#101720">Kiến trúc hệ thống tổng thể</text>
+  <text x="44" y="106" font-size="14" fill="#4d5a68">Năm tầng chồng lên nhau: tầng dưới phục vụ tầng trên, toàn bộ mô hình và chỉ mục nằm trên máy chạy hệ thống</text>
+  <line x1="44" y1="130" x2="1196" y2="130" stroke="#dfe5ec" stroke-width="1"/>
+
+  <!-- ===== TANG 1 ===== -->
+  <rect x="230" y="170" width="780" height="76" rx="12" fill="#ffffff" stroke="#dfe5ec"/>
+  <rect x="230" y="186" width="4" height="44" rx="2" fill="#7d8a97"/>
+  <rect x="252" y="186" width="62" height="20" rx="10" fill="#eef1f5"/>
+  <text x="283" y="200" font-size="10" font-weight="600" fill="#7d8a97" letter-spacing="1" text-anchor="middle">TẦNG 1</text>
+  <text x="326" y="201" font-size="16" font-weight="600" fill="#101720">Người dùng</text>
+  <text x="252" y="228" font-size="12" fill="#4d5a68">Giáo viên · Học sinh, sinh viên · Cán bộ quản lý giáo dục · Phụ huynh — cùng một giao diện web trên máy tính hoặc điện thoại</text>
+
+  <line x1="620" y1="272" x2="620" y2="250" stroke="#2a78d6" stroke-width="1.6" marker-end="url(#ka)"/>
+
+  <!-- ===== TANG 2 ===== -->
+  <rect x="180" y="276" width="880" height="94" rx="12" fill="#ffffff" stroke="#dfe5ec"/>
+  <rect x="180" y="292" width="4" height="62" rx="2" fill="#2a78d6"/>
+  <rect x="202" y="292" width="62" height="20" rx="10" fill="#eaf2fc"/>
+  <text x="233" y="306" font-size="10" font-weight="600" fill="#2a78d6" letter-spacing="1" text-anchor="middle">TẦNG 2</text>
+  <text x="276" y="307" font-size="16" font-weight="600" fill="#101720">Giao diện ứng dụng</text>
+  <text x="202" y="334" font-size="12" fill="#4d5a68">Trang tĩnh do chính FastAPI phục vụ — HTML, CSS và JavaScript thuần, không framework, không tải thư viện từ CDN</text>
+  <text x="202" y="352" font-size="12" fill="#4d5a68">Khung hỏi đáp phát dần từng chữ · Tải tệp đính kèm · Lịch sử hội thoại · Quản lý tài liệu và đổi mô hình trả lời</text>
+
+  <line x1="620" y1="396" x2="620" y2="374" stroke="#2a78d6" stroke-width="1.6" marker-end="url(#ka)"/>
+
+  <!-- ===== TANG 3 ===== -->
+  <rect x="130" y="400" width="980" height="94" rx="12" fill="#ffffff" stroke="#dfe5ec"/>
+  <rect x="130" y="416" width="4" height="62" rx="2" fill="#2a78d6"/>
+  <rect x="152" y="416" width="62" height="20" rx="10" fill="#eaf2fc"/>
+  <text x="183" y="430" font-size="10" font-weight="600" fill="#2a78d6" letter-spacing="1" text-anchor="middle">TẦNG 3</text>
+  <text x="226" y="431" font-size="16" font-weight="600" fill="#101720">Điều phối và giao tiếp</text>
+  <text x="152" y="458" font-size="12" fill="#4d5a68">FastAPI với khoảng 25 đầu cuối · Kiểm tra dữ liệu vào bằng Pydantic · Lớp mật khẩu bảo vệ bản chạy công khai</text>
+  <text x="152" y="476" font-size="12" fill="#4d5a68">Máy trạng thái starting → loading → ready, chuyển updating khi nạp lại chỉ mục và error khi mất kết nối Ollama</text>
+
+  <line x1="620" y1="520" x2="620" y2="498" stroke="#2a78d6" stroke-width="1.6" marker-end="url(#ka)"/>
+
+  <!-- ===== TANG 4 ===== -->
+  <rect x="60" y="524" width="1120" height="176" rx="12" fill="#ffffff" stroke="#dfe5ec"/>
+  <rect x="60" y="540" width="4" height="144" rx="2" fill="#eb6834"/>
+  <rect x="82" y="540" width="62" height="20" rx="10" fill="#fdeee7"/>
+  <text x="113" y="554" font-size="10" font-weight="600" fill="#eb6834" letter-spacing="1" text-anchor="middle">TẦNG 4</text>
+  <text x="156" y="555" font-size="16" font-weight="600" fill="#101720">Xử lý chuyên biệt</text>
+  <text x="330" y="555" font-size="12" fill="#7d8a97">mỗi việc một module riêng, gọi lẫn nhau qua lớp dịch vụ chung</text>
+
+  <rect x="82" y="568" width="526" height="118" rx="10" fill="#f4f6f8" stroke="#ecf0f4"/>
+  <text x="98" y="592" font-size="10" font-weight="600" fill="#7d8a97" letter-spacing="1.2">NHÓM CỐT LÕI</text>
+  <g>
+    <rect x="98" y="604" width="115" height="52" rx="8" fill="#eaf2fc" stroke="#2a78d6"/>
+    <rect x="224" y="604" width="115" height="52" rx="8" fill="#eaf2fc" stroke="#2a78d6"/>
+    <rect x="350" y="604" width="115" height="52" rx="8" fill="#eaf2fc" stroke="#2a78d6"/>
+    <rect x="476" y="604" width="115" height="52" rx="8" fill="#eaf2fc" stroke="#2a78d6"/>
+  </g>
+  <g font-size="12" font-weight="600" fill="#2a78d6" text-anchor="middle">
+    <text x="155.5" y="626">Truy hồi lai</text>
+    <text x="155.5" y="642">FAISS + BM25</text>
+    <text x="281.5" y="626">Kiểm soát</text>
+    <text x="281.5" y="642">bằng chứng</text>
+    <text x="407.5" y="626">Sinh câu</text>
+    <text x="407.5" y="642">trả lời</text>
+    <text x="533.5" y="626">Cache</text>
+    <text x="533.5" y="642">ngữ nghĩa</text>
+  </g>
+  <text x="98" y="676" font-family="'IBM Plex Mono','Consolas','Courier New',monospace" font-size="10" fill="#7d8a97">hybrid_retrieval.py · kiem_tra_tra_loi.py · cache_ngu_nghia.py</text>
+
+  <rect x="632" y="568" width="526" height="118" rx="10" fill="#f4f6f8" stroke="#ecf0f4"/>
+  <text x="648" y="592" font-size="10" font-weight="600" fill="#7d8a97" letter-spacing="1.2">NHÓM MỞ RỘNG</text>
+  <g>
+    <rect x="648" y="604" width="115" height="52" rx="8" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="774" y="604" width="115" height="52" rx="8" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="900" y="604" width="115" height="52" rx="8" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="1026" y="604" width="115" height="52" rx="8" fill="#ffffff" stroke="#dfe5ec"/>
+  </g>
+  <g font-size="12" font-weight="600" fill="#4d5a68" text-anchor="middle">
+    <text x="705.5" y="626">Hỏi trên tệp</text>
+    <text x="705.5" y="642">đính kèm</text>
+    <text x="831.5" y="626">Tính lương</text>
+    <text x="831.5" y="642">nhà giáo</text>
+    <text x="957.5" y="626">Hiệu lực</text>
+    <text x="957.5" y="642">văn bản</text>
+    <text x="1083.5" y="626">Cập nhật</text>
+    <text x="1083.5" y="642">chỉ mục</text>
+  </g>
+  <text x="648" y="676" font-family="'IBM Plex Mono','Consolas','Courier New',monospace" font-size="10" fill="#7d8a97">tep_dinh_kem.py · tinh_luong.py · hieu_luc_bo_sung.py · capnhat_tailieu_moi.py</text>
+
+  <line x1="620" y1="726" x2="620" y2="704" stroke="#2a78d6" stroke-width="1.6" marker-end="url(#ka)"/>
+
+  <!-- ===== TANG 5 ===== -->
+  <rect x="44" y="730" width="1152" height="94" rx="12" fill="#ffffff" stroke="#dfe5ec"/>
+  <rect x="44" y="746" width="4" height="62" rx="2" fill="#1baf7a"/>
+  <rect x="66" y="746" width="62" height="20" rx="10" fill="#e7f7f1"/>
+  <text x="97" y="760" font-size="10" font-weight="600" fill="#1baf7a" letter-spacing="1" text-anchor="middle">TẦNG 5</text>
+  <text x="140" y="761" font-size="16" font-weight="600" fill="#101720">Lõi AI và nền tảng tri thức</text>
+  <text x="66" y="788" font-size="12" fill="#4d5a68">bge-m3 nhúng văn bản thành vector 1.024 chiều · qwen3.5:4b sinh câu trả lời — cả hai chạy cục bộ qua Ollama trên CPU</text>
+  <text x="66" y="806" font-size="12" fill="#4d5a68">Chỉ mục FAISS + BM25 · Kho đoạn kèm siêu dữ liệu văn bản · Sổ ghi mã băm SHA-256 · Bộ nhớ đệm OCR và bản phiên âm</text>
+</g>
+</svg>

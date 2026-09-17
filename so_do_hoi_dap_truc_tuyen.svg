@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="654" viewBox="0 0 1240 654" role="img" aria-label="Quy trinh hoi dap truc tuyen gom nam buoc: tiep nhan cau hoi, chon nhanh xu ly, truy hoi bang chung, kiem soat bang chung va sinh cau tra loi; kem ba loi ra som va mot loi chan">
+<defs>
+  <marker id="hb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#2a78d6"/></marker>
+  <marker id="ho" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#eb6834"/></marker>
+  <marker id="hr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#cf4438"/></marker>
+</defs>
+<rect width="1240" height="654" fill="#f4f6f8"/>
+
+<g font-family="'Be Vietnam Pro','Segoe UI','Helvetica Neue',Arial,sans-serif">
+  <text x="44" y="42" font-size="11" font-weight="600" fill="#7d8a97" letter-spacing="1.6">CHATBOT RAG GIÁO DỤC · SƠ ĐỒ QUY TRÌNH</text>
+  <text x="44" y="80" font-size="27" font-weight="600" fill="#101720">Hỏi đáp trực tuyến</text>
+  <text x="44" y="106" font-size="14" fill="#4d5a68">Năm bước xử lý một câu hỏi, kèm những lối ra sớm và lối chặn không cho hệ thống trả lời liều</text>
+  <line x1="44" y1="130" x2="1196" y2="130" stroke="#dfe5ec" stroke-width="1"/>
+
+  <!-- ===== Nam the buoc ===== -->
+  <g>
+    <rect x="44" y="176" width="204" height="284" rx="11" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="281" y="176" width="204" height="284" rx="11" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="518" y="176" width="204" height="284" rx="11" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="755" y="176" width="204" height="284" rx="11" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="992" y="176" width="204" height="284" rx="11" fill="#ffffff" stroke="#dfe5ec"/>
+  </g>
+  <g fill="#eaf2fc">
+    <rect x="60" y="192" width="22" height="22" rx="7"/>
+    <rect x="297" y="192" width="22" height="22" rx="7"/>
+    <rect x="534" y="192" width="22" height="22" rx="7"/>
+    <rect x="771" y="192" width="22" height="22" rx="7"/>
+    <rect x="1008" y="192" width="22" height="22" rx="7"/>
+  </g>
+  <g font-size="12" font-weight="600" fill="#2a78d6" text-anchor="middle">
+    <text x="71" y="207.5">1</text>
+    <text x="308" y="207.5">2</text>
+    <text x="545" y="207.5">3</text>
+    <text x="782" y="207.5">4</text>
+    <text x="1019" y="207.5">5</text>
+  </g>
+  <g font-size="13.5" font-weight="600" fill="#101720">
+    <text x="60" y="234">Tiếp nhận câu hỏi</text>
+    <text x="297" y="234">Chọn nhánh xử lý</text>
+    <text x="534" y="234">Truy hồi bằng chứng</text>
+    <text x="771" y="234">Kiểm soát bằng chứng</text>
+    <text x="1008" y="234">Sinh câu trả lời</text>
+  </g>
+  <g font-family="'IBM Plex Mono','Consolas','Courier New',monospace" font-size="10" fill="#7d8a97">
+    <text x="60" y="274">api.py · /api/hoi</text>
+    <text x="60" y="288">luồng phát dần (SSE)</text>
+    <text x="297" y="274">rag_service.py</text>
+    <text x="297" y="288">cache_ngu_nghia.py</text>
+    <text x="534" y="274">hybrid_retrieval.py</text>
+    <text x="534" y="288">FAISS + BM25 + RRF</text>
+    <text x="771" y="274">tu_vung_kho.py</text>
+    <text x="771" y="288">hieu_luc_bo_sung.py</text>
+    <text x="1008" y="274">qwen3.5:4b · Ollama</text>
+    <text x="1008" y="288">kiem_tra_tra_loi.py</text>
+  </g>
+  <g stroke="#ecf0f4" stroke-width="1">
+    <line x1="60" y1="300" x2="232" y2="300"/>
+    <line x1="297" y1="300" x2="469" y2="300"/>
+    <line x1="534" y1="300" x2="706" y2="300"/>
+    <line x1="771" y1="300" x2="943" y2="300"/>
+    <line x1="1008" y1="300" x2="1180" y2="300"/>
+  </g>
+  <g font-size="11" fill="#4d5a68">
+    <text x="60" y="320">Kiểm tra bằng Pydantic: câu hỏi</text>
+    <text x="60" y="335.5">dài 2 – 2.000 ký tự</text>
+    <text x="60" y="355">Kèm tối đa 8 lượt hội thoại cũ</text>
+    <text x="60" y="370.5">và tối đa 4 tệp đính kèm</text>
+    <text x="60" y="390">Mở luồng phát dần để người</text>
+    <text x="60" y="405.5">dùng thấy chữ chạy ngay</text>
+    <text x="60" y="425">Đóng mốc hoạt động của phiên</text>
+    <text x="60" y="440.5">và ghi nhật ký</text>
+
+    <text x="297" y="320">Có tệp đính kèm → hỏi đáp</text>
+    <text x="297" y="335.5">ngay trên chính tệp đó</text>
+    <text x="297" y="355">Câu hỏi tính lương → chuyển</text>
+    <text x="297" y="370.5">sang công cụ tính lương</text>
+    <text x="297" y="390">Trùng cache ngữ nghĩa (cosine</text>
+    <text x="297" y="405.5">≥ 0,96) → phát lại ngay</text>
+    <text x="297" y="425">Còn lại → đi tiếp nhánh RAG</text>
+    <text x="297" y="440.5">của kho tri thức</text>
+
+    <text x="534" y="320">Nhúng câu hỏi bằng bge-m3,</text>
+    <text x="534" y="335.5">tìm song song hai hướng</text>
+    <text x="534" y="355">FAISS 15 ứng viên · BM25 15</text>
+    <text x="534" y="370.5">ứng viên, hợp nhất RRF (k=60)</text>
+    <text x="534" y="390">Xếp hạng lại, mỗi tài liệu góp</text>
+    <text x="534" y="405.5">tối đa 2 đoạn, khử trùng lặp</text>
+    <text x="534" y="425">Giữ 4 đoạn bằng chứng đưa</text>
+    <text x="534" y="440.5">vào prompt</text>
+
+    <text x="771" y="320">Đối chiếu câu hỏi với từ vựng</text>
+    <text x="771" y="335.5">của kho: lạc đề thì từ chối</text>
+    <text x="771" y="355">Hạ bậc văn bản đã hết hiệu lực</text>
+    <text x="771" y="370.5">khi xếp hạng bằng chứng</text>
+    <text x="771" y="390">Gắn cảnh báo khi nguồn đã bị</text>
+    <text x="771" y="405.5">văn bản khác thay thế</text>
+    <text x="771" y="425">Không đủ bằng chứng thì báo</text>
+    <text x="771" y="440.5">không tìm thấy, không đoán</text>
+
+    <text x="1008" y="320">Mô hình chỉ được dùng 4 đoạn</text>
+    <text x="1008" y="335.5">bằng chứng, trích dẫn dạng [n]</text>
+    <text x="1008" y="355">Hậu kiểm: mọi [n] và mọi con</text>
+    <text x="1008" y="370.5">số phải có trong bằng chứng</text>
+    <text x="1008" y="390">Phát kèm danh sách nguồn và</text>
+    <text x="1008" y="405.5">gợi ý câu hỏi tiếp theo</text>
+    <text x="1008" y="425">Ghi lịch sử hội thoại và lưu</text>
+    <text x="1008" y="440.5">câu trả lời vào cache</text>
+  </g>
+
+  <!-- mui ten giua cac buoc -->
+  <g stroke="#2a78d6" stroke-width="1.6" fill="none" marker-end="url(#hb)">
+    <line x1="254" y1="300" x2="273" y2="300"/>
+    <line x1="491" y1="300" x2="510" y2="300"/>
+    <line x1="728" y1="300" x2="747" y2="300"/>
+    <line x1="965" y1="300" x2="984" y2="300"/>
+  </g>
+
+  <!-- ===== Dai loi ra som ===== -->
+  <rect x="44" y="496" width="1152" height="134" rx="12" fill="#eef1f5"/>
+  <text x="66" y="524" font-size="10.5" font-weight="600" fill="#7d8a97" letter-spacing="1.2">KHÔNG PHẢI CÂU HỎI NÀO CŨNG ĐI HẾT NĂM BƯỚC — BA LỐI RA SỚM VÀ MỘT LỐI CHẶN</text>
+
+  <!-- duong re nhanh -->
+  <path d="M383,460 V478 H479 V488" fill="none" stroke="#eb6834" stroke-width="1.5" marker-end="url(#ho)"/>
+  <g stroke="#cf4438" stroke-width="1.5" fill="none">
+    <path d="M857,460 V478 H1094 V460"/>
+    <path d="M1043,478 V488" marker-end="url(#hr)"/>
+  </g>
+
+  <g>
+    <rect x="66" y="534" width="262" height="82" rx="9" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="348" y="534" width="262" height="82" rx="9" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="630" y="534" width="262" height="82" rx="9" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="912" y="534" width="262" height="82" rx="9" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="66" y="546" width="4" height="58" rx="2" fill="#eb6834"/>
+    <rect x="348" y="546" width="4" height="58" rx="2" fill="#eb6834"/>
+    <rect x="630" y="546" width="4" height="58" rx="2" fill="#eb6834"/>
+    <rect x="912" y="546" width="4" height="58" rx="2" fill="#cf4438"/>
+  </g>
+  <g font-size="12.5" font-weight="600" fill="#101720">
+    <text x="84" y="560">Trả lời trên tệp đính kèm</text>
+    <text x="366" y="560">Công cụ tính lương</text>
+    <text x="648" y="560">Cache ngữ nghĩa</text>
+    <text x="930" y="560">Từ chối và cảnh báo</text>
+  </g>
+  <g font-size="11" fill="#4d5a68">
+    <text x="84" y="578">Câu hỏi gắn với tệp người dùng vừa</text>
+    <text x="84" y="592">tải lên thì truy hồi ngay trong tệp đó,</text>
+    <text x="84" y="606">không đụng tới kho chung</text>
+    <text x="366" y="578">Câu hỏi về lương nhà giáo được tính</text>
+    <text x="366" y="592">bằng công thức trong mã nguồn, mô</text>
+    <text x="366" y="606">hình chỉ diễn giải kết quả</text>
+    <text x="648" y="578">Câu gần trùng câu đã trả lời được</text>
+    <text x="648" y="592">phát lại ngay, bỏ qua truy hồi và bỏ</text>
+    <text x="648" y="606">qua bước sinh câu trả lời</text>
+    <text x="930" y="578">Lạc khỏi phạm vi kho, hoặc hậu kiểm</text>
+    <text x="930" y="592">trích dẫn không đạt, thì báo rõ thay</text>
+    <text x="930" y="606">vì trả lời liều</text>
+  </g>
+</g>
+</svg>

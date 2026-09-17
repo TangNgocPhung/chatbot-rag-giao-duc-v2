@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="800" viewBox="0 0 1240 800" role="img" aria-label="Pipeline tong the gom luong ngoai tuyen xay kho tri thuc, luong truc tuyen hoi dap, gap nhau o chi muc dung chung, va nhom van hanh danh gia">
+<defs>
+  <marker id="pb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#2a78d6"/></marker>
+  <marker id="pg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#1baf7a"/></marker>
+</defs>
+<rect width="1240" height="800" fill="#f4f6f8"/>
+
+<g font-family="'Be Vietnam Pro','Segoe UI','Helvetica Neue',Arial,sans-serif">
+  <text x="44" y="42" font-size="11" font-weight="600" fill="#7d8a97" letter-spacing="1.6">CHATBOT RAG GIÁO DỤC · SƠ ĐỒ TỔNG THỂ</text>
+  <text x="44" y="80" font-size="27" font-weight="600" fill="#101720">Pipeline toàn hệ thống</text>
+  <text x="44" y="106" font-size="14" fill="#4d5a68">Hai luồng tách biệt về thời gian, chỉ gặp nhau ở chỉ mục dùng chung; nhóm vận hành và đánh giá chạy quanh cả hai</text>
+  <line x1="44" y1="130" x2="1196" y2="130" stroke="#dfe5ec" stroke-width="1"/>
+
+  <!-- ===== Dai nen ===== -->
+  <rect x="24" y="150" width="1192" height="190" rx="14" fill="#eaeef3"/>
+  <rect x="24" y="440" width="1192" height="190" rx="14" fill="#eaeef3"/>
+  <rect x="24" y="654" width="1192" height="126" rx="14" fill="#eaeef3"/>
+  <g font-size="11" font-weight="600" fill="#4d5a68" letter-spacing="1.4">
+    <text x="44" y="178">1 · NGOẠI TUYẾN — XÂY KHO TRI THỨC</text>
+    <text x="44" y="468">2 · TRỰC TUYẾN — MỘT LƯỢT HỎI ĐÁP</text>
+    <text x="44" y="682">3 · VẬN HÀNH VÀ ĐÁNH GIÁ — CHẠY QUANH HAI LUỒNG TRÊN</text>
+  </g>
+
+  <!-- ===== Luong 1 ===== -->
+  <g fill="#ffffff" stroke="#dfe5ec">
+    <rect x="44" y="194" width="204" height="126" rx="11"/>
+    <rect x="281" y="194" width="204" height="126" rx="11"/>
+    <rect x="518" y="194" width="204" height="126" rx="11"/>
+    <rect x="755" y="194" width="204" height="126" rx="11"/>
+    <rect x="992" y="194" width="204" height="126" rx="11"/>
+  </g>
+  <g fill="#eaf2fc">
+    <rect x="60" y="208" width="22" height="22" rx="7"/>
+    <rect x="297" y="208" width="22" height="22" rx="7"/>
+    <rect x="534" y="208" width="22" height="22" rx="7"/>
+    <rect x="771" y="208" width="22" height="22" rx="7"/>
+    <rect x="1008" y="208" width="22" height="22" rx="7"/>
+  </g>
+  <g font-size="12" font-weight="600" fill="#2a78d6" text-anchor="middle">
+    <text x="71" y="223.5">1</text><text x="308" y="223.5">2</text><text x="545" y="223.5">3</text><text x="782" y="223.5">4</text><text x="1019" y="223.5">5</text>
+  </g>
+  <g font-size="13.5" font-weight="600" fill="#101720">
+    <text x="92" y="224">Kho tài liệu</text>
+    <text x="329" y="224">Nạp và trích xuất</text>
+    <text x="566" y="224">Tách đoạn</text>
+    <text x="803" y="224">Nhúng vector</text>
+    <text x="1040" y="224">Ghi chỉ mục</text>
+  </g>
+  <g font-size="12" fill="#4d5a68">
+    <text x="60" y="256">PDF · DOCX · PPTX · XLSX</text>
+    <text x="60" y="276">ảnh · video · âm thanh</text>
+    <text x="60" y="296">đồng bộ Google Drive</text>
+    <text x="297" y="256">mỗi định dạng một bộ nạp</text>
+    <text x="297" y="276">OCR Tesseract · faster-whisper</text>
+    <text x="297" y="296">đệm theo mã băm nội dung</text>
+    <text x="534" y="256">theo cấu trúc Chương – Điều</text>
+    <text x="534" y="276">1.200 ký tự · chồng 150</text>
+    <text x="534" y="296">gắn môn, cấp học, hiệu lực</text>
+    <text x="771" y="256">bge-m3 qua Ollama</text>
+    <text x="771" y="276">mỗi đoạn → 1.024 chiều</text>
+    <text x="771" y="296">chạy cục bộ trên CPU</text>
+    <text x="1008" y="256">FAISS ghi ra đĩa</text>
+    <text x="1008" y="276">sổ ghi chép SHA-256</text>
+    <text x="1008" y="296">lần sau chỉ xử lý tệp đổi</text>
+  </g>
+  <g stroke="#2a78d6" stroke-width="1.6" fill="none" marker-end="url(#pb)">
+    <line x1="252" y1="257" x2="276" y2="257"/>
+    <line x1="489" y1="257" x2="513" y2="257"/>
+    <line x1="726" y1="257" x2="750" y2="257"/>
+    <line x1="963" y1="257" x2="987" y2="257"/>
+  </g>
+
+  <!-- ===== Chi muc dung chung ===== -->
+  <rect x="44" y="364" width="1152" height="52" rx="11" fill="#e7f7f1" stroke="#1baf7a"/>
+  <text x="64" y="395" font-size="11" font-weight="600" fill="#138a60" letter-spacing="1.4">CHỈ MỤC DÙNG CHUNG</text>
+  <text x="228" y="395" font-size="13" fill="#101720">FAISS (tìm theo nghĩa) + BM25 (tìm theo từ khóa) — nạp một lần khi khởi động, là điểm gặp duy nhất của hai luồng</text>
+  <g stroke="#1baf7a" stroke-width="1.6" fill="none" marker-end="url(#pg)">
+    <line x1="1094" y1="322" x2="1094" y2="360"/>
+    <line x1="620" y1="418" x2="620" y2="480"/>
+  </g>
+  <text x="632" y="454" font-size="11" fill="#138a60">đọc chỉ mục</text>
+
+  <!-- ===== Luong 2 ===== -->
+  <g fill="#ffffff" stroke="#dfe5ec">
+    <rect x="44" y="484" width="204" height="126" rx="11"/>
+    <rect x="281" y="484" width="204" height="126" rx="11"/>
+    <rect x="518" y="484" width="204" height="126" rx="11"/>
+    <rect x="755" y="484" width="204" height="126" rx="11"/>
+    <rect x="992" y="484" width="204" height="126" rx="11"/>
+  </g>
+  <g fill="#eaf2fc">
+    <rect x="60" y="498" width="22" height="22" rx="7"/>
+    <rect x="297" y="498" width="22" height="22" rx="7"/>
+    <rect x="534" y="498" width="22" height="22" rx="7"/>
+    <rect x="771" y="498" width="22" height="22" rx="7"/>
+    <rect x="1008" y="498" width="22" height="22" rx="7"/>
+  </g>
+  <g font-size="12" font-weight="600" fill="#2a78d6" text-anchor="middle">
+    <text x="71" y="513.5">1</text><text x="308" y="513.5">2</text><text x="545" y="513.5">3</text><text x="782" y="513.5">4</text><text x="1019" y="513.5">5</text>
+  </g>
+  <g font-size="13.5" font-weight="600" fill="#101720">
+    <text x="92" y="514">Câu hỏi</text>
+    <text x="329" y="514">Định tuyến</text>
+    <text x="566" y="514">Truy hồi lai</text>
+    <text x="803" y="514">Sinh câu trả lời</text>
+    <text x="1040" y="514">Hậu kiểm, trả lời</text>
+  </g>
+  <g font-size="12" fill="#4d5a68">
+    <text x="60" y="546">giao diện web, phát dần SSE</text>
+    <text x="60" y="566">kèm lịch sử, tệp đính kèm</text>
+    <text x="60" y="586">lọc phạm vi môn / cấp học</text>
+    <text x="297" y="546">tệp đính kèm → hỏi trên tệp</text>
+    <text x="297" y="566">câu tính toán → công cụ Python</text>
+    <text x="297" y="586">trùng cache → trả lời ngay</text>
+    <text x="534" y="546">FAISS 15 + BM25 15 ứng viên</text>
+    <text x="534" y="566">hợp nhất RRF, k = 60</text>
+    <text x="534" y="586">xếp hạng lại → giữ 4 đoạn</text>
+    <text x="771" y="546">qwen3.5:4b qua Ollama</text>
+    <text x="771" y="566">chỉ dựa trên 4 đoạn trích</text>
+    <text x="771" y="586">bắt buộc trích dẫn [n]</text>
+    <text x="1008" y="546">soát trích dẫn và con số</text>
+    <text x="1008" y="566">cảnh báo văn bản hết hiệu lực</text>
+    <text x="1008" y="586">ghi lịch sử và cache</text>
+  </g>
+  <g stroke="#2a78d6" stroke-width="1.6" fill="none" marker-end="url(#pb)">
+    <line x1="252" y1="547" x2="276" y2="547"/>
+    <line x1="489" y1="547" x2="513" y2="547"/>
+    <line x1="726" y1="547" x2="750" y2="547"/>
+    <line x1="963" y1="547" x2="987" y2="547"/>
+  </g>
+
+  <!-- ===== Van hanh ===== -->
+  <g fill="#ffffff" stroke="#dfe5ec">
+    <rect x="44" y="698" width="204" height="62" rx="11"/>
+    <rect x="281" y="698" width="204" height="62" rx="11"/>
+    <rect x="518" y="698" width="204" height="62" rx="11"/>
+    <rect x="755" y="698" width="204" height="62" rx="11"/>
+    <rect x="992" y="698" width="204" height="62" rx="11"/>
+  </g>
+  <g fill="#7d8a97">
+    <rect x="44" y="712" width="3" height="34" rx="1.5"/>
+    <rect x="281" y="712" width="3" height="34" rx="1.5"/>
+    <rect x="518" y="712" width="3" height="34" rx="1.5"/>
+    <rect x="755" y="712" width="3" height="34" rx="1.5"/>
+    <rect x="992" y="712" width="3" height="34" rx="1.5"/>
+  </g>
+  <g font-size="13" font-weight="600" fill="#101720">
+    <text x="60" y="724">Cập nhật tăng dần</text>
+    <text x="297" y="724">Đồng bộ Google Drive</text>
+    <text x="534" y="724">Kiểm thử tự động</text>
+    <text x="771" y="724">Benchmark chỉ số IR</text>
+    <text x="1008" y="724">Triển khai</text>
+  </g>
+  <g font-size="12" fill="#4d5a68">
+    <text x="60" y="745">so mã băm, gỡ vector cũ</text>
+    <text x="297" y="745">thư mục dùng chung</text>
+    <text x="534" y="745">pytest · thư mục tests</text>
+    <text x="771" y="745">127 câu · MRR, Hit@K, nDCG</text>
+    <text x="1008" y="745">cục bộ · Cloudflare · VPS</text>
+  </g>
+</g>
+</svg>

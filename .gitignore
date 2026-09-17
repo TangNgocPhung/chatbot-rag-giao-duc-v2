@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Local secrets and machine-specific settings
+khoa_api.bat
+mat_khau.bat
+cai_dat.json
+.env
+.env.*
+!.env.example
+
+# Private source documents and generated indexes
+ollama-rag-desktop/data_giao_duc/
+ollama-rag-desktop/_extraction_duplicates/
+faiss_index_data_giao_duc/
+faiss_index_giaoduc_ollama/
+ocr_cache/
+transcripts/
+tep_dinh_kem/
+tessdata/
+
+# Generated manifests, metadata, caches, and chat history
+drive_manifest.json
+drive_state.json
+data_giao_duc_da_xu_ly.json
+file_da_xu_ly.json
+phan_loai_tai_lieu.json
+tinh_trang_hieu_luc.json
+ho_so_van_ban.json
+meta_llm.json
+cache_cau_tra_loi.json
+ket_qua_benchmark*.json
+# Dữ liệu chạy thô của lần đo IR. Bảng tổng kết bang_chi_so_ir.md thì VẪN theo
+# dõi trong Git - đó là số liệu đưa vào báo cáo, cần xem lại được theo lịch sử.
+ket_qua_chi_so_ir.json
+*.db
+*.db-shm
+*.db-wal
+
+# Local tooling and temporary files
+.claude/
+*.tmp
+*.tmp.*
+*AppDataLocalTemp*
+
+
+# Ban sao luu va nhat ky truoc khi lap chi muc lo lon
+sao_luu_truoc_713/
+nhat_ky_lap_chi_muc/
+
+# Ban sao luu tu dong truoc khi gop kho (du lieu tho, khong theo doi)
+*.truoc-khi-gop-*

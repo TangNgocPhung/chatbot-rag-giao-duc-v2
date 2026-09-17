@@ -1,0 +1,358 @@
+<meta charset="utf-8">
+<title>Đường đi của một câu hỏi</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Be+Vietnam+Pro:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground:      #f4f6f8;
+    --panel:       #ffffff;
+    --panel-sunk:  #eef1f5;
+    --ink:         #101720;
+    --ink-2:       #4d5a68;
+    --ink-3:       #7d8a97;
+    --rule:        #dfe5ec;
+    --rule-soft:   #ecf0f4;
+    --dong-chinh:  #2a78d6;
+    --loi-ra:      #eb6834;
+    --dat:         #1baf7a;
+    --chan:        #cf4438;
+    --shadow:      0 1px 2px rgba(16,23,32,.05), 0 8px 24px -16px rgba(16,23,32,.25);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground:     #14181d;
+      --panel:      #1b2026;
+      --panel-sunk: #22282f;
+      --ink:        #f2f5f8;
+      --ink-2:      #b3bec9;
+      --ink-3:      #838f9b;
+      --rule:       #2d353e;
+      --rule-soft:  #252c34;
+      --dong-chinh: #3987e5;
+      --loi-ra:     #ef7c44;
+      --dat:        #21c187;
+      --chan:       #e86154;
+      --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:     #14181d;
+    --panel:      #1b2026;
+    --panel-sunk: #22282f;
+    --ink:        #f2f5f8;
+    --ink-2:      #b3bec9;
+    --ink-3:      #838f9b;
+    --rule:       #2d353e;
+    --rule-soft:  #252c34;
+    --dong-chinh: #3987e5;
+    --loi-ra:     #ef7c44;
+    --dat:        #21c187;
+    --chan:       #e86154;
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 36px 44px;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 8px;
+  }
+  h1 {
+    font-family: "Newsreader", Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(28px, 4.6vw, 42px);
+    line-height: 1.1;
+    margin: 0 0 10px;
+    text-wrap: balance;
+  }
+  .lede { margin: 0; color: var(--ink-2); max-width: 58ch; }
+
+  h2 {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    margin: 0 0 12px;
+  }
+
+  /* ---------- Sơ đồ ---------- */
+  .khung {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 14px 12px 10px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  .khung svg { display: block; min-width: 720px; width: 100%; height: auto; }
+
+  .chu-giai {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .chu-giai li { display: flex; align-items: center; gap: 7px; }
+  .cham { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+  /* ---------- Dòng sự kiện ---------- */
+  .su-kien {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .su-kien li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .su-kien li::after {
+    content: "→";
+    color: var(--ink-3);
+    font-size: 13px;
+  }
+  .su-kien li:last-child::after { content: ""; }
+  .su-kien b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    padding: 6px 9px;
+    white-space: nowrap;
+  }
+  .su-kien span {
+    font-size: 12px;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  /* ---------- Ô số liệu ---------- */
+  .so-lieu {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .o {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 12px 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .o b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 21px;
+    font-weight: 500;
+    color: var(--dong-chinh);
+    font-variant-numeric: tabular-nums;
+  }
+  .o.canh b { color: var(--chan); }
+  .o span { font-size: 12.5px; color: var(--ink-2); line-height: 1.35; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 14px;
+    color: var(--ink-3);
+    font-size: 12.5px;
+  }
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .9em;
+    color: var(--ink-2);
+  }
+
+  @media (max-width: 640px) {
+    .so-lieu { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Chatbot RAG Giáo dục</p>
+    <h1>Đường đi của một câu hỏi</h1>
+    <p class="lede">Tám bước, ba lối tắt, hai lớp kiểm tra — từ ô nhập liệu đến câu trả lời có trích dẫn.</p>
+  </header>
+
+  <div class="khung">
+    <svg viewBox="0 0 1000 570" role="img" aria-label="Sơ đồ quy trình: câu hỏi đi qua rẽ nhanh, truy hồi lai, cổng chặn lạc đề, sinh câu trả lời, hậu kiểm, rồi ra câu trả lời có nguồn">
+      <defs>
+        <marker id="ten" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#8d99a5"></path>
+        </marker>
+      </defs>
+      <!-- ===== Lối tắt ===== -->
+      <rect x="250" y="20" width="480" height="104" rx="12" fill="none" stroke="var(--loi-ra)" stroke-width="1.4" stroke-dasharray="6 5"></rect>
+      <text x="264" y="45" fill="var(--loi-ra)" font-family="IBM Plex Mono, monospace" font-size="10.5" letter-spacing="1.3">LỐI TẮT · THOÁT SỚM</text>
+
+      <rect x="262" y="56" width="148" height="56" rx="8" fill="var(--panel)" stroke="var(--loi-ra)" stroke-width="1.3"></rect>
+      <text x="276" y="80" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="13" font-weight="600">Tệp đính kèm</text>
+      <text x="276" y="98" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10">đọc trong tệp</text>
+
+      <rect x="422" y="56" width="148" height="56" rx="8" fill="var(--panel)" stroke="var(--loi-ra)" stroke-width="1.3"></rect>
+      <text x="436" y="80" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="13" font-weight="600">Tính lương</text>
+      <text x="436" y="98" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10">Python · vài µs</text>
+
+      <rect x="582" y="56" width="148" height="56" rx="8" fill="var(--panel)" stroke="var(--loi-ra)" stroke-width="1.3"></rect>
+      <text x="596" y="80" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="13" font-weight="600">Cache ≥ 0,96</text>
+      <text x="596" y="98" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10">trả lại · 0 giây</text>
+
+      <line x1="370" y1="170" x2="370" y2="130" stroke="#8d99a5" stroke-width="1.5" marker-end="url(#ten)"></line>
+
+      <!-- ===== Hàng 1: 01 → 04 ===== -->
+      <rect x="30" y="170" width="200" height="88" rx="10" fill="var(--panel)" stroke="var(--dong-chinh)" stroke-width="1.6"></rect>
+      <text x="214" y="190" text-anchor="end" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">01</text>
+      <text x="46" y="198" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="14.5" font-weight="600">Câu hỏi</text>
+      <text x="46" y="220" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">POST /api/chat/stream</text>
+      <text x="46" y="237" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">+ bộ lọc phạm vi</text>
+
+      <line x1="230" y1="214" x2="266" y2="214" stroke="#8d99a5" stroke-width="1.5" marker-end="url(#ten)"></line>
+
+      <rect x="270" y="170" width="200" height="88" rx="14" fill="var(--panel-sunk)" stroke="var(--loi-ra)" stroke-width="1.6"></rect>
+      <text x="454" y="190" text-anchor="end" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">02</text>
+      <text x="370" y="222" text-anchor="middle" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="14.5" font-weight="600">Có đường tắt?</text>
+
+      <line x1="470" y1="214" x2="506" y2="214" stroke="#8d99a5" stroke-width="1.5" marker-end="url(#ten)"></line>
+      <text x="488" y="205" text-anchor="middle" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10">không</text>
+
+      <rect x="510" y="170" width="200" height="88" rx="10" fill="var(--panel)" stroke="var(--dong-chinh)" stroke-width="1.6"></rect>
+      <text x="694" y="190" text-anchor="end" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">03</text>
+      <text x="526" y="198" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="14.5" font-weight="600">Dựng lại truy vấn</text>
+      <text x="526" y="220" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">ghép câu hỏi trước</text>
+      <text x="526" y="237" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">6 lượt gần nhất</text>
+
+      <line x1="710" y1="214" x2="746" y2="214" stroke="#8d99a5" stroke-width="1.5" marker-end="url(#ten)"></line>
+
+      <rect x="750" y="170" width="200" height="88" rx="10" fill="var(--panel)" stroke="var(--dong-chinh)" stroke-width="1.6"></rect>
+      <text x="934" y="190" text-anchor="end" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">04</text>
+      <text x="766" y="198" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="14.5" font-weight="600">Truy hồi lai</text>
+      <text x="766" y="220" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">FAISS 15 + BM25 15</text>
+      <text x="766" y="237" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">RRF k=60 → 4 khối</text>
+
+      <path d="M 850 258 L 850 332" fill="none" stroke="#8d99a5" stroke-width="1.5" marker-end="url(#ten)"></path>
+
+      <!-- ===== Hàng 2: 05 → 08, chảy sang trái ===== -->
+      <rect x="750" y="338" width="200" height="88" rx="14" fill="var(--panel-sunk)" stroke="var(--chan)" stroke-width="1.6"></rect>
+      <text x="934" y="358" text-anchor="end" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">05</text>
+      <text x="850" y="384" text-anchor="middle" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="14.5" font-weight="600">Có dính tới</text>
+      <text x="850" y="404" text-anchor="middle" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="14.5" font-weight="600">câu hỏi?</text>
+
+      <line x1="750" y1="382" x2="714" y2="382" stroke="#8d99a5" stroke-width="1.5" marker-end="url(#ten)"></line>
+      <text x="732" y="373" text-anchor="middle" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10">có</text>
+
+      <line x1="850" y1="426" x2="850" y2="478" stroke="#8d99a5" stroke-width="1.4" marker-end="url(#ten)"></line>
+      <text x="860" y="456" fill="var(--chan)" font-family="IBM Plex Mono, monospace" font-size="10">lạc đề</text>
+      <rect x="740" y="484" width="230" height="52" rx="9" fill="var(--panel)" stroke="var(--chan)" stroke-width="1.4"></rect>
+      <text x="756" y="506" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="13.5" font-weight="600">Không trả lời</text>
+      <text x="756" y="524" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">+ 3 gợi ý thay thế</text>
+
+      <rect x="510" y="338" width="200" height="88" rx="10" fill="var(--panel)" stroke="var(--dong-chinh)" stroke-width="1.6"></rect>
+      <text x="694" y="358" text-anchor="end" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">06</text>
+      <text x="526" y="366" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="14.5" font-weight="600">Soạn câu trả lời</text>
+      <text x="526" y="388" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">4 khối · 900 ký tự</text>
+      <text x="526" y="405" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">llama3.2:3b</text>
+
+      <line x1="510" y1="382" x2="474" y2="382" stroke="#8d99a5" stroke-width="1.5" marker-end="url(#ten)"></line>
+
+      <rect x="270" y="338" width="200" height="88" rx="14" fill="var(--panel-sunk)" stroke="var(--dat)" stroke-width="1.6"></rect>
+      <text x="454" y="358" text-anchor="end" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">07</text>
+      <text x="370" y="384" text-anchor="middle" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="14.5" font-weight="600">Trích dẫn và</text>
+      <text x="370" y="404" text-anchor="middle" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="14.5" font-weight="600">số liệu khớp?</text>
+
+      <line x1="370" y1="426" x2="370" y2="478" stroke="#8d99a5" stroke-width="1.4" marker-end="url(#ten)"></line>
+      <text x="380" y="456" fill="var(--loi-ra)" font-family="IBM Plex Mono, monospace" font-size="10">không đạt</text>
+      <rect x="260" y="484" width="230" height="52" rx="9" fill="var(--panel)" stroke="var(--loi-ra)" stroke-width="1.4"></rect>
+      <text x="276" y="506" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="13.5" font-weight="600">Gắn cảnh báo</text>
+      <text x="276" y="524" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">không ghi vào cache</text>
+
+      <line x1="270" y1="382" x2="234" y2="382" stroke="#8d99a5" stroke-width="1.5" marker-end="url(#ten)"></line>
+      <text x="252" y="373" text-anchor="middle" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10">đạt</text>
+
+      <rect x="30" y="338" width="200" height="88" rx="10" fill="var(--panel)" stroke="var(--dat)" stroke-width="2"></rect>
+      <text x="214" y="358" text-anchor="end" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">08</text>
+      <text x="46" y="366" fill="var(--ink)" font-family="Be Vietnam Pro, sans-serif" font-size="14.5" font-weight="600">Câu trả lời</text>
+      <text x="46" y="388" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">4 nguồn trích dẫn</text>
+      <text x="46" y="405" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="10.5">cảnh báo hiệu lực</text>
+</svg>
+  </div>
+
+  <ul class="chu-giai">
+    <li><span class="cham" style="background:var(--dong-chinh)"></span>Đường chính</li>
+    <li><span class="cham" style="background:var(--loi-ra)"></span>Lối tắt và cảnh báo</li>
+    <li><span class="cham" style="background:var(--chan)"></span>Chặn lạc đề</li>
+    <li><span class="cham" style="background:var(--dat)"></span>Hậu kiểm và kết quả</li>
+  </ul>
+
+  <section>
+    <h2>Luồng sự kiện gửi về trình duyệt</h2>
+    <ol class="su-kien">
+      <li><b>phase</b><span>đang chạy</span></li>
+      <li><b>sources</b><span>chip nguồn</span></li>
+      <li><b>hieu_luc</b><span>hết hiệu lực</span></li>
+      <li><b>token</b><span>chữ chảy dần</span></li>
+      <li><b>warning</b><span>cần đối chiếu</span></li>
+      <li><b>goi_y</b><span>câu tiếp theo</span></li>
+      <li><b>done</b><span>số giây</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Các con số trong sơ đồ</h2>
+    <div class="so-lieu">
+      <div class="o"><b>15</b><span>ứng viên mỗi retriever</span></div>
+      <div class="o"><b>60</b><span>hằng số RRF</span></div>
+      <div class="o"><b>4</b><span>khối EVIDENCE vào prompt</span></div>
+      <div class="o"><b>900</b><span>ký tự mỗi khối</span></div>
+      <div class="o"><b>0,96</b><span>cosine để phát lại cache</span></div>
+      <div class="o"><b>0,88</b><span>cosine giữ làm ứng viên</span></div>
+      <div class="o canh"><b>0,12</b><span>độ phủ tối thiểu, dưới mức này là chặn</span></div>
+      <div class="o"><b>6</b><span>lượt hội thoại gửi kèm</span></div>
+    </div>
+  </section>
+
+  <footer>
+    Dựng từ mã nguồn nhánh <code>main</code>, commit cb3310a ·
+    <code>api.py</code> · <code>rag_service.py</code> · <code>hybrid_retrieval.py</code> ·
+    <code>kiem_tra_tra_loi.py</code> · <code>main.py</code>
+  </footer>
+
+</div>
