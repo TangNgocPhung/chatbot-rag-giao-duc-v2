@@ -54,6 +54,9 @@ class ChatRequest(BaseModel):
     pham_vi: dict = Field(default_factory=dict)
     # Hỏi về một vùng vừa khoanh: đoạn này thành bằng chứng số 1 của câu trả lời.
     doan_trich: DoanTrich | None = None
+    # Mô hình người hỏi tự chọn. Bỏ trống = mô hình mặc định của máy chủ;
+    # tên lạ hay bị chặn thì máy chủ tự quay về mặc định chứ không báo lỗi.
+    model: str | None = Field(default=None, max_length=120)
 
     @field_validator("question")
     @classmethod
@@ -294,6 +297,8 @@ def chat_stream(
         chi_tiet: dict = {"hieuLuc": [], "warning": "", "goiY": [], "interrupted": True}
         # Chỉ truyền khi có, để lượt hỏi thường gọi đúng chữ ký cũ.
         them = {"doan_trich": request.doan_trich.model_dump()} if request.doan_trich else {}
+        if request.model:
+            them["model"] = request.model
         bo_sinh = service.stream_answer(
             request.question, history, request.tep_ids, request.pham_vi, **them
         )
@@ -337,7 +342,7 @@ def chat_stream(
                     tra_loi=cau_tra_loi,
                     hoi_thoai_id=request.hoi_thoai_id,
                     nguon=[n.get("name") for n in cac_nguon],
-                    model=service.llm_model,
+                    model=service.chon_mo_hinh(request.model),
                     giay=thong_tin["giay"],
                     trich_dan_ok=thong_tin["trich_dan_ok"],
                     so_lieu_ok=thong_tin["so_lieu_ok"],

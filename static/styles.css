@@ -1018,3 +1018,8 @@ body:not([data-quan-tri="1"]) .chi-quan-tri { display: none !important; }
   .dich-bang-tim { margin: 10px 12px 4px; }
   .dich-bang-luoi { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); padding: 4px 8px 12px; }
 }
+
+/* --- Mỗi người tự chọn mô hình trả lời --- */
+.model-menu-ghi-chu { margin: 4px 2px 0; padding: 8px 9px 4px; color: var(--ink-mute); border-top: 1px solid var(--line); font-size: 10.5px; line-height: 1.45; }
+.model-mac-dinh { margin: 4px 2px 2px; padding: 8px 9px; color: var(--blue-ink); background: var(--blue-soft); border: 0; border-radius: 9px; font-size: 11.5px; font-weight: 650; text-align: left; cursor: pointer; }
+.model-mac-dinh:hover { background: var(--blue-soft-2); }

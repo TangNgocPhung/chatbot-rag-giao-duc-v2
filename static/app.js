@@ -1425,6 +1425,7 @@ async function submitQuestion(question, tuyChon = {}) {
         question, history, tep_ids: tepIds, hoi_thoai_id: hoiThoaiId,
         pham_vi: phamViDangChon(),
         ...(doanTrich ? { doan_trich: doanTrich } : {}),
+        ...(moHinhRieng ? { model: moHinhRieng } : {}),
       }),
       signal: abortController.signal,
     });
@@ -1548,7 +1549,7 @@ async function pollStatus() {
     const status = await response.json();
     serviceState = status.state;
     currentModel = status.model || currentModel;
-    elements.modelName.textContent = currentModel || 'qwen3.5:4b';
+    capNhatNhanMoHinh();
     const stateLabel = status.state === 'ready'
       ? (status.busy ? 'Đang xử lý một câu hỏi' : 'Sẵn sàng')
       : status.state === 'error'
@@ -1824,30 +1825,86 @@ function renderModelMenu() {
   }
   const title = document.createElement('div');
   title.className = 'model-menu-title';
-  title.textContent = 'Mô hình trả lời';
+  title.textContent = 'Mô hình trả lời của bạn';
   elements.modelMenu.append(title);
 
+  const dangDung = moHinhDangDung();
   for (const model of modelsCache) {
+    const chon = model.name === dangDung;
     const item = document.createElement('button');
     item.type = 'button';
-    item.className = `model-option${model.name === currentModel ? ' active' : ''}`;
+    item.className = `model-option${chon ? ' active' : ''}`;
     item.setAttribute('role', 'option');
-    item.setAttribute('aria-selected', String(model.name === currentModel));
+    item.setAttribute('aria-selected', String(chon));
     const info = document.createElement('span');
     const name = document.createElement('strong');
     name.textContent = model.name;
     const meta = document.createElement('small');
-    meta.textContent = [model.parameter_size, `${model.size_gb} GB`]
-      .filter(Boolean).join(' · ');
+    meta.textContent = [
+      model.parameter_size,
+      `${model.size_gb} GB`,
+      model.name === currentModel ? 'mặc định' : '',
+    ].filter(Boolean).join(' · ');
     info.append(name, meta);
     item.append(info);
-    if (model.name === currentModel) {
+    if (chon) {
       item.insertAdjacentHTML('beforeend',
         '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4 10-10"/></svg>');
     }
-    item.addEventListener('click', () => selectModel(model.name));
+    item.addEventListener('click', () => chonMoHinhRieng(model.name));
     elements.modelMenu.append(item);
   }
+
+  const ghiChu = document.createElement('div');
+  ghiChu.className = 'model-menu-ghi-chu';
+  ghiChu.textContent = 'Chỉ áp dụng cho câu hỏi của bạn trên trình duyệt này. Mô hình lớn trả lời kỹ hơn nhưng chậm hơn.';
+  elements.modelMenu.append(ghiChu);
+
+  // Quản trị viên đặt mô hình mặc định cho những ai chưa tự chọn.
+  if (laQuanTri() && dangDung !== currentModel) {
+    const macDinh = document.createElement('button');
+    macDinh.type = 'button';
+    macDinh.className = 'model-mac-dinh';
+    macDinh.textContent = `Đặt ${dangDung} làm mặc định cho mọi người`;
+    macDinh.addEventListener('click', () => datMoHinhMacDinh(dangDung));
+    elements.modelMenu.append(macDinh);
+  }
+}
+
+// Mô hình riêng của người đang dùng trình duyệt này; trống = theo mặc định.
+const KHOA_MO_HINH_RIENG = 'rag-mo-hinh-rieng';
+let moHinhRieng = '';
+try {
+  moHinhRieng = localStorage.getItem(KHOA_MO_HINH_RIENG) || '';
+} catch {
+  moHinhRieng = '';
+}
+
+function moHinhDangDung() {
+  return moHinhRieng || currentModel;
+}
+
+function capNhatNhanMoHinh() {
+  elements.modelName.textContent = moHinhDangDung() || 'qwen3.5:4b';
+  elements.modelButton.title = moHinhRieng && moHinhRieng !== currentModel
+    ? `Bạn đang dùng ${moHinhRieng} (mặc định của máy chủ: ${currentModel})`
+    : 'Chọn mô hình trả lời';
+}
+
+function chonMoHinhRieng(name) {
+  // Chọn đúng mô hình mặc định thì bỏ lựa chọn riêng, để sau này quản trị
+  // viên đổi mặc định là mình được theo luôn.
+  moHinhRieng = name === currentModel ? '' : name;
+  try {
+    if (moHinhRieng) localStorage.setItem(KHOA_MO_HINH_RIENG, moHinhRieng);
+    else localStorage.removeItem(KHOA_MO_HINH_RIENG);
+  } catch {
+    /* không nhớ được thì chỉ áp dụng trong phiên này */
+  }
+  capNhatNhanMoHinh();
+  renderModelMenu();
+  closeModelMenu();
+  showToast(`Các câu hỏi tiếp theo của bạn sẽ dùng ${moHinhDangDung()}`, 2600);
 }
 
 async function loadModels() {
@@ -1857,17 +1914,18 @@ async function loadModels() {
     const payload = await response.json();
     modelsCache = payload.models || [];
     currentModel = payload.current || currentModel;
+    // Mô hình đã chọn bị gỡ khỏi máy chủ (hoặc bị quản trị chặn) thì quay về mặc định.
+    if (moHinhRieng && modelsCache.length && !modelsCache.some((m) => m.name === moHinhRieng)) {
+      chonMoHinhRieng(currentModel);
+    }
   } catch {
     modelsCache = [];
   }
+  capNhatNhanMoHinh();
   renderModelMenu();
 }
 
-async function selectModel(name) {
-  if (name === currentModel) {
-    closeModelMenu();
-    return;
-  }
+async function datMoHinhMacDinh(name) {
   elements.modelButton.disabled = true;
   try {
     const response = await fetch('/api/model', {
@@ -1878,10 +1936,8 @@ async function selectModel(name) {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.detail || 'Không đổi được model.');
     currentModel = payload.model;
-    elements.modelName.textContent = currentModel;
-    showToast(payload.message || `Đã chuyển sang ${currentModel}`);
-    renderModelMenu();
-    closeModelMenu();
+    chonMoHinhRieng(currentModel);
+    showToast(`Mô hình mặc định cho mọi người: ${currentModel}`, 2600);
   } catch (error) {
     showToast(error.message);
   } finally {
@@ -2521,11 +2577,6 @@ elements.driveSync.addEventListener('click', async () => {
 
 elements.modelButton.addEventListener('click', async (event) => {
   event.stopPropagation();
-  // Đổi mô hình là đổi cho mọi người đang dùng máy chủ, không riêng mình.
-  if (!laQuanTri()) {
-    showToast('Chỉ quản trị viên mới đổi được mô hình trả lời');
-    return;
-  }
   const dangMo = !elements.modelMenu.classList.contains('hidden');
   if (dangMo) {
     closeModelMenu();

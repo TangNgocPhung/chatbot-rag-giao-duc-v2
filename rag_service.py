@@ -576,6 +576,7 @@ class RAGService:
             self.chain_tom_tat = tao_chain_tom_tat(self._llm_tom_tat(ten_model))
             self.chain_giai_thich = tao_chain_giai_thich(llm)
             self.llm_model = ten_model
+            self._chuoi_theo_mo_hinh.pop(ten_model, None)
             self._luu_lua_chon_model(ten_model)
         except Exception as exc:
             return False, f"Không đổi được model: {exc}"
