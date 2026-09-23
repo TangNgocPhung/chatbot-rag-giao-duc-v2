@@ -89,6 +89,12 @@ def _tao_bang(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_luot_tao_luc ON luot(tao_luc);
         """
     )
+    # Cột thêm sau: đủ nguồn (trang, đường dẫn), cảnh báo và gợi ý của câu trả
+    # lời, để người đăng nhập mở lại hội thoại trên máy khác thấy y như lúc hỏi.
+    # Cột "nguon" chỉ có tên tệp, không dựng lại được chip nguồn.
+    cot = {dong[1] for dong in conn.execute("PRAGMA table_info(luot)")}
+    if "chi_tiet" not in cot:
+        conn.execute("ALTER TABLE luot ADD COLUMN chi_tiet TEXT NOT NULL DEFAULT '{}'")
     conn.commit()
 
 
@@ -127,6 +133,7 @@ def ghi_luot(
     so_lieu_ok: bool = True,
     tu_choi: bool = False,
     tu_cache: bool = False,
+    chi_tiet: dict | None = None,
 ) -> str | None:
     """
     Ghi một lượt hỏi-đáp, tạo hội thoại mới nếu chưa có. Trả về hoi_thoai_id,
@@ -173,14 +180,15 @@ def ghi_luot(
                 )
             conn.execute(
                 "INSERT INTO luot (hoi_thoai_id, cau_hoi, tra_loi, nguon, model, giay,"
-                " trich_dan_ok, so_lieu_ok, tu_choi, tu_cache, tao_luc)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " trich_dan_ok, so_lieu_ok, tu_choi, tu_cache, tao_luc, chi_tiet)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     ma, cau_hoi, tra_loi,
                     json.dumps(nguon or [], ensure_ascii=False),
                     model, float(giay),
                     int(trich_dan_ok), int(so_lieu_ok), int(tu_choi), int(tu_cache),
                     bay_gio,
+                    json.dumps(chi_tiet or {}, ensure_ascii=False),
                 ),
             )
             conn.commit()
@@ -220,14 +228,18 @@ def chi_tiet_hoi_thoai(hoi_thoai_id: str) -> dict | None:
             return None
         cac_luot = conn.execute(
             "SELECT cau_hoi, tra_loi, nguon, model, giay, trich_dan_ok, so_lieu_ok,"
-            "       tu_choi, tu_cache, tao_luc"
+            "       tu_choi, tu_cache, tao_luc, chi_tiet"
             "  FROM luot WHERE hoi_thoai_id = ? ORDER BY id",
             (hoi_thoai_id,),
         ).fetchall()
         return {
             **dict(dau),
             "luot": [
-                {**dict(l), "nguon": json.loads(l["nguon"] or "[]")}
+                {
+                    **dict(l),
+                    "nguon": json.loads(l["nguon"] or "[]"),
+                    "chi_tiet": json.loads(l["chi_tiet"] or "{}"),
+                }
                 for l in cac_luot
             ],
         }
@@ -267,6 +279,26 @@ def xoa_theo_client(client_id: str) -> int:
             return cur.rowcount
     except sqlite3.Error as exc:
         print(f"⚠️  Không xóa được lịch sử: {exc}")
+        return 0
+
+
+def chuyen_chu_so_huu(tu_client: str, sang_client: str) -> int:
+    """Chuyển các hội thoại của một trình duyệt sang chủ khác (tài khoản vừa
+    đăng ký), để những gì khách đã hỏi trước khi đăng ký không bị mất."""
+    tu_client = (tu_client or "").strip()
+    if not tu_client or not sang_client or tu_client == sang_client:
+        return 0
+    try:
+        with _khoa_ghi:
+            conn = _connect()
+            cur = conn.execute(
+                "UPDATE hoi_thoai SET client_id = ? WHERE client_id = ?",
+                (sang_client, tu_client),
+            )
+            conn.commit()
+            return cur.rowcount
+    except sqlite3.Error as exc:
+        print(f"⚠️  Không chuyển được lịch sử sang tài khoản: {exc}")
         return 0
 
 

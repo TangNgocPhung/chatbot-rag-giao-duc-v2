@@ -21,6 +21,9 @@ faiss_index_giaoduc_ollama/
 ocr_cache/
 transcripts/
 tep_dinh_kem/
+tep_go_khoi_drive/
+kho_cho_duyet/
+thung_rac_kho/
 tessdata/
 
 # Generated manifests, metadata, caches, and chat history
@@ -54,3 +57,4 @@ nhat_ky_lap_chi_muc/
 
 # Ban sao luu tu dong truoc khi gop kho (du lieu tho, khong theo doi)
 *.truoc-khi-gop-*
+sao_luu_tam_dung_*/

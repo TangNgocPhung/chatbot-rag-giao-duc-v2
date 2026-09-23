@@ -57,6 +57,12 @@ MON_HOC: dict[str, str] = {
     "Tự nhiên và Xã hội": r"tu nhien va xa hoi",
     "Ngữ văn": r"ngu van|tieng viet|tap lam van|doan bai van|mon van|van(?= \d)",
     "Tiếng Anh": r"tieng anh|mon anh|english|anh van",
+    "Tiếng Pháp": r"tieng phap",
+    "Tiếng Trung Quốc": r"tieng trung quoc|tieng trung",
+    "Tiếng Nhật": r"(?<!noi )tieng nhat",
+    "Tiếng Hàn": r"tieng han quoc|tieng han",
+    "Tiếng Nga": r"tieng nga",
+    "Tiếng Đức": r"tieng duc",
     "Vật lí": r"vat li|vat ly|mon li",
     "Hoá học": r"hoa hoc|hoa ly|mon hoa|hoa(?= \d)",
     "Sinh học": r"sinh hoc|mon sinh|sinh(?= \d)",
@@ -66,7 +72,7 @@ MON_HOC: dict[str, str] = {
     "Công nghệ": r"(?<!ung dung )cong nghe(?! so| thong tin| cao| moi)|mon cong nghe",
     "Giáo dục công dân": r"giao duc cong dan|gdcd",
     "Giáo dục kinh tế và pháp luật": r"giao duc kinh te va phap luat|ktpl",
-    "Đạo đức": r"mon dao duc|dao duc lop",
+    "Đạo đức": r"mon dao duc|dao duc lop|dao duc(?= \d)",
     "Âm nhạc": r"am nhac",
     "Mĩ thuật": r"mi thuat|my thuat",
     "Giáo dục thể chất": r"giao duc the chat|the duc",
@@ -102,6 +108,17 @@ _MON_DA_BIEN_DICH = {
     for ten, mau in MON_HOC.items()
 }
 
+# Chỉ nhận từ TÊN FILE. Bỏ dấu rồi thì "nổi tiếng nhất" thành "tieng nhat",
+# "tiếng đục" thành "tieng duc" - bản ghi video sinh hoạt dưới cờ đã bị gắn môn
+# Tiếng Nhật đúng kiểu này. Sách ngoại ngữ thì tên file luôn ghi rõ thứ tiếng.
+MON_CHI_THEO_TEN = {
+    "Tiếng Pháp", "Tiếng Trung Quốc", "Tiếng Nhật", "Tiếng Hàn", "Tiếng Nga",
+    "Tiếng Đức",
+}
+_MON_THEO_NOI_DUNG = {
+    ten: mau for ten, mau in _MON_DA_BIEN_DICH.items() if ten not in MON_CHI_THEO_TEN
+}
+
 # Môn tích hợp nuốt luôn tên môn thành phần: "Lịch sử và Địa lí 4" khớp cả
 # "lich su" lẫn "dia li", gắn đủ ba môn thì bộ lọc "Địa lí" kéo về cả sách tích
 # hợp tiểu học lẫn sách Địa lí THPT - hai thứ khác hẳn nhau.
@@ -110,6 +127,8 @@ MON_BAO_TRUM: dict[str, tuple[str, ...]] = {
     "Khoa học tự nhiên": ("Khoa học", "Vật lí", "Hoá học", "Sinh học"),
     "Tự nhiên và Xã hội": ("Khoa học",),
     "Giáo dục kinh tế và pháp luật": ("Kinh tế học",),
+    # Tên môn chính thức từ lớp 6: "Hoạt động trải nghiệm, hướng nghiệp".
+    "Hoạt động trải nghiệm": ("Giáo dục hướng nghiệp",),
 }
 
 CAP_HOC: dict[str, str] = {
@@ -134,17 +153,55 @@ _TEN_MON_TRUOC_SO = (
     r"toan|van|tin|tin hoc|li|ly|vat li|hoa|sinh|su|lich su|dia|gdcd|ktpl"
     r"|anh|tieng anh|ngu van|cong nghe|am nhac|mi thuat|dao duc|khoa hoc"
     r"|giao duc cong dan|cong dan|the duc|tu nhien va xa hoi|khtn|lsdl"
+    r"|tieng viet|tieng phap|tieng trung|tieng trung quoc|tieng nhat|tieng han"
+    r"|tieng nga|tieng duc|the chat|trai nghiem|huong nghiep|tu nhien"
+    r"|phap luat|an ninh|hoa hoc|sinh hoc|dia li"
 )
 MAU_MON_KEM_LOP = re.compile(
     rf"\b(?:{_them_dang_viet_lien(_TEN_MON_TRUOC_SO)})\s+(\d{{1,2}})\b"
 )
+# Bộ SGK tải về đặt tên "01-sgk-tieng-viet-1-tap-mot.pdf": số đầu tên là lớp,
+# và số ĐẦU TIÊN sau chữ "sgk" cũng là lớp ("sgk chuyen de hoc tap hoa hoc 10").
+# Chỉ áp cho tên có chữ sách - ở file khác số đầu tên thường là số thứ tự.
+_DAU_SACH = r"sgk|sbt|sgv|vbt|sach giao khoa|sach bai tap|sach giao vien|vo bai tap"
+MAU_LOP_TRUOC_SACH = re.compile(rf"^ (\d{{1,2}}) (?:{_DAU_SACH})\b")
+MAU_LOP_SAU_SACH = re.compile(rf"\b(?:{_DAU_SACH})\b(?: [a-z]+)*? (\d{{1,2}})\b")
 
 LOAI_NOI_DUNG_MAC_DINH = "hoc_lieu_khac"
 NHAN_LOAI_NOI_DUNG = {
     "van_ban_quy_pham": "Văn bản quy phạm",
+    "sach_giao_khoa": "Sách giáo khoa",
+    "sach_bai_tap": "Sách bài tập",
+    "sach_giao_vien": "Sách giáo viên",
+    "giao_an": "Giáo án (kế hoạch bài dạy)",
     "bai_giang": "Bài giảng",
     "de_kiem_tra": "Đề và câu hỏi kiểm tra",
     "hoc_lieu_khac": "Học liệu khác",
+}
+
+# Ba loại sách của một bộ sách. Xét SGV và SBT trước SGK: "SGV Tin 4 (dùng kèm
+# SGK)" là sách giáo viên chứ không phải sách giáo khoa.
+# Mỗi loại: (tên đầy đủ, viết tắt).
+LOAI_SACH: dict[str, tuple[str, str]] = {
+    "sach_giao_vien": (r"sach giao vien|sach huong dan giao vien", r"sgv"),
+    "sach_bai_tap": (r"sach bai tap|vo bai tap", r"sbt|vbt"),
+    "sach_giao_khoa": (r"sach giao khoa", r"sgk"),
+}
+_SACH_THEO_TEN = {
+    loai: re.compile(rf"\b(?:{_them_dang_viet_lien(day_du)}|{viet_tat})\b")
+    for loai, (day_du, viet_tat) in LOAI_SACH.items()
+}
+# Trong nội dung chỉ nhận tên ĐẦY ĐỦ nằm ở trang bìa. Viết tắt thì không: giáo
+# án nào cũng có dòng "Học sinh: SGK, SBT, đồ dùng học tập" ở mục đồ dùng dạy
+# học - nhận viết tắt là cả trăm giáo án trong kho thành sách giáo khoa.
+DO_DAI_TRANG_BIA = 300
+MAU_TEN_VAN_BAN_HANH_CHINH = re.compile(
+    r"\b(?:nghi dinh|thong tu|quyet dinh|chi thi|nghi quyet|cong van|luat"
+    r"|quy dinh|ve viec)\b"
+)
+_SACH_THEO_BIA = {
+    loai: re.compile(rf"\b(?:{day_du})\b")
+    for loai, (day_du, _) in LOAI_SACH.items()
 }
 
 MAU_DE_KIEM_TRA = re.compile(
@@ -152,9 +209,30 @@ MAU_DE_KIEM_TRA = re.compile(
     r"|ngan hang cau hoi|dap an|de on tap|de cuong on tap|phieu bai tap"
 )
 MAU_BAI_GIANG = re.compile(
-    r"bai giang|giao an|ke hoach bai day|slide|bai day|ppt|powerpoint"
+    r"bai giang|slide|bai day|ppt|powerpoint"
     r"|kntt|ctst|canh dieu"
 )
+MAU_GIAO_AN_TEN_FILE = re.compile(
+    r"\b(?:giao an|giaoan|ke hoach bai day|khbd)\b"
+)
+# Giáo án kho này phần lớn đặt tên chỉ "Bai 10 Cau truc tuan tu (tiet 1).docx",
+# nên phải nhận theo KHUNG: mở đầu bằng "Yêu cầu cần đạt"/"Mục tiêu" rồi tới
+# mục đồ dùng hoặc tiến trình dạy học. Bắt buộc mục tiêu nằm ngay đầu file: chỉ
+# thị năm học hay bảng tham chiếu AI cũng có đủ hai cụm này nhưng rải ở giữa.
+MAU_GIAO_AN_MO_DAU = re.compile(r"\b(?:yeu cau can dat|muc tieu)\b")
+DO_DAI_MO_DAU_GIAO_AN = 400
+MAU_GIAO_AN_TIEN_TRINH = re.compile(
+    r"\b(?:hoat dong day hoc|do dung day hoc|tien trinh day hoc"
+    r"|thiet bi day hoc|chuan bi cua giao vien)\b"
+)
+
+
+def _co_khung_giao_an(noi_dung_chuan: str) -> bool:
+    mo_dau = MAU_GIAO_AN_MO_DAU.search(noi_dung_chuan)
+    return bool(
+        mo_dau and mo_dau.start() < DO_DAI_MO_DAU_GIAO_AN
+        and MAU_GIAO_AN_TIEN_TRINH.search(noi_dung_chuan)
+    )
 # Số hiệu văn bản nằm ngay trong tên file: "02_2026_TT-BGDDT", "159-ndcp.signed",
 # "2732qdttg" - dấu hiệu chắc chắn hơn mọi từ khóa nội dung.
 MAU_SO_HIEU_TEN_FILE = re.compile(
@@ -208,6 +286,12 @@ def _bo_mon_bi_bao_trum(cac_mon: list[str]) -> list[str]:
 def _tim_lop(chuoi: str) -> list[int]:
     so = {int(s) for s in MAU_LOP.findall(chuoi)}
     so |= {int(s) for s in MAU_MON_KEM_LOP.findall(chuoi)}
+    if not so:
+        for mau in (MAU_LOP_TRUOC_SACH, MAU_LOP_SAU_SACH):
+            khop = mau.search(chuoi)
+            if khop:
+                so.add(int(khop.group(1)))
+                break
     return sorted(s for s in so if 1 <= s <= 12)
 
 
@@ -231,7 +315,31 @@ def _suy_loai_noi_dung(ten_chuan: str, noi_dung_chuan: str, la_qppl: bool,
     """
     if la_qppl or MAU_SO_HIEU_TEN_FILE.search(ten_chuan):
         return "van_ban_quy_pham"
-    if MAU_DE_KIEM_TRA.search(ten_chuan) or MAU_DE_KIEM_TRA.search(noi_dung_chuan):
+    # Sách xét trước đề và bài giảng: "SBT Toan 5 - de on tap" vẫn là sách bài
+    # tập, và tên bộ sách (KNTT, Cánh diều) đang được coi là dấu hiệu bài giảng.
+    # Tên kiểu "Nghị định quy định về miễn phí sách giáo khoa..." là văn bản nói
+    # VỀ sách, không phải cuốn sách - chặn cả khi hồ sơ văn bản chưa kịp lập.
+    if not MAU_TEN_VAN_BAN_HANH_CHINH.search(ten_chuan):
+        for loai, mau in _SACH_THEO_TEN.items():
+            if mau.search(ten_chuan):
+                return loai
+    # Trang bìa chỉ có ở PDF/Word. File bảng tính thì dòng đầu là tiêu đề cột:
+    # PPCT Tin 10 có cột "Sách giáo khoa Tin học 10" ngay dòng đầu.
+    if loai_tai_lieu in (None, "van_ban"):
+        trang_bia = noi_dung_chuan[:DO_DAI_TRANG_BIA]
+        for loai, mau in _SACH_THEO_BIA.items():
+            if mau.search(trang_bia):
+                return loai
+    if MAU_DE_KIEM_TRA.search(ten_chuan):
+        return "de_kiem_tra"
+    # Giáo án xét trước từ khóa đề trong NỘI DUNG: giáo án nào cũng có "phiếu
+    # bài tập", "đáp án" ở phần hoạt động, trước đây 25 giáo án bị xếp thành đề.
+    # Slide bài giảng cũng hay có trang "Yêu cầu cần đạt" nên chỉ xét PDF/Word.
+    if MAU_GIAO_AN_TEN_FILE.search(ten_chuan) or (
+        loai_tai_lieu in (None, "van_ban") and _co_khung_giao_an(noi_dung_chuan)
+    ):
+        return "giao_an"
+    if MAU_DE_KIEM_TRA.search(noi_dung_chuan):
         return "de_kiem_tra"
     if MAU_BAI_GIANG.search(ten_chuan) or loai_tai_lieu == "trinh_chieu":
         return "bai_giang"
@@ -275,7 +383,7 @@ def suy_phan_loai(ten_file: str, noi_dung: str = "", la_qppl: bool = False,
     # một thông tư về tiểu học vẫn nhắc "trung học cơ sở" ở phần căn cứ.
     if noi_dung_chuan.strip():
         if not mon and _duoc_gan_mon(loai, noi_dung_chuan):
-            them = _bo_mon_bi_bao_trum(_tim_nhan(noi_dung_chuan, _MON_DA_BIEN_DICH))
+            them = _bo_mon_bi_bao_trum(_tim_nhan(noi_dung_chuan, _MON_THEO_NOI_DUNG))
             # Chỉ nhận khi nội dung nói tới ĐÚNG MỘT môn. Nhiều môn cùng lúc là
             # đang liệt kê chứ không phải đang khai báo: bài Tin học lớp 3 lấy
             # ví dụ "thư mục Tiếng Việt 3, Tin học 3, Toán 3", gắn cả ba thì lọc

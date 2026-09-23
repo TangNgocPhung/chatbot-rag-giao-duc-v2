@@ -52,6 +52,122 @@ class GanNhanTests(unittest.TestCase):
                 pl.suy_phan_loai(ten).loai_noi_dung, "van_ban_quy_pham", ten
             )
 
+    def test_ba_loai_sach_nhan_ra_tu_ten_file(self):
+        for ten, loai in (
+            ("SGK Tin hoc 4 KNTT.pdf", "sach_giao_khoa"),
+            ("SachGiaoVien-Toan5.pdf", "sach_giao_vien"),
+            ("SGV Tin 4 dung kem SGK.pdf", "sach_giao_vien"),
+            ("VBT_TiengViet3.pdf", "sach_bai_tap"),
+            ("Sach bai tap Tin hoc 5.pdf", "sach_bai_tap"),
+        ):
+            self.assertEqual(pl.suy_phan_loai(ten).loai_noi_dung, loai, ten)
+
+    def test_sach_van_duoc_gan_mon_va_lop(self):
+        muc = pl.suy_phan_loai("SGK Tin hoc 4 KNTT.pdf")
+        self.assertEqual(muc.mon_hoc, ["Tin học"])
+        self.assertEqual(muc.lop, [4])
+
+    def test_trang_bia_ghi_ten_day_du_thi_nhan_la_sach(self):
+        muc = pl.suy_phan_loai(
+            "TinHoc4.pdf", noi_dung="SÁCH GIÁO VIÊN\nTIN HỌC 4\nKết nối tri thức",
+            loai_tai_lieu="van_ban",
+        )
+        self.assertEqual(muc.loai_noi_dung, "sach_giao_vien")
+
+    def test_giao_an_nhac_sgk_sbt_khong_thanh_sach(self):
+        """Giáo án nào cũng có 'Học sinh: SGK, SBT' ở mục đồ dùng dạy học."""
+        muc = pl.suy_phan_loai(
+            "Bai 1.docx",
+            noi_dung="Bài 1 THÔNG TIN VÀ QUYẾT ĐỊNH\nII. ĐỒ DÙNG DẠY HỌC\n"
+                     "2. Học sinh: SGK, SBT, đồ dùng học tập.",
+            loai_tai_lieu="van_ban",
+        )
+        self.assertNotIn(muc.loai_noi_dung, pl.LOAI_SACH)
+
+    def test_tieu_de_cot_bang_tinh_khong_phai_trang_bia(self):
+        muc = pl.suy_phan_loai(
+            "PPCT-Tin10-KNTT.xlsx",
+            noi_dung="Phân phối chương trình | Sách giáo khoa Tin học 10 | Số tiết",
+            loai_tai_lieu="bang_du_lieu",
+        )
+        self.assertNotIn(muc.loai_noi_dung, pl.LOAI_SACH)
+
+    def test_bo_sgk_tai_ve_lay_duoc_lop_va_mon(self):
+        for ten, mon, lop in (
+            ("01-sgk-tieng-viet-1-tap-mot.pdf", ["Ngữ văn"], [1]),
+            ("01-sgk-dao-duc-1.pdf", ["Đạo đức"], [1]),
+            ("03-sgk-tieng-trung-quoc-3-tap-hai.pdf", ["Tiếng Trung Quốc"], [3]),
+            ("06-sgk-khoa-hoc-tu-nhien-6.pdf", ["Khoa học tự nhiên"], [6]),
+            ("09-sgk-hoat-dong-trai-nghiem-huong-nghiep-9.pdf",
+             ["Hoạt động trải nghiệm"], [9]),
+            ("10-sgk-giao-duc-the-chat-10-bong-chuyen.pdf",
+             ["Giáo dục thể chất"], [10]),
+            ("12-sgk-chuyen-de-hoc-tap-hoa-hoc-12.pdf", ["Hoá học"], [12]),
+        ):
+            muc = pl.suy_phan_loai(ten)
+            self.assertEqual((muc.mon_hoc, muc.lop), (mon, lop), ten)
+            self.assertEqual(muc.loai_noi_dung, "sach_giao_khoa", ten)
+
+    def test_noi_tieng_nhat_khong_thanh_mon_tieng_nhat(self):
+        muc = pl.suy_phan_loai(
+            "sinh hoạt thứ 2.mp4",
+            noi_dung="trận đánh nổi tiếng nhất là trận diệt 59 tên sĩ quan",
+        )
+        self.assertEqual(muc.mon_hoc, [])
+
+    def test_so_dau_ten_file_khong_phai_sach_thi_khong_la_lop(self):
+        """'0.MaTran...', '5-Bai6-...' - số đầu tên chỉ là số thứ tự."""
+        self.assertEqual(pl.suy_phan_loai("3.-khung-ke-hoach-bai-day.docx").lop, [])
+
+    def test_van_ban_noi_ve_sach_khong_thanh_sach(self):
+        """Hồ sơ văn bản chưa lập (la_qppl=False) vẫn không được xếp nghị định
+        miễn phí sách giáo khoa vào loại Sách giáo khoa."""
+        ten = ("Nghị định quy định về miễn phí sách giáo khoa giáo dục phổ "
+               "thông và miễn học phí.pdf")
+        self.assertNotIn(pl.suy_phan_loai(ten).loai_noi_dung, pl.LOAI_SACH)
+
+    GIAO_AN_MAU = (
+        "Bài 10: CẤU TRÚC TUẦN TỰ (tiết 1)\nYÊU CẦU CẦN ĐẠT\nKiến thức: ...\n"
+        "II. ĐỒ DÙNG DẠY HỌC\n1. Giáo viên: máy chiếu. 2. Học sinh: SGK, SBT.\n"
+        "III. HOẠT ĐỘNG DẠY HỌC\nHS làm phiếu bài tập, GV chốt đáp án."
+    )
+
+    def test_giao_an_nhan_theo_khung_du_ten_file_chi_la_so_bai(self):
+        muc = pl.suy_phan_loai(
+            "Bai 10 Cau truc tuan tu (tiet 1).docx",
+            noi_dung=self.GIAO_AN_MAU, loai_tai_lieu="van_ban",
+        )
+        # Trước đây "phiếu bài tập", "đáp án" kéo giáo án sang loại đề.
+        self.assertEqual(muc.loai_noi_dung, "giao_an")
+
+    def test_giao_an_nhan_theo_ten_file(self):
+        for ten in ("Form-GiaoAn-2345.docx", "KHBD Tin 4 bai 3.docx",
+                    "Ke hoach bai day Toan 5.pdf"):
+            self.assertEqual(pl.suy_phan_loai(ten).loai_noi_dung, "giao_an", ten)
+
+    def test_ma_tran_de_khong_thanh_giao_an(self):
+        """Ma trận đặc tả cũng liệt kê 'yêu cầu cần đạt' - tên file đã nói là đề."""
+        muc = pl.suy_phan_loai(
+            "0.MaTran-DacTa-Lop4-TheoChuDe.docx",
+            noi_dung=self.GIAO_AN_MAU, loai_tai_lieu="van_ban",
+        )
+        self.assertEqual(muc.loai_noi_dung, "de_kiem_tra")
+
+    def test_muc_tieu_nam_giua_van_ban_khong_phai_giao_an(self):
+        """Chỉ thị năm học có đủ 'mục tiêu' lẫn 'hoạt động dạy học' nhưng rải ở
+        giữa văn bản, không phải khung mở đầu của giáo án."""
+        noi_dung = ("CHỈ THỊ về nhiệm vụ trọng tâm năm học. " * 20
+                    + "Mục tiêu: nâng cao chất lượng hoạt động dạy học.")
+        muc = pl.suy_phan_loai("Chi thi nam hoc.pdf", noi_dung=noi_dung,
+                               loai_tai_lieu="van_ban")
+        self.assertNotEqual(muc.loai_noi_dung, "giao_an")
+
+    def test_slide_co_trang_yeu_cau_can_dat_khong_thanh_giao_an(self):
+        muc = pl.suy_phan_loai("b10_trang_tinh_hhg.pptx",
+                               noi_dung=self.GIAO_AN_MAU,
+                               loai_tai_lieu="trinh_chieu")
+        self.assertNotEqual(muc.loai_noi_dung, "giao_an")
+
     def test_co_qppl_tu_ho_so_thi_khong_can_ten_file(self):
         muc = pl.suy_phan_loai("bản trình ký.docx", la_qppl=True)
         self.assertEqual(muc.loai_noi_dung, "van_ban_quy_pham")

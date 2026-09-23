@@ -20,6 +20,8 @@ import goi_y_cau_hoi
 import kiem_tra_tra_loi
 import hieu_luc_bo_sung
 import phan_loai_giao_duc
+import quan_ly_kho
+import tai_khoan
 import danh_gia_hoc_sinh
 import dinh_muc_tiet_day
 import tep_dinh_kem
@@ -49,6 +51,7 @@ from tom_tat_tep import (
     SO_DOAN_TOM_TAT,
     gop_ngu_canh,
     la_yeu_cau_tom_tat,
+    tao_chain_giai_thich,
     tao_chain_tom_tat,
 )
 from web_loader import (
@@ -79,6 +82,34 @@ THU_MUC_TEP_TRONG_KHO = "" if KHO_PHANG else os.getenv(
 # nhật so bằng hash nên thấy không có gì để làm, sổ không được ghi lại, con số
 # đứng yên mãi. Chỉ coi là khác khi lệch quá mốc này.
 DUNG_SAI_MTIME_NS = 2_000_000_000
+
+
+def doan_khoanh_thanh_bang_chung(doan_trich: dict | None):
+    """Đoạn người dùng khoanh trong trình đọc -> một Document làm bằng chứng [1].
+
+    Người dùng chỉ thẳng vào chữ trên trang rồi hỏi "giải thích giúp", nên
+    chính đoạn đó phải có mặt trong ngữ cảnh. Chỉ dựa vào truy hồi thì đoạn
+    "Căn cứ Luật..." của một Nghị định rất dễ lọt khỏi top bằng chứng, và mô
+    hình - vốn bị dặn chỉ trả lời theo bằng chứng - sẽ đáp "không tìm thấy"
+    cho một đoạn người dùng đang nhìn thấy tận mắt.
+    """
+    if not doan_trich or not str(doan_trich.get("van_ban") or "").strip():
+        return None
+    from langchain_core.documents import Document
+
+    ten = str(doan_trich.get("ten") or "").strip() or "Tài liệu đang đọc"
+    trang = int(doan_trich.get("trang") or 1)
+    metadata = {
+        "source_file": ten,
+        "so_trang": trang,
+        "loai_tai_lieu": suy_loai_tai_lieu(ten),
+        "context_label": f"Đoạn người dùng khoanh ở trang {trang}",
+    }
+    tep = doan_trich.get("tep")
+    if tep:
+        metadata["tep_dinh_kem"] = tep
+        metadata["source_url"] = f"/api/tep/{quote(str(tep))}/noi-dung"
+    return Document(page_content=str(doan_trich["van_ban"]).strip(), metadata=metadata)
 
 
 def ban_ghi_lech_tep(record: dict, size: int, modified_ns: int) -> bool:
@@ -175,6 +206,12 @@ class RAGService:
         # Model trả lời hiện hành; đổi được lúc đang chạy qua giao diện.
         self.llm_model = self._tai_lua_chon_model()
         self.chain_tom_tat = None
+        self.chain_giai_thich = None
+        # Mỗi người chọn được mô hình riêng: chuỗi trả lời của các mô hình khác
+        # mô hình mặc định được dựng khi có người dùng tới lần đầu rồi giữ lại.
+        self._chuoi_theo_mo_hinh: dict[str, tuple] = {}
+        self._khoa_chuoi = threading.Lock()
+        self._mo_hinh_co_san: tuple[float, set[str]] = (0.0, set())
         self.format_docs = None
         self._no_text_sources: list[str] = []
         self._initialization_lock = threading.Lock()
@@ -243,6 +280,8 @@ class RAGService:
                 self.tu_vung = tu_vung_kho.xay_dung_tu_vung(self.bm25_retriever.docs)
                 self.rag_chain, self.format_docs = tao_rag_chain(self.vector_store, llm)
                 self.chain_tom_tat = tao_chain_tom_tat(self._llm_tom_tat(self.llm_model))
+                self.chain_giai_thich = tao_chain_giai_thich(llm)
+                self._chuoi_theo_mo_hinh.clear()
                 thong_ke = self._data_inventory()
                 message = (
                     "Sẵn sàng trả lời · dữ liệu nguồn đã thay đổi, cần cập nhật chỉ mục"
@@ -496,6 +535,9 @@ class RAGService:
             ten = muc.get("name", "")
             if not ten or not self._la_model_tra_loi(ten):
                 continue
+            cho_phep = self.mo_hinh_duoc_phep()
+            if cho_phep and ten not in cho_phep and ten != self.llm_model:
+                continue
             danh_sach.append({
                 "name": ten,
                 "size_gb": round(int(muc.get("size", 0)) / 1e9, 1),
@@ -532,6 +574,7 @@ class RAGService:
             # Chuỗi tóm tắt tệp đính kèm cũng dùng LLM, phải dựng lại theo model
             # mới - nếu quên, giao diện báo model A nhưng tóm tắt vẫn chạy model B.
             self.chain_tom_tat = tao_chain_tom_tat(self._llm_tom_tat(ten_model))
+            self.chain_giai_thich = tao_chain_giai_thich(llm)
             self.llm_model = ten_model
             self._luu_lua_chon_model(ten_model)
         except Exception as exc:
@@ -667,11 +710,20 @@ class RAGService:
     # ============================================================
     # TỆP ĐÍNH KÈM -> KHO TÀI LIỆU
     # ============================================================
-    def luu_tep_vao_kho(self, duong_dan: str, ten: str) -> tuple[str, str]:
+    @staticmethod
+    def _vao_thang_kho(nguoi: dict | None) -> bool:
+        """Quản trị viên (hoặc máy tắt khoá quản trị) đưa tệp thẳng vào kho;
+        người khác gửi vào hàng chờ duyệt."""
+        return not tai_khoan.bat_khoa_quan_tri() or bool(nguoi and nguoi.get("quan_tri"))
+
+    def luu_tep_vao_kho(
+        self, duong_dan: str, ten: str, nguoi: dict | None = None, *, tu_he_thong: bool = False
+    ) -> tuple[str, str]:
         """Chép tệp vừa đính kèm vào kho tài liệu chung rồi hẹn nạp vào chỉ mục.
 
         Gọi từ luồng đọc tệp của tep_dinh_kem (qua hook) nên chỉ làm việc rẻ:
         băm, chép, hẹn giờ. Phần embedding đắt tiền để dành cho lúc máy rảnh.
+        tu_he_thong: thư mục nóng do quản trị viên cấu hình, không cần duyệt.
         """
         if not _luu_tep_dinh_kem_vao_kho():
             return "tat", ""
@@ -681,18 +733,61 @@ class RAGService:
         if trung is not None:
             return "da_co", f"Kho tài liệu đã có tệp này ({os.path.basename(trung)})."
 
-        dich = self._duong_dan_trong_kho(ten)
-        os.makedirs(os.path.dirname(dich), exist_ok=True)
-        shutil.copy2(duong_dan, dich)
-        self.tep_cho_nap.append(os.path.basename(dich))
-        self._hen_cap_nhat_chi_muc()
+        if not tu_he_thong and not self._vao_thang_kho(nguoi):
+            quan_ly_kho.gui_cho_duyet(duong_dan, ten, ma_bam, "dinh_kem", nguoi)
+            return "cho_duyet", (
+                "Đã gửi quản trị viên duyệt để đưa vào kho tài liệu chung. "
+                "Bạn vẫn hỏi về tệp này được ngay."
+            )
+
+        ten_trong_kho = self._chep_vao_kho(duong_dan, ten)
+        quan_ly_kho.ghi_vao_kho(
+            ten, ten_trong_kho, ma_bam, os.path.getsize(duong_dan),
+            "thu_muc_nong" if tu_he_thong else "dinh_kem", nguoi,
+        )
         noi_luu = THU_MUC_TEP_TRONG_KHO or os.path.basename(DATA_PATH)
         return "da_luu", (
             f"Đã thêm vào kho tài liệu ({noi_luu}), "
             "sẽ nạp vào chỉ mục khi máy rảnh."
         )
 
-    def nhap_tep_tu_giao_dien(self, ten: str, du_lieu: bytes) -> tuple[str, str]:
+    def _chep_vao_kho(self, duong_dan: str, ten: str) -> str:
+        dich = self._duong_dan_trong_kho(ten)
+        os.makedirs(os.path.dirname(dich), exist_ok=True)
+        shutil.copy2(duong_dan, dich)
+        self.tep_cho_nap.append(os.path.basename(dich))
+        self._hen_cap_nhat_chi_muc()
+        return os.path.basename(dich)
+
+    # ------------------------------------------------------------
+    # QUẢN TRỊ KHO: duyệt tệp gửi lên, gỡ và khôi phục tài liệu
+    # ------------------------------------------------------------
+    def dua_tep_duyet_vao_kho(self, duong_dan: str, ten: str) -> tuple[str, str]:
+        """Dùng khi quản trị viên bấm Duyệt: trả về (trang_thai, ten_trong_kho | thông báo)."""
+        trung = self._tim_tep_trung_trong_kho(tinh_hash_file(duong_dan))
+        if trung is not None:
+            return "da_co", f"Kho đã có tệp này ({os.path.basename(trung)})."
+        return "da_luu", self._chep_vao_kho(duong_dan, ten)
+
+    def go_tai_lieu(self, ten: str, nguoi: dict) -> dict:
+        duong_dan = self.resolve_source_file(ten)
+        if duong_dan is None:
+            raise quan_ly_kho.LoiQuanLyKho("Không tìm thấy tài liệu này trong kho.", 404)
+        ket_qua = quan_ly_kho.go_khoi_kho(duong_dan, nguoi)
+        # Trình cập nhật chỉ mục thấy tệp biến mất sẽ gỡ vector của nó.
+        self.tep_cho_nap.append(f"(gỡ) {ten}")
+        self._hen_cap_nhat_chi_muc()
+        return ket_qua
+
+    def khoi_phuc_tai_lieu(self, ma: str) -> str:
+        ten = quan_ly_kho.khoi_phuc(ma, self._duong_dan_trong_kho)
+        self.tep_cho_nap.append(ten)
+        self._hen_cap_nhat_chi_muc()
+        return ten
+
+    def nhap_tep_tu_giao_dien(
+        self, ten: str, du_lieu: bytes, nguoi: dict | None = None
+    ) -> tuple[str, str]:
         """Nhận tệp tải lên từ nút "+" trong Kho tài liệu.
 
         Khác luu_tep_vao_kho (đi qua tệp đính kèm chat), ở đây byte đến thẳng
@@ -726,6 +821,9 @@ class RAGService:
         finally:
             if os.path.isfile(tam):
                 os.remove(tam)
+        quan_ly_kho.ghi_vao_kho(
+            ten_goc, os.path.basename(dich), ma_bam, len(du_lieu), "kho", nguoi
+        )
 
         self.tep_cho_nap.append(os.path.basename(dich))
         self._hen_cap_nhat_chi_muc()
@@ -857,7 +955,7 @@ class RAGService:
                 dau_van = (thong_tin.st_mtime, thong_tin.st_size)
                 if self._nong_da_quet.get(duong_dan) == dau_van:
                     continue
-                trang_thai, thong_bao = self.luu_tep_vao_kho(duong_dan, ten)
+                trang_thai, thong_bao = self.luu_tep_vao_kho(duong_dan, ten, tu_he_thong=True)
                 self._nong_da_quet[duong_dan] = dau_van
                 if trang_thai == "da_luu":
                     print(f"📥 Thư mục nóng: {ten} - {thong_bao}")
@@ -1162,8 +1260,53 @@ class RAGService:
         )
         return retrieval_question, model_question
 
+    def _chain_tra_loi(self, doan_khoanh, ten_mo_hinh: str | None = None):
+        """Hỏi về đoạn vừa khoanh dùng prompt giải thích, còn lại dùng prompt tra cứu."""
+        rag_chain, chain_giai_thich, _ = self._cac_chuoi(ten_mo_hinh)
+        if doan_khoanh is not None and chain_giai_thich is not None:
+            return chain_giai_thich
+        return rag_chain
+
+    def _cac_chuoi(self, ten_mo_hinh: str | None) -> tuple:
+        """(hỏi đáp, giải thích đoạn khoanh, tóm tắt tệp) của một mô hình."""
+        if not ten_mo_hinh or ten_mo_hinh == self.llm_model:
+            return self.rag_chain, self.chain_giai_thich, self.chain_tom_tat
+        with self._khoa_chuoi:
+            if ten_mo_hinh not in self._chuoi_theo_mo_hinh:
+                llm = tao_llm(ten_mo_hinh)
+                rag_chain, _ = tao_rag_chain(self.vector_store, llm)
+                self._chuoi_theo_mo_hinh[ten_mo_hinh] = (
+                    rag_chain,
+                    tao_chain_giai_thich(llm),
+                    tao_chain_tom_tat(self._llm_tom_tat(ten_mo_hinh)),
+                )
+            return self._chuoi_theo_mo_hinh[ten_mo_hinh]
+
+    @staticmethod
+    def mo_hinh_duoc_phep() -> set[str]:
+        """RAG_MO_HINH_CHO_PHEP (phân cách bằng dấu phẩy) giới hạn các mô hình
+        người dùng được tự chọn - vd chặn qwen3.5:9b trên máy ít RAM, vì một
+        người chọn nó là cả máy chủ có thể hết bộ nhớ. Để trống = mọi mô hình."""
+        return {m.strip() for m in os.getenv("RAG_MO_HINH_CHO_PHEP", "").split(",") if m.strip()}
+
+    def chon_mo_hinh(self, yeu_cau: str | None) -> str:
+        """Mô hình sẽ dùng cho một lượt hỏi: lựa chọn của người hỏi nếu hợp lệ,
+        không thì mô hình mặc định."""
+        yeu_cau = (yeu_cau or "").strip()
+        if not yeu_cau or yeu_cau == self.llm_model:
+            return self.llm_model
+        cho_phep = self.mo_hinh_duoc_phep()
+        if cho_phep and yeu_cau not in cho_phep:
+            return self.llm_model
+        luc, co_san = self._mo_hinh_co_san
+        if time.monotonic() - luc > 60:
+            co_san = {m["name"] for m in self.danh_sach_model().get("models", [])}
+            self._mo_hinh_co_san = (time.monotonic(), co_san)
+        return yeu_cau if yeu_cau in co_san else self.llm_model
+
     def _tra_loi_theo_tep(
-        self, question: str, history: list[dict] | None, tep_ids: list[str]
+        self, question: str, history: list[dict] | None, tep_ids: list[str],
+        doan_khoanh=None, ten_mo_hinh: str | None = None,
     ) -> Iterator[dict]:
         """Hỏi đáp hoặc tóm tắt trong phạm vi đúng các tệp người dùng vừa đính kèm.
 
@@ -1194,6 +1337,8 @@ class RAGService:
                     documents.extend(tep_dinh_kem.kho_tep.truy_hoi(
                         tep, retrieval_question, max(2, SO_KET_QUA_CUOI // len(cac_tep))
                     ))
+            if doan_khoanh is not None:
+                documents = [doan_khoanh] + documents[: max(1, SO_KET_QUA_CUOI - 1)]
             if not documents:
                 yield {"type": "sources", "sources": []}
                 yield {
@@ -1225,13 +1370,13 @@ class RAGService:
             }
 
             if tom_tat:
-                dong_token = self.chain_tom_tat.stream({
+                dong_token = self._cac_chuoi(ten_mo_hinh)[2].stream({
                     "ten_tep": ", ".join(tep.ten for tep in cac_tep),
                     "context": gop_ngu_canh(documents),
                     "question": model_question,
                 })
             else:
-                dong_token = self.rag_chain.stream({
+                dong_token = self._chain_tra_loi(doan_khoanh, ten_mo_hinh).stream({
                     "context": self.format_docs(documents),
                     "question": model_question,
                 })
@@ -1382,15 +1527,22 @@ class RAGService:
         history: list[dict] | None = None,
         tep_ids: list[str] | None = None,
         pham_vi: dict | None = None,
+        doan_trich: dict | None = None,
+        model: str | None = None,
     ) -> Iterator[dict]:
         """Ghi mốc hoạt động quanh mỗi lượt hỏi để trình hẹn nạp tệp mới vào chỉ
-        mục biết khi nào người dùng thật sự ngừng hỏi."""
+        mục biết khi nào người dùng thật sự ngừng hỏi.
+
+        model: mô hình người hỏi tự chọn; bỏ trống hoặc không hợp lệ thì dùng
+        mô hình mặc định do quản trị viên đặt."""
         # Xoá cờ dừng trước khi phát sự kiện đầu tiên: lượt hỏi mới không được
         # thừa hưởng lệnh dừng của lượt trước.
         self.huy_sinh.clear()
         self.thoi_diem_chat_cuoi = time.time()
         try:
-            yield from self._sinh_cau_tra_loi(question, history, tep_ids, pham_vi)
+            yield from self._sinh_cau_tra_loi(
+                question, history, tep_ids, pham_vi, doan_trich, self.chon_mo_hinh(model)
+            )
         finally:
             self.thoi_diem_chat_cuoi = time.time()
 
@@ -1400,12 +1552,22 @@ class RAGService:
         history: list[dict] | None = None,
         tep_ids: list[str] | None = None,
         pham_vi: dict | None = None,
+        doan_trich: dict | None = None,
+        ten_mo_hinh: str | None = None,
     ) -> Iterator[dict]:
         if self.status.state != "ready":
             raise RuntimeError(self.status.message)
+        ten_mo_hinh = ten_mo_hinh or self.llm_model
+        doan_khoanh = doan_khoanh_thanh_bang_chung(doan_trich)
         if tep_ids:
-            yield from self._tra_loi_theo_tep(question, history, tep_ids)
+            yield from self._tra_loi_theo_tep(
+                question, history, tep_ids, doan_khoanh, ten_mo_hinh
+            )
             return
+        # Câu hỏi về đoạn khoanh không đi qua công cụ tính và cache: đoạn "Luật
+        # số 43/2019/QH14" không phải phép chia, còn câu trả lời lưu cache của
+        # một đoạn khác thì chẳng giải thích được đoạn này.
+        hoi_doan_khoanh = doan_khoanh is not None
 
         # Câu hỏi tính toán rẽ sang công cụ tính bằng Python trước cả cache.
         # Hai lý do phải đặt ở đây chứ không đặt sau:
@@ -1420,7 +1582,7 @@ class RAGService:
         # Thứ tự thử: công cụ có phạm vi hẹp nhất đi trước. tinh_toan nhận cả
         # những biểu thức trần trụi nên phải đứng cuối, sau khi hai công cụ có
         # căn cứ pháp lý đã nhận phần của mình.
-        for ten_cong_cu, cong_cu in (
+        for ten_cong_cu, cong_cu in () if hoi_doan_khoanh else (
             ("tinh_luong", tinh_luong),
             ("dinh_muc_tiet_day", dinh_muc_tiet_day),
             ("danh_gia_hoc_sinh", danh_gia_hoc_sinh),
@@ -1437,12 +1599,13 @@ class RAGService:
         # trong cache không nên phải xếp hàng sau câu đang chạy dở 150 giây.
         vector_cau_hoi = (
             self._vector_cau_hoi(question)
-            if self._cache_duoc(question, history, pham_vi) else None
+            if not hoi_doan_khoanh and self._cache_duoc(question, history, pham_vi)
+            else None
         )
         ung_vien_cache, diem_cache = (None, 0.0)
         if vector_cau_hoi:
             ung_vien_cache, diem_cache = cache_ngu_nghia.cache.tim(
-                vector_cau_hoi, self.llm_model, self._van_tay_chi_muc()
+                vector_cau_hoi, ten_mo_hinh, self._van_tay_chi_muc()
             )
             # Rất giống thì trả ngay, không cần truy hồi lại.
             if ung_vien_cache and diem_cache >= cache_ngu_nghia.NGUONG_TUONG_DONG:
@@ -1459,6 +1622,8 @@ class RAGService:
                 "message": "Đang tìm tài liệu liên quan",
             }
             documents = self._retrieve(retrieval_question, pham_vi)
+            if hoi_doan_khoanh:
+                documents = [doan_khoanh] + documents[: max(1, SO_KET_QUA_CUOI - 1)]
 
             # Ứng viên cache chỉ giống vừa phải: giờ đã có kết quả truy hồi thật,
             # đối chiếu bộ bằng chứng. Trùng khớp hoàn toàn nghĩa là câu trả lời
@@ -1473,7 +1638,8 @@ class RAGService:
             # Không có gì thực sự dính tới câu hỏi: trả lời thẳng là không tìm
             # thấy, thay vì để mô hình diễn giải từ mấy đoạn lạc đề (và tiết
             # kiệm luôn ~30 giây sinh văn bản trên CPU).
-            ly_do_chan = kiem_tra_tra_loi.ly_do_bo_qua(
+            # Đoạn khoanh là bằng chứng người dùng tự chỉ ra, không có chuyện lạc đề.
+            ly_do_chan = None if hoi_doan_khoanh else kiem_tra_tra_loi.ly_do_bo_qua(
                 documents, retrieval_question, self.tu_vung
             )
             if os.getenv("RAG_TU_CHOI_KHI_LAC_DE", "1") == "1" and ly_do_chan:
@@ -1537,7 +1703,9 @@ class RAGService:
             }
             context = self.format_docs(documents)
             cau_tra_loi = ""
-            for token in self.rag_chain.stream({"context": context, "question": model_question}):
+            for token in self._chain_tra_loi(doan_khoanh, ten_mo_hinh).stream(
+                {"context": context, "question": model_question}
+            ):
                 if token:
                     cau_tra_loi += token
                     yield {"type": "token", "content": token}
@@ -1562,7 +1730,7 @@ class RAGService:
                     vector_cau_hoi=vector_cau_hoi,
                     tra_loi=cau_tra_loi,
                     nguon=cac_nguon,
-                    model=self.llm_model,
+                    model=ten_mo_hinh,
                     van_tay=self._van_tay_chi_muc(),
                     canh_bao_hieu_luc=cac_canh_bao_hieu_luc,
                     khoa_chunk=cache_ngu_nghia.khoa_chunk_cua(documents),

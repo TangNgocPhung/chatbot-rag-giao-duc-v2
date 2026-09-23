@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" font-family="'Segoe UI', Arial, sans-serif">
+<defs>
+  <linearGradient id="nen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef5f9"/><stop offset="1" stop-color="#dde9f0"/></linearGradient>
+  <linearGradient id="tieude" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5e4f98"/><stop offset="1" stop-color="#8a7cc0"/></linearGradient>
+  <filter id="bong" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#2d3a4a" flood-opacity="0.22"/></filter>
+</defs>
+<rect width="1600" height="900" fill="url(#nen)"/>
+<rect x="0" y="28" width="1600" height="84" fill="url(#tieude)"/>
+<text x="60" y="84" font-size="38" fill="#ffffff">Các chức năng của Chatbot RAG Giáo dục</text>
+
+<g filter="url(#bong)"><rect x="45" y="136" width="490" height="340" rx="14" fill="#ffffff" fill-opacity="0.92" stroke="#4f73a8" stroke-opacity="0.55" stroke-width="1.6"/></g>
+<path d="M45,150 a14,14 0 0 1 14,-14 h462 a14,14 0 0 1 14,14 v40 h-490 z" fill="#dbe6f3"/>
+<line x1="45" y1="190" x2="535" y2="190" stroke="#4f73a8" stroke-opacity="0.45" stroke-width="1.4"/>
+<circle cx="77" cy="163" r="16" fill="#4f73a8"/>
+<text x="77" y="169" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">1</text>
+<text x="103" y="170" font-size="21" font-weight="700" fill="#1f2a3a">Hỏi đáp có căn cứ</text>
+<circle cx="75" cy="221" r="4" fill="#4f73a8"/>
+<text x="89" y="226" font-size="16" fill="#27313d">Tìm kiếm lai FAISS (bge-m3) + BM25 trên toàn kho</text>
+<circle cx="75" cy="256" r="4" fill="#4f73a8"/>
+<text x="89" y="261" font-size="16" fill="#27313d">Trích dẫn nguồn tới trang, slide, sheet, phút video</text>
+<circle cx="75" cy="291" r="4" fill="#4f73a8"/>
+<text x="89" y="296" font-size="16" fill="#27313d">Hiểu câu hỏi nối tiếp trong cùng cuộc trò chuyện</text>
+<circle cx="75" cy="326" r="4" fill="#4f73a8"/>
+<text x="89" y="331" font-size="16" fill="#27313d">Lọc phạm vi theo môn, cấp học, lớp, loại tài liệu</text>
+<circle cx="75" cy="361" r="4" fill="#4f73a8"/>
+<text x="89" y="366" font-size="16" fill="#27313d">Từ chối câu hỏi lạc đề, kèm gợi ý câu hỏi khác</text>
+<circle cx="75" cy="396" r="4" fill="#4f73a8"/>
+<text x="89" y="401" font-size="16" fill="#27313d">Dán đường link để hỏi về nội dung trang web</text>
+<circle cx="75" cy="431" r="4" fill="#4f73a8"/>
+<text x="89" y="436" font-size="16" fill="#27313d">Dừng câu trả lời đang sinh giữa chừng</text>
+<g filter="url(#bong)"><rect x="555" y="136" width="490" height="340" rx="14" fill="#ffffff" fill-opacity="0.92" stroke="#4d8f7b" stroke-opacity="0.55" stroke-width="1.6"/></g>
+<path d="M555,150 a14,14 0 0 1 14,-14 h462 a14,14 0 0 1 14,14 v40 h-490 z" fill="#d9eee6"/>
+<line x1="555" y1="190" x2="1045" y2="190" stroke="#4d8f7b" stroke-opacity="0.45" stroke-width="1.4"/>
+<circle cx="587" cy="163" r="16" fill="#4d8f7b"/>
+<text x="587" y="169" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">2</text>
+<text x="613" y="170" font-size="21" font-weight="700" fill="#1f2a3a">Kiểm chứng &amp; hiệu lực văn bản</text>
+<circle cx="585" cy="221" r="4" fill="#4d8f7b"/>
+<text x="599" y="226" font-size="16" fill="#27313d">Hậu kiểm trích dẫn và số liệu trong câu trả lời</text>
+<circle cx="585" cy="256" r="4" fill="#4d8f7b"/>
+<text x="599" y="261" font-size="16" fill="#27313d">Nhận diện bản dự thảo chưa ban hành</text>
+<circle cx="585" cy="291" r="4" fill="#4d8f7b"/>
+<text x="599" y="296" font-size="16" fill="#27313d">Cảnh báo văn bản bị thay thế, sửa đổi, bãi bỏ</text>
+<circle cx="585" cy="326" r="4" fill="#4d8f7b"/>
+<text x="599" y="331" font-size="16" fill="#27313d">Phát hiện văn bản chưa tới ngày áp dụng</text>
+<circle cx="585" cy="361" r="4" fill="#4d8f7b"/>
+<text x="599" y="366" font-size="16" fill="#27313d">Gắn nhãn hiệu lực và số hiệu văn bản cho nguồn</text>
+<circle cx="585" cy="396" r="4" fill="#4d8f7b"/>
+<text x="599" y="401" font-size="16" fill="#27313d">Chỉ lưu cache câu trả lời đã qua hậu kiểm</text>
+<g filter="url(#bong)"><rect x="1065" y="136" width="490" height="340" rx="14" fill="#ffffff" fill-opacity="0.92" stroke="#a67b2c" stroke-opacity="0.55" stroke-width="1.6"/></g>
+<path d="M1065,150 a14,14 0 0 1 14,-14 h462 a14,14 0 0 1 14,14 v40 h-490 z" fill="#f4e8cf"/>
+<line x1="1065" y1="190" x2="1555" y2="190" stroke="#a67b2c" stroke-opacity="0.45" stroke-width="1.4"/>
+<circle cx="1097" cy="163" r="16" fill="#a67b2c"/>
+<text x="1097" y="169" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+<text x="1123" y="170" font-size="21" font-weight="700" fill="#1f2a3a">Công cụ tính bằng Python</text>
+<circle cx="1095" cy="221" r="4" fill="#a67b2c"/>
+<text x="1109" y="226" font-size="16" fill="#27313d">Tính lương, phụ cấp ưu đãi theo nghề của nhà giáo</text>
+<circle cx="1095" cy="256" r="4" fill="#a67b2c"/>
+<text x="1109" y="261" font-size="16" fill="#27313d">Định mức tiết dạy, mức giảm khi kiêm nhiệm</text>
+<circle cx="1095" cy="291" r="4" fill="#a67b2c"/>
+<text x="1109" y="296" font-size="16" fill="#27313d">Điểm trung bình môn, xếp loại kết quả học tập</text>
+<circle cx="1095" cy="326" r="4" fill="#a67b2c"/>
+<text x="1109" y="331" font-size="16" fill="#27313d">Số học: phần trăm, tăng giảm theo tỉ lệ, biểu thức</text>
+<circle cx="1095" cy="361" r="4" fill="#a67b2c"/>
+<text x="1109" y="366" font-size="16" fill="#27313d">In kèm công thức đã thay số và văn bản căn cứ</text>
+<circle cx="1095" cy="396" r="4" fill="#a67b2c"/>
+<text x="1109" y="401" font-size="16" fill="#27313d">Nhận cả câu hỏi gõ không dấu</text>
+<circle cx="1095" cy="431" r="4" fill="#a67b2c"/>
+<text x="1109" y="436" font-size="16" fill="#27313d">Trả kết quả ngay, không qua mô hình ngôn ngữ</text>
+<g filter="url(#bong)"><rect x="45" y="498" width="490" height="340" rx="14" fill="#ffffff" fill-opacity="0.92" stroke="#7a64b0" stroke-opacity="0.55" stroke-width="1.6"/></g>
+<path d="M45,512 a14,14 0 0 1 14,-14 h462 a14,14 0 0 1 14,14 v40 h-490 z" fill="#e6e0f3"/>
+<line x1="45" y1="552" x2="535" y2="552" stroke="#7a64b0" stroke-opacity="0.45" stroke-width="1.4"/>
+<circle cx="77" cy="525" r="16" fill="#7a64b0"/>
+<text x="77" y="531" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">4</text>
+<text x="103" y="532" font-size="21" font-weight="700" fill="#1f2a3a">Hỏi riêng trên tệp đính kèm</text>
+<circle cx="75" cy="583" r="4" fill="#7a64b0"/>
+<text x="89" y="588" font-size="16" fill="#27313d">Đính kèm tối đa 4 tệp ngay trong khung chat</text>
+<circle cx="75" cy="618" r="4" fill="#7a64b0"/>
+<text x="89" y="623" font-size="16" fill="#27313d">Hỏi đáp chỉ trong phạm vi các tệp đã đính kèm</text>
+<circle cx="75" cy="653" r="4" fill="#7a64b0"/>
+<text x="89" y="658" font-size="16" fill="#27313d">Nút tóm tắt nội dung tệp</text>
+<circle cx="75" cy="688" r="4" fill="#7a64b0"/>
+<text x="89" y="693" font-size="16" fill="#27313d">PDF, Word, PowerPoint, Excel, CSV, EPUB, HTML, ảnh</text>
+<circle cx="75" cy="723" r="4" fill="#7a64b0"/>
+<text x="89" y="728" font-size="16" fill="#27313d">OCR ảnh, PDF scan; phiên âm âm thanh và video</text>
+<circle cx="75" cy="758" r="4" fill="#7a64b0"/>
+<text x="89" y="763" font-size="16" fill="#27313d">Tệp đính kèm được chép vào kho tài liệu chung</text>
+<g filter="url(#bong)"><rect x="555" y="498" width="490" height="340" rx="14" fill="#ffffff" fill-opacity="0.92" stroke="#b06a7b" stroke-opacity="0.55" stroke-width="1.6"/></g>
+<path d="M555,512 a14,14 0 0 1 14,-14 h462 a14,14 0 0 1 14,14 v40 h-490 z" fill="#f3dfe4"/>
+<line x1="555" y1="552" x2="1045" y2="552" stroke="#b06a7b" stroke-opacity="0.45" stroke-width="1.4"/>
+<circle cx="587" cy="525" r="16" fill="#b06a7b"/>
+<text x="587" y="531" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">5</text>
+<text x="613" y="532" font-size="21" font-weight="700" fill="#1f2a3a">Quản lý kho tài liệu</text>
+<circle cx="585" cy="583" r="4" fill="#b06a7b"/>
+<text x="599" y="588" font-size="16" fill="#27313d">Nạp từ 3 nguồn: Google Drive · tải lên qua web ·</text>
+<text x="599" y="623" font-size="16" fill="#27313d">chép thẳng vào thư mục kho trên máy chủ</text>
+<circle cx="585" cy="653" r="4" fill="#b06a7b"/>
+<text x="599" y="658" font-size="16" fill="#27313d">Tự kiểm tra thư mục Google Drive mỗi 15 phút</text>
+<circle cx="585" cy="688" r="4" fill="#b06a7b"/>
+<text x="599" y="693" font-size="16" fill="#27313d">OCR PDF scan (Tesseract), phiên âm video (Whisper)</text>
+<circle cx="585" cy="723" r="4" fill="#b06a7b"/>
+<text x="599" y="728" font-size="16" fill="#27313d">Cập nhật chỉ mục tăng dần, hiện tiến độ trên web</text>
+<circle cx="585" cy="758" r="4" fill="#b06a7b"/>
+<text x="599" y="763" font-size="16" fill="#27313d">Tự phân loại tài liệu theo môn, cấp học, lớp</text>
+<circle cx="585" cy="793" r="4" fill="#b06a7b"/>
+<text x="599" y="798" font-size="16" fill="#27313d">Duyệt, tìm, lọc và mở tài liệu gốc trong kho</text>
+<g filter="url(#bong)"><rect x="1065" y="498" width="490" height="340" rx="14" fill="#ffffff" fill-opacity="0.92" stroke="#5b6b80" stroke-opacity="0.55" stroke-width="1.6"/></g>
+<path d="M1065,512 a14,14 0 0 1 14,-14 h462 a14,14 0 0 1 14,14 v40 h-490 z" fill="#e0e6ee"/>
+<line x1="1065" y1="552" x2="1555" y2="552" stroke="#5b6b80" stroke-opacity="0.45" stroke-width="1.4"/>
+<circle cx="1097" cy="525" r="16" fill="#5b6b80"/>
+<text x="1097" y="531" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">6</text>
+<text x="1123" y="532" font-size="21" font-weight="700" fill="#1f2a3a">Giao diện &amp; vận hành</text>
+<circle cx="1095" cy="583" r="4" fill="#5b6b80"/>
+<text x="1109" y="588" font-size="16" fill="#27313d">Lịch sử trò chuyện: tìm kiếm, xem lại, xóa</text>
+<circle cx="1095" cy="618" r="4" fill="#5b6b80"/>
+<text x="1109" y="623" font-size="16" fill="#27313d">Gợi ý câu hỏi mở đầu và gợi ý hỏi tiếp</text>
+<circle cx="1095" cy="653" r="4" fill="#5b6b80"/>
+<text x="1109" y="658" font-size="16" fill="#27313d">Chọn mô hình trả lời chạy cục bộ qua Ollama</text>
+<circle cx="1095" cy="688" r="4" fill="#5b6b80"/>
+<text x="1109" y="693" font-size="16" fill="#27313d">Cache ngữ nghĩa: câu hỏi lặp lại trả lời ngay</text>
+<circle cx="1095" cy="723" r="4" fill="#5b6b80"/>
+<text x="1109" y="728" font-size="16" fill="#27313d">Giao diện sáng / tối, dùng được trên điện thoại</text>
+<circle cx="1095" cy="758" r="4" fill="#5b6b80"/>
+<text x="1109" y="763" font-size="16" fill="#27313d">Đặt mật khẩu khi mở ứng dụng ra Internet</text>
+<circle cx="1095" cy="793" r="4" fill="#5b6b80"/>
+<text x="1109" y="798" font-size="16" fill="#27313d">Đo chất lượng: bộ benchmark, chỉ số MRR, Hit@K</text>
+<rect x="0" y="846" width="1600" height="34" fill="#8577b3" opacity="0.85"/>
+<text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">Chatbot RAG Giáo dục</text>
+</svg>

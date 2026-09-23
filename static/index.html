@@ -6,7 +6,7 @@
   <meta name="description" content="Chatbot RAG hỗ trợ tra cứu và hỏi đáp từ kho tri thức giáo dục.">
   <title>Chatbot RAG Giáo dục</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=1.4.6">
+  <link rel="stylesheet" href="./styles.css?v=1.8.4">
   <script>
     /* Đặt nền đúng ngay từ lần vẽ đầu: app.js dùng defer nên nếu đợi nó thì
        người dùng chế độ tối sẽ thấy một nháy màu trắng khi mở trang. */
@@ -40,6 +40,7 @@
       <button class="library-button" id="libraryButton" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5v-16Z"/></svg>
         <span>Kho tài liệu</span>
+        <span class="library-pending hidden" id="libraryPending" aria-label="Tệp chờ duyệt"></span>
         <span class="library-count" id="libraryCount">—</span>
       </button>
 
@@ -84,10 +85,10 @@
             <div class="index-progress-file" id="indexProgressFile"></div>
           </div>
           <button class="retry-button hidden" id="retryButton" type="button">Thử kết nối lại</button>
-          <button class="update-button hidden" id="updateIndexButton" type="button">Cập nhật kho tri thức</button>
+          <button class="update-button hidden chi-quan-tri" id="updateIndexButton" type="button">Cập nhật kho tri thức</button>
         </div>
         <div class="drive-card" id="driveCard">
-          <button class="drive-button" id="driveSyncButton" type="button">
+          <button class="drive-button chi-quan-tri" id="driveSyncButton" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l4 7-4 7H8l-4-7 4-7Z"/><path d="M8 11h8"/></svg>
             <span>Đồng bộ Google Drive</span>
           </button>
@@ -121,6 +122,7 @@
             </ol>
           </div>
         </details>
+        <div class="tai-khoan" id="taiKhoanKhoi" aria-live="polite"></div>
       </div>
     </aside>
 
@@ -138,6 +140,15 @@
           <span>Trợ lý giáo dục</span>
           <small><span class="mini-dot" id="miniDot"></span><span id="miniStatus">Đang kết nối</span></small>
         </div>
+        <button class="nut-so-tay nut-dich" id="dichButton" type="button" aria-haspopup="dialog" title="Dịch hơn 130 ngôn ngữ">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h8M8 3v2M10 5c-.5 3.5-2.8 6.5-6 8M6 9c1.2 2 3 3.6 5 4.5"/><path d="m13 21 4-9 4 9M14.5 18h5"/></svg>
+          <span>Dịch</span>
+        </button>
+        <button class="nut-so-tay" id="soTayButton" type="button" aria-controls="workspace" aria-expanded="false" title="Sổ tay của cuộc trò chuyện: ghi chú, bảng vẽ, đọc tài liệu (Ctrl + /)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6V3Z"/><path d="M6 3v18M3 7h3M3 12h3M3 17h3M10 8h6M10 12h4"/></svg>
+          <span>Sổ tay</span>
+          <i class="cham-so-tay hidden" id="soTayCham" aria-hidden="true"></i>
+        </button>
         <button class="icon-button theme-toggle" id="themeButton" type="button" aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
           <svg class="icon-sang" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
           <svg class="icon-toi" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4 8.4 8.4 0 1 0 20 14.2Z"/></svg>
@@ -150,6 +161,7 @@
           </button>
           <div class="model-menu hidden" id="modelMenu" role="listbox" aria-label="Mô hình trả lời"></div>
         </div>
+        <button class="nut-dang-nhap hidden" id="topDangNhap" type="button">Đăng nhập</button>
       </header>
 
       <section class="chat-scroll" id="chatScroll" aria-live="polite">
@@ -248,6 +260,10 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5 12.3 19a5 5 0 0 1-7-7l7.6-7.6a3.3 3.3 0 1 1 4.7 4.7l-7.6 7.6a1.6 1.6 0 1 1-2.3-2.3l7-7"/></svg>
               <span>Đính kèm tệp</span>
             </button>
+            <button class="attach-button mic-button" id="micButton" type="button" aria-pressed="false" title="Nói thay vì gõ - tự nhận ra bạn nói tiếng gì">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>
+              <span>Nói</span>
+            </button>
             <span class="input-hint">Enter để gửi · Shift + Enter để xuống dòng</span>
             <button class="send-button" id="sendButton" type="submit" disabled aria-label="Gửi câu hỏi">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14-7-4 14-3-6-7-1Z"/><path d="m12 13 7-8"/></svg>
@@ -260,9 +276,253 @@
         <p class="disclaimer">Trợ lý chỉ trả lời theo tài liệu hiện có. Hãy đối chiếu nguồn khi sử dụng thông tin quan trọng.</p>
       </footer>
     </main>
+
+    <!-- SỔ TAY CỦA CUỘC TRÒ CHUYỆN: ghi chú, bảng vẽ, đọc tài liệu và khoanh để hỏi.
+         Mỗi cuộc trò chuyện một cuốn sổ riêng, lưu trong trình duyệt. -->
+    <aside class="workspace hidden" id="workspace" aria-label="Sổ tay của cuộc trò chuyện">
+      <div class="ws-resizer" id="wsResizer" role="separator" aria-orientation="vertical" aria-label="Kéo để đổi độ rộng sổ tay" tabindex="0"></div>
+      <header class="ws-header">
+        <div class="ws-title">
+          <strong>Sổ tay</strong>
+          <small id="wsTenCuoc">Cuộc trò chuyện mới</small>
+        </div>
+        <div class="ws-header-actions">
+          <div class="ws-menu-wrap">
+            <button class="icon-button" id="wsTaiVeButton" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="wsTaiVeMenu" title="Tải sổ tay về máy">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+            </button>
+            <div class="ws-menu hidden" id="wsTaiVeMenu" role="menu">
+              <button type="button" role="menuitem" data-tai="doc"><strong>Word (.doc)</strong><small>Ghi chú, ảnh vùng khoanh và bảng vẽ</small></button>
+              <button type="button" role="menuitem" data-tai="pdf"><strong>In hoặc lưu PDF</strong><small>Mở bản in của sổ tay</small></button>
+              <button type="button" role="menuitem" data-tai="png"><strong>Ảnh bảng vẽ (.png)</strong><small>Chỉ phần đã vẽ trên bảng</small></button>
+            </div>
+          </div>
+          <button class="icon-button" id="wsDongButton" type="button" aria-label="Đóng sổ tay" title="Đóng sổ tay">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="ws-tabs" role="tablist" aria-label="Phần của sổ tay">
+        <button class="ws-tab" id="wsTabGhiChu" type="button" role="tab" data-tab="ghi-chu" aria-selected="true" aria-controls="wsGhiChu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Ghi chú
+        </button>
+        <button class="ws-tab" id="wsTabBangVe" type="button" role="tab" data-tab="bang-ve" aria-selected="false" aria-controls="wsBangVe">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 11-11-3-3L5 16l-1 4Z"/><path d="m14 7 3 3"/></svg>Bảng vẽ
+        </button>
+        <button class="ws-tab" id="wsTabTaiLieu" type="button" role="tab" data-tab="tai-lieu" aria-selected="false" aria-controls="wsTaiLieu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7V3Z"/><path d="M15 3v5h4"/><circle cx="12" cy="14" r="3.2"/></svg>Tài liệu
+        </button>
+      </div>
+
+      <section class="ws-pane" id="wsGhiChu" role="tabpanel" aria-labelledby="wsTabGhiChu" data-pane="ghi-chu">
+        <div class="ws-toolbar" role="toolbar" aria-label="Định dạng ghi chú">
+          <button type="button" data-lenh="bold" title="Chữ đậm (Ctrl + B)" aria-label="Chữ đậm"><b>B</b></button>
+          <button type="button" data-lenh="italic" title="Chữ nghiêng (Ctrl + I)" aria-label="Chữ nghiêng"><i>I</i></button>
+          <button type="button" data-lenh="underline" title="Gạch chân (Ctrl + U)" aria-label="Gạch chân"><u>U</u></button>
+          <button type="button" data-lenh="to-vang" title="Tô vàng chỗ quan trọng" aria-label="Tô vàng"><span class="mau-to-vang">A</span></button>
+          <span class="ws-toolbar-gach" aria-hidden="true"></span>
+          <button type="button" data-lenh="tieu-de" title="Tiêu đề mục" aria-label="Tiêu đề mục">H</button>
+          <button type="button" data-lenh="insertUnorderedList" title="Danh sách chấm" aria-label="Danh sách chấm">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".8"/><circle cx="4.5" cy="12" r=".8"/><circle cx="4.5" cy="18" r=".8"/></svg>
+          </button>
+          <button type="button" data-lenh="insertOrderedList" title="Danh sách đánh số" aria-label="Danh sách đánh số">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10M4 5l1.5-1v5M3.5 14.5A1.5 1.5 0 1 1 6 16l-2.5 3H6"/></svg>
+          </button>
+          <button type="button" data-lenh="checklist" title="Việc cần ôn" aria-label="Thêm ô đánh dấu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></svg>
+          </button>
+          <span class="ws-toolbar-gach" aria-hidden="true"></span>
+          <button type="button" data-lenh="removeFormat" title="Bỏ định dạng" aria-label="Bỏ định dạng">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h12M12 5l-3 14M4 20 20 4"/></svg>
+          </button>
+        </div>
+        <div class="ghi-chu" id="wsGhiChuNoiDung" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Nội dung ghi chú" spellcheck="false"
+             data-goi-y="Ghi lại điều vừa học ở đây…&#10;&#10;Mẹo: bôi đen một đoạn trong câu trả lời rồi bấm “Ghi vào sổ”, hoặc bấm nút “Ghi vào sổ” dưới mỗi câu trả lời."></div>
+        <footer class="ws-status" id="wsTrangThaiGhiChu" aria-live="polite">Chưa có ghi chú</footer>
+      </section>
+
+      <section class="ws-pane hidden" id="wsBangVe" role="tabpanel" aria-labelledby="wsTabBangVe" data-pane="bang-ve">
+        <div class="ws-toolbar ve" role="toolbar" aria-label="Công cụ bảng vẽ" id="wsCongCuBang"></div>
+        <div class="bang-ve-khung" id="wsBangVeKhung">
+          <canvas class="bang-ve" id="wsBangVeCanvas" aria-label="Bảng vẽ tay"></canvas>
+        </div>
+      </section>
+
+      <section class="ws-pane hidden" id="wsTaiLieu" role="tabpanel" aria-labelledby="wsTabTaiLieu" data-pane="tai-lieu">
+        <div class="doc-trong" id="wsDocTrong">
+          <div class="doc-trong-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7V3Z"/><path d="M15 3v5h4"/><circle cx="12" cy="14" r="3.2"/></svg>
+          </div>
+          <strong>Đọc tài liệu ngay tại đây</strong>
+          <p>Mở một tệp PDF hoặc ảnh chụp trang sách, <b>khoanh vào chỗ chưa hiểu</b> rồi bấm “Giải thích” — trợ lý sẽ giải thích đúng đoạn đó.</p>
+          <button class="doc-mo-tep" id="wsMoTepButton" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Mở tệp PDF / ảnh
+          </button>
+          <p class="doc-trong-meo">Hoặc bấm vào một nguồn PDF dưới câu trả lời, hay tài liệu trong “Kho tài liệu”.</p>
+          <div class="doc-da-mo" id="wsDocDaMo"></div>
+          <input id="wsFileInput" type="file" hidden accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff">
+        </div>
+        <div class="doc-xem hidden" id="wsDocXem">
+          <div class="doc-dau">
+            <select id="wsDocChon" aria-label="Tài liệu đang đọc"></select>
+            <div class="doc-trang-nav">
+              <button class="icon-button" id="wsTrangTruoc" type="button" aria-label="Trang trước" title="Trang trước">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <label class="doc-so-trang"><input id="wsSoTrang" type="number" min="1" value="1" aria-label="Số trang"><span id="wsTongTrang">/ 1</span></label>
+              <button class="icon-button" id="wsTrangSau" type="button" aria-label="Trang sau" title="Trang sau">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+            <div class="doc-thu-phong">
+              <button class="icon-button" id="wsThuNho" type="button" aria-label="Thu nhỏ" title="Thu nhỏ">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6"/></svg>
+              </button>
+              <button class="doc-ti-le" id="wsTiLe" type="button" title="Vừa khung">100%</button>
+              <button class="icon-button" id="wsPhongTo" type="button" aria-label="Phóng to" title="Phóng to">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6M11 8v6"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="ws-toolbar ve" role="toolbar" aria-label="Công cụ đánh dấu tài liệu" id="wsCongCuDoc"></div>
+          <div class="doc-trang-list" id="wsDocTrangList"></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- Bôi đen chữ trong câu trả lời thì hiện hai nút này ngay trên chỗ bôi. -->
+  <div class="thanh-chon hidden" id="thanhChon" role="toolbar" aria-label="Làm gì với đoạn đã chọn">
+    <button type="button" data-chon="ghi">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6V3Z"/><path d="M10 8h6M10 12h4"/></svg>
+      Ghi vào sổ
+    </button>
+    <button type="button" data-chon="dich">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h8M8 3v2M10 5c-.5 3.5-2.8 6.5-6 8M6 9c1.2 2 3 3.6 5 4.5"/><path d="m13 21 4-9 4 9M14.5 18h5"/></svg>
+      Dịch
+    </button>
+    <button type="button" data-chon="hoi">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01"/></svg>
+      Hỏi về đoạn này
+    </button>
   </div>
 
   <div class="toast" id="toast" role="status"></div>
+
+  <!-- Menu tài khoản (bấm vào tên ở cuối thanh bên). -->
+  <div class="menu-tai-khoan hidden" id="menuTaiKhoan" role="menu" aria-label="Tài khoản">
+    <div class="menu-tai-khoan-dau">
+      <strong id="menuTaiKhoanTen"></strong>
+      <small id="menuTaiKhoanEmail"></small>
+    </div>
+    <button type="button" role="menuitem" data-tk="doi-mat-khau">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      Đổi mật khẩu
+    </button>
+    <button type="button" role="menuitem" data-tk="dang-xuat">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 16l-4-4 4-4M6 12h10"/></svg>
+      Đăng xuất
+    </button>
+  </div>
+
+  <!-- Khung dịch hai cột như Google Translate. -->
+  <dialog class="dich-dialog" id="dichDialog" aria-labelledby="dichTitle">
+    <div class="dich-dau">
+      <div>
+        <p class="eyebrow">DỊCH ĐA NGÔN NGỮ</p>
+        <h2 id="dichTitle">Dịch hơn 130 ngôn ngữ</h2>
+      </div>
+      <button class="icon-button" id="dichDong" type="button" aria-label="Đóng khung dịch">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="dich-ngon-ngu">
+      <div class="dich-chip-hang" id="dichNguon" role="radiogroup" aria-label="Ngôn ngữ nguồn"></div>
+      <button class="icon-button dich-doi" id="dichDoi" type="button" aria-label="Đổi chiều dịch" title="Đổi chiều dịch">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h13l-4-4M17 17H4l4 4"/></svg>
+      </button>
+      <div class="dich-chip-hang" id="dichDich" role="radiogroup" aria-label="Ngôn ngữ đích"></div>
+    </div>
+    <div class="dich-khung">
+      <div class="dich-bang-chon hidden" id="dichBangChon" role="group" aria-label="Chọn ngôn ngữ">
+        <label class="dich-bang-tim">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
+          <input id="dichTimNgonNgu" type="search" placeholder="Tìm ngôn ngữ (vd: Pháp, français, fr)" aria-label="Tìm ngôn ngữ" autocomplete="off">
+        </label>
+        <div class="dich-bang-luoi" id="dichLuoiNgonNgu" role="listbox" aria-label="Tất cả ngôn ngữ"></div>
+      </div>
+      <div class="dich-o">
+        <textarea id="dichVao" maxlength="5000" placeholder="Nhập hoặc dán văn bản cần dịch" aria-label="Văn bản cần dịch"></textarea>
+        <div class="dich-o-chan">
+          <button class="icon-button" id="dichNgheVao" type="button" aria-label="Nghe văn bản gốc" title="Nghe">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h3l4 3V7L7 10H4Z"/><path d="M15.5 9.5a4 4 0 0 1 0 5M18 7a8 8 0 0 1 0 10"/></svg>
+          </button>
+          <button class="icon-button hidden" id="dichXoa" type="button" aria-label="Xoá văn bản" title="Xoá">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+          <span class="dich-dem" id="dichDem">0 / 5.000</span>
+        </div>
+      </div>
+      <div class="dich-o dich-o-ra">
+        <div class="dich-ra trong" id="dichRa" aria-live="polite" data-goi-y="Bản dịch"></div>
+        <div class="dich-o-chan">
+          <span class="dich-trang-thai" id="dichTrangThai"></span>
+          <button class="icon-button" id="dichNgheRa" type="button" aria-label="Nghe bản dịch" title="Nghe" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h3l4 3V7L7 10H4Z"/><path d="M15.5 9.5a4 4 0 0 1 0 5M18 7a8 8 0 0 1 0 10"/></svg>
+          </button>
+          <button class="icon-button" id="dichChep" type="button" aria-label="Sao chép bản dịch" title="Sao chép" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+          </button>
+          <button class="icon-button" id="dichGhi" type="button" aria-label="Ghi bản dịch vào sổ tay" title="Ghi vào sổ tay" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6V3Z"/><path d="M10 8h6M10 12h4"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <p class="dich-ghi-chu" id="dichGhiChu"></p>
+  </dialog>
+
+  <!-- Hộp đăng nhập / đăng ký / đổi mật khẩu dùng chung một khung. -->
+  <dialog class="auth-dialog" id="authDialog" aria-labelledby="authTitle">
+    <form class="auth-form" id="authForm" novalidate>
+      <button class="icon-button auth-close" id="authClose" type="button" aria-label="Đóng">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+      <div class="auth-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40" fill="none"><path d="M8 8.5h16.5A7.5 7.5 0 0 1 32 16v15.5H15.5A7.5 7.5 0 0 1 8 24V8.5Z"/><path d="M14 15h12M14 20h9M14 25h7"/></svg>
+      </div>
+      <h2 id="authTitle">Chào mừng trở lại</h2>
+      <p class="auth-sub" id="authSub">Đăng nhập để lưu lịch sử trò chuyện và sổ tay trên mọi thiết bị.</p>
+      <label class="auth-field" id="authTenField">
+        <span>Tên hiển thị</span>
+        <input id="authTen" type="text" autocomplete="name" maxlength="60" placeholder="Ví dụ: Cô Lan">
+      </label>
+      <label class="auth-field" id="authEmailField">
+        <span>Email</span>
+        <input id="authEmail" type="email" autocomplete="email" inputmode="email" placeholder="ten@truong.edu.vn">
+      </label>
+      <label class="auth-field" id="authMatKhauCuField">
+        <span>Mật khẩu hiện tại</span>
+        <input id="authMatKhauCu" type="password" autocomplete="current-password">
+      </label>
+      <label class="auth-field">
+        <span id="authMatKhauNhan">Mật khẩu</span>
+        <span class="auth-pass">
+          <input id="authMatKhau" type="password" autocomplete="current-password">
+          <button class="auth-show" id="authShow" type="button" aria-pressed="false">Hiện</button>
+        </span>
+        <small class="auth-hint" id="authHint">Ít nhất 8 ký tự.</small>
+      </label>
+      <p class="auth-error" id="authError" role="alert"></p>
+      <button class="auth-submit" id="authSubmit" type="submit">Đăng nhập</button>
+      <p class="auth-switch" id="authSwitch">
+        <span id="authSwitchText">Chưa có tài khoản?</span>
+        <button type="button" id="authSwitchButton">Đăng ký</button>
+      </p>
+      <p class="auth-note" id="authNote">Quên mật khẩu? Hãy nhờ quản trị viên đặt lại.</p>
+    </form>
+  </dialog>
 
   <!-- popover="manual" để popup nằm trên cả modal Kho tài liệu (cùng top layer). -->
   <section class="upload-popup hidden" id="uploadPopup" popover="manual" role="status" aria-live="polite">
@@ -283,7 +543,7 @@
         <h2>Kho tài liệu</h2>
       </div>
       <div class="dialog-header-actions">
-        <button class="icon-button" id="uploadLibraryButton" type="button" aria-label="Thêm tài liệu vào kho" title="Thêm tài liệu vào kho">
+        <button class="icon-button chi-quan-tri" id="uploadLibraryButton" type="button" aria-label="Thêm tài liệu vào kho" title="Thêm tài liệu vào kho">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         </button>
         <button class="icon-button" id="closeDocumentDialog" type="button" aria-label="Đóng kho tài liệu">
@@ -292,6 +552,11 @@
       </div>
       <input id="libraryFileInput" type="file" multiple hidden
         accept=".pdf,.docx,.doc,.txt,.md,.html,.htm,.epub,.jpg,.jpeg,.png,.tif,.tiff,.bmp,.webp,.xlsx,.xlsm,.xls,.csv,.tsv,.pptx,.srt,.vtt,.mp4,.mkv,.mov,.avi,.webm,.wmv,.flv,.mp3,.wav,.m4a,.aac,.flac,.ogg,.wma">
+    </div>
+    <div class="kho-tabs chi-quan-tri" id="khoTabs" role="tablist" aria-label="Quản trị kho tài liệu">
+      <button type="button" role="tab" data-kho="tai-lieu" aria-selected="true">Tài liệu</button>
+      <button type="button" role="tab" data-kho="cho-duyet" aria-selected="false">Chờ duyệt <span class="kho-dem hidden" id="khoDemChoDuyet"></span></button>
+      <button type="button" role="tab" data-kho="thung-rac" aria-selected="false">Thùng rác</button>
     </div>
     <div class="document-summary" id="documentSummary"></div>
     <label class="document-search">
@@ -312,6 +577,10 @@
       </div>
     </div>
   </dialog>
-  <script src="./app.js?v=1.4.8" defer></script>
+  <script src="./app.js?v=1.8.3" defer></script>
+  <script src="./so-tay.js?v=1.8.3" defer></script>
+  <script src="./tai-khoan.js?v=1.8.0" defer></script>
+  <script src="./dich.js?v=1.8.2" defer></script>
+  <script src="./giong-noi.js?v=1.8.3" defer></script>
 </body>
 </html>

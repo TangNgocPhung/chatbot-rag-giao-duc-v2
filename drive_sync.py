@@ -31,6 +31,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import time
 from dataclasses import dataclass, field
 
@@ -50,6 +51,15 @@ DUONG_DAN_TRANG_THAI = os.path.abspath(os.getenv(
 DUONG_DAN_MANIFEST = os.path.abspath(os.getenv(
     "RAG_DRIVE_MANIFEST", os.path.join(THU_MUC_DU_AN, "drive_manifest.json")
 ))
+# Tệp bị gỡ khỏi Drive được chuyển vào đây chứ không xoá hẳn: gỡ nhầm thì chép
+# ngược lại là xong, không phải tải lại hàng trăm tệp.
+THU_MUC_DA_GO = os.path.abspath(os.getenv(
+    "RAG_DRIVE_THU_MUC_DA_GO", os.path.join(THU_MUC_DU_AN, "tep_go_khoi_drive")
+))
+# Một lượt đồng bộ mà định gỡ nhiều hơn mức này thì gần như chắc chắn là danh
+# sách Drive bị thiếu (liệt kê hỏng giữa chừng, manifest cũ...), không phải
+# người ta thật sự xoá cả loạt: dừng lại, không gỡ tệp nào.
+SO_TEP_GO_TOI_DA = int(os.getenv("RAG_DRIVE_GO_TOI_DA", "20"))
 
 # Thư mục Drive dùng chung của đề án (có thể đổi bằng biến môi trường).
 THU_MUC_DRIVE = os.getenv("RAG_DRIVE_FOLDER_ID", "1hDALiDKkmyOFhKw6gokMpIpwG5ZloCM-")
@@ -454,17 +464,37 @@ def dong_bo(
                 break
 
     # File bị xóa trên Drive -> gỡ khỏi kho cục bộ để chỉ mục không còn nội dung cũ.
-    if xoa_file_thua and not chay_thu and chan_lien_tiep < NGUONG_CHAN_LIEN_TIEP:
-        for ma_file, ban_ghi in list(trang_thai.items()):
-            if ma_file in con_tren_drive:
-                continue
+    #
+    # Chỉ khi danh sách lấy thẳng từ Drive API. drive_manifest.json là bản xuất
+    # từ một thời điểm cũ: ngày 23/9/2026 máy chạy không có API key đã lấy
+    # manifest 409 tệp (xuất từ 12/9) làm "toàn bộ Drive" và xoá mất khoảng 300
+    # tài liệu thêm vào kho sau đó. Manifest chỉ dùng để TẢI THÊM, không để xoá.
+    if xoa_file_thua and API_KEY and not chay_thu and chan_lien_tiep < NGUONG_CHAN_LIEN_TIEP:
+        can_go = [
+            (ma_file, ban_ghi) for ma_file, ban_ghi in trang_thai.items()
+            if ma_file not in con_tren_drive
+        ]
+        nguong = max(SO_TEP_GO_TOI_DA, len(trang_thai) // 10)
+        if len(can_go) > nguong:
+            ket_qua.loi.append(
+                f"Không gỡ {len(can_go)} tệp vắng mặt trên Drive: quá nhiều cho một "
+                f"lượt (ngưỡng {nguong}), nhiều khả năng danh sách Drive bị thiếu. "
+                "Nếu thật sự đã xoá trên Drive, chạy tay: python drive_sync.py "
+                f"với RAG_DRIVE_GO_TOI_DA={len(can_go)}."
+            )
+            can_go = []
+        thu_muc_lan_nay = os.path.join(THU_MUC_DA_GO, time.strftime("%Y%m%d-%H%M%S"))
+        for ma_file, ban_ghi in can_go:
             duong_dan = os.path.join(DATA_PATH, ban_ghi.get("duong_dan", ""))
             if os.path.isfile(duong_dan):
                 try:
-                    os.remove(duong_dan)
+                    dich = os.path.join(thu_muc_lan_nay, ban_ghi.get("duong_dan", ""))
+                    os.makedirs(os.path.dirname(dich), exist_ok=True)
+                    shutil.move(duong_dan, dich)
                     ket_qua.da_xoa.append(os.path.basename(duong_dan))
                 except OSError as exc:
                     ket_qua.loi.append(f"{duong_dan}: {exc}")
+                    continue
             trang_thai.pop(ma_file, None)
 
     if not chay_thu:

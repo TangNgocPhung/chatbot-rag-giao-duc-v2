@@ -293,7 +293,7 @@ class HookLuuKhoTests(unittest.TestCase):
             id="abc", ten="quy-che.txt", duoi=".txt", loai="van_ban",
             duong_dan="/tmp/quy-che.txt", kich_thuoc=10, tao_luc=0.0,
         )
-        tep_dinh_kem.dat_hook_luu_kho(lambda duong_dan, ten: ("da_luu", "Đã thêm vào kho"))
+        tep_dinh_kem.dat_hook_luu_kho(lambda duong_dan, ten, nguoi=None: ("da_luu", "Đã thêm vào kho"))
 
         self.assertEqual(tep_dinh_kem._luu_vao_kho(tep), ("da_luu", "Đã thêm vào kho"))
         self.assertIn("luu_kho", tep.cong_khai())
@@ -304,7 +304,7 @@ class HookLuuKhoTests(unittest.TestCase):
             duong_dan="/tmp/quy-che.txt", kich_thuoc=10, tao_luc=0.0,
         )
 
-        def hong(duong_dan, ten):
+        def hong(duong_dan, ten, nguoi=None):
             raise OSError("ổ đĩa đầy")
 
         tep_dinh_kem.dat_hook_luu_kho(hong)

@@ -135,6 +135,26 @@ function maTrinhDuyet() {
 function taoMaHoiThoai() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
+// Mã của cuộc trò chuyện chưa có câu hỏi nào. Cấp sẵn chứ không đợi câu hỏi
+// đầu: người dùng có thể ghi sổ tay hay mở tài liệu trước khi hỏi, và những
+// thứ đó phải nằm đúng trong cuộc trò chuyện sẽ được tạo ra. Mã được nhớ lại
+// qua các lần tải trang, nếu không ghi chú viết trước câu hỏi đầu sẽ mất khi
+// lỡ bấm F5.
+const KHOA_HOI_THOAI_NHAP = 'rag-hoi-thoai-nhap';
+let maHoiThoaiNhap = '';
+
+function datMaHoiThoaiNhap(ma = taoMaHoiThoai()) {
+  maHoiThoaiNhap = ma;
+  try {
+    localStorage.setItem(KHOA_HOI_THOAI_NHAP, ma);
+  } catch {
+    /* không nhớ được thì chỉ mất sổ nháp khi tải lại trang */
+  }
+}
+
+function maCuocTroChuyenHienTai() {
+  return currentChat?.id || maHoiThoaiNhap;
+}
 const LEGACY_STORAGE_KEY = 'rag-k35-history-v1';
 let serviceState = 'starting';
 let currentChat = null;
@@ -158,8 +178,105 @@ const SO_TEP_TOI_DA = 4;
 const assistantIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h10a4 4 0 0 1 4 4v11H9a4 4 0 0 1-4-4V4Z"/><path d="M9 9h6M9 13h4"/></svg>';
 const copyIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
 const stopIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+const dichIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h8M8 3v2M10 5c-.5 3.5-2.8 6.5-6 8M6 9c1.2 2 3 3.6 5 4.5"/><path d="m13 21 4-9 4 9M14.5 18h5"/></svg>';
+const loaIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
+const soTayIcon ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6V3Z"/><path d="M6 3v18M3 7h3M3 12h3M3 17h3M10 8h6M10 12h4"/></svg>';
+
+// ============================================================
+// TÀI KHOẢN
+// ============================================================
+// Khách: lịch sử nằm trong localStorage như trước. Đã đăng nhập: lịch sử lấy
+// từ máy chủ theo tài khoản (máy nào cũng thấy), giữ trong bộ nhớ trang;
+// mỗi cuộc chỉ tải nội dung khi được mở (messages === null).
+let nguoiDung = null;
+let khoaQuanTri = true;
+let lichSuMayChu = null;
+
+function laQuanTri() {
+  return !khoaQuanTri || Boolean(nguoiDung?.quan_tri);
+}
+
+function capNhatQuyenQuanTri() {
+  document.body.dataset.quanTri = laQuanTri() ? '1' : '0';
+}
+
+async function taiLichSuTaiKhoan() {
+  try {
+    const phanHoi = await fetch('/api/hoi-thoai?gioi_han=100', {
+      headers: { 'X-RAG-Client': maTrinhDuyet() },
+      cache: 'no-store',
+    });
+    if (!phanHoi.ok) throw new Error();
+    const { hoi_thoai: danhSach = [] } = await phanHoi.json();
+    const daTai = new Map((lichSuMayChu || []).map((chat) => [chat.id, chat]));
+    lichSuMayChu = danhSach.map((h) => {
+      const cu = daTai.get(h.id);
+      // Giữ nội dung đã tải nếu hội thoại không đổi kể từ lần tải trước.
+      return cu && cu.capNhat === h.cap_nhat_luc
+        ? cu
+        : { id: h.id, title: h.tieu_de, capNhat: h.cap_nhat_luc, messages: null };
+    });
+  } catch {
+    lichSuMayChu = lichSuMayChu || [];
+    showToast('Không tải được lịch sử của tài khoản');
+  }
+  renderHistory();
+}
+
+// Lượt hỏi trên máy chủ -> dạng tin nhắn app.js dùng cho lịch sử trình duyệt.
+function luotThanhTinNhan(luot) {
+  const tinNhan = [];
+  for (const l of luot || []) {
+    const ct = l.chi_tiet || {};
+    tinNhan.push({ role: 'user', content: l.cau_hoi, tep: [] });
+    tinNhan.push({
+      role: 'assistant',
+      content: l.tra_loi,
+      // Lượt ghi trước khi có cột chi_tiet chỉ còn tên nguồn.
+      sources: ct.sources || (l.nguon || []).map((ten) => ({ name: ten })),
+      elapsed: ct.elapsed ?? l.giay,
+      warning: ct.warning || '',
+      hieuLuc: ct.hieuLuc || [],
+      goiY: ct.goiY || [],
+      interrupted: Boolean(ct.interrupted),
+    });
+  }
+  return tinNhan;
+}
+
+async function taiNoiDungCuoc(chat) {
+  const phanHoi = await fetch(`/api/hoi-thoai/${encodeURIComponent(chat.id)}`, {
+    headers: { 'X-RAG-Client': maTrinhDuyet() },
+    cache: 'no-store',
+  });
+  if (!phanHoi.ok) throw new Error('Không mở được cuộc trò chuyện này.');
+  const chiTiet = await phanHoi.json();
+  chat.messages = luotThanhTinNhan(chiTiet.luot);
+  chat.title = chiTiet.tieu_de || chat.title;
+  chat.capNhat = chiTiet.cap_nhat_luc;
+}
+
+// Gọi khi đăng nhập / đăng xuất / tải trang. lamMoi: mở cuộc trò chuyện mới
+// để màn hình không còn hội thoại của người trước.
+async function doiNguoiDung(nd, { lamMoi = true } = {}) {
+  await window.khongGianHoc?.truocKhiDoiNguoiDung();
+  nguoiDung = nd || null;
+  lichSuMayChu = null;
+  capNhatQuyenQuanTri();
+  window.taiKhoanGiaoDien?.ve();
+  if (laQuanTri()) taiDuLieuQuanTriKho();
+  else capNhatDemChoDuyet(0);
+  if (nguoiDung) await taiLichSuTaiKhoan();
+  if (lamMoi) {
+    await newChat();
+  } else {
+    renderHistory();
+    window.khongGianHoc?.napLai();
+  }
+}
 
 function loadHistory() {
+  if (nguoiDung) return lichSuMayChu || [];
   try {
     const current = localStorage.getItem(STORAGE_KEY);
     if (current) return JSON.parse(current) || [];
@@ -174,6 +291,13 @@ function loadHistory() {
 function saveHistory(chat) {
   const history = loadHistory().filter((item) => item.id !== chat.id);
   history.unshift(chat);
+  if (nguoiDung) {
+    // Máy chủ đã ghi lượt hỏi trong lúc trả lời; ở đây chỉ cập nhật danh sách.
+    lichSuMayChu = history;
+    renderHistory();
+    window.khongGianHoc?.capNhatTieuDe();
+    return;
+  }
   let saved = false;
   for (const limit of [20, 12, 6]) {
     try {
@@ -186,6 +310,7 @@ function saveHistory(chat) {
   }
   if (!saved) showToast('Không còn đủ bộ nhớ trình duyệt để lưu lịch sử');
   renderHistory();
+  window.khongGianHoc?.capNhatTieuDe();
 }
 
 // Xóa một cuộc trò chuyện khỏi lịch sử trình duyệt VÀ khỏi máy chủ.
@@ -196,7 +321,15 @@ function xoaMotCuocTroChuyen(chatId) {
     method: 'DELETE',
     headers: { 'X-RAG-Client': maTrinhDuyet() },
   }).catch(() => {});
+  window.khongGianHoc?.xoaSo(chatId);
   const conLai = loadHistory().filter((item) => item.id !== chatId);
+  if (nguoiDung) {
+    lichSuMayChu = conLai;
+    if (currentChat?.id === chatId) newChat();
+    else renderHistory();
+    showToast('Đã xóa cuộc trò chuyện');
+    return;
+  }
   try {
     if (conLai.length) localStorage.setItem(STORAGE_KEY, JSON.stringify(conLai));
     else localStorage.removeItem(STORAGE_KEY);
@@ -334,6 +467,7 @@ function nhanLuuKho(trangThai) {
   return {
     da_luu: 'đã thêm vào kho tài liệu',
     da_co: 'kho tài liệu đã có',
+    cho_duyet: 'chờ quản trị viên duyệt vào kho',
     loi: 'chưa thêm được vào kho tài liệu',
   }[trangThai] || '';
 }
@@ -382,6 +516,18 @@ function renderAttachments() {
       tomTat.title = `Tóm tắt nội dung ${tep.ten}`;
       tomTat.addEventListener('click', () => submitQuestion(`Tóm tắt tệp ${tep.ten}`));
       chip.append(tomTat);
+    }
+    // Trang PDF/ảnh render thẳng từ tệp gốc nên đọc được ngay khi tải lên
+    // xong, không phải đợi máy chủ đọc chữ (OCR có thể mất vài phút).
+    if (!tep.id.startsWith('tam-') && tep.trang_thai !== 'loi'
+        && window.khongGianHoc?.docDuoc(tep.ten)) {
+      const doc = document.createElement('button');
+      doc.type = 'button';
+      doc.className = 'attachment-action';
+      doc.textContent = 'Đọc';
+      doc.title = `Mở ${tep.ten} để đọc và khoanh chỗ chưa hiểu`;
+      doc.addEventListener('click', () => window.khongGianHoc.moTaiLieu({ tep: tep.id, ten: tep.ten }));
+      chip.append(doc);
     }
 
     const xoa = document.createElement('button');
@@ -448,12 +594,14 @@ async function xoaMoiTepDinhKem() {
   for (const tepId of [...tepDinhKem.keys()]) await boTepDinhKem(tepId, true);
 }
 
+// Trả về mô tả các tệp đã tải lên được, để sổ tay mở ngay tệp vừa chọn.
 async function themTepDinhKem(fileList) {
   const files = [...(fileList || [])];
-  if (!files.length) return;
+  const daTai = [];
+  if (!files.length) return daTai;
   if (tepDinhKem.size + files.length > SO_TEP_TOI_DA) {
     showToast(`Chỉ đính kèm tối đa ${SO_TEP_TOI_DA} tệp cùng lúc`);
-    return;
+    return daTai;
   }
   for (const file of files) {
     const maTam = `tam-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -479,6 +627,7 @@ async function themTepDinhKem(fileList) {
       tepDinhKem.set(payload.id, payload);
       renderAttachments();
       theoDoiTep(payload.id);
+      daTai.push(payload);
     } catch (error) {
       tepDinhKem.set(maTam, {
         id: maTam,
@@ -490,6 +639,7 @@ async function themTepDinhKem(fileList) {
       renderAttachments();
     }
   }
+  return daTai;
 }
 
 // Đọc tệp chạy nền trên máy chủ (PDF scan phải OCR, video phải phiên âm) nên
@@ -509,9 +659,10 @@ async function theoDoiTep(tepId) {
     tepDinhKem.set(tepId, payload);
     renderAttachments();
     if (payload.trang_thai === 'san_sang') {
-      showToast(payload.luu_kho === 'da_luu'
-        ? `Đã đọc xong ${payload.ten} và thêm vào kho tài liệu`
-        : `Đã đọc xong ${payload.ten}`);
+      showToast({
+        da_luu: `Đã đọc xong ${payload.ten} và thêm vào kho tài liệu`,
+        cho_duyet: `Đã đọc xong ${payload.ten} · đã gửi quản trị viên duyệt vào kho chung`,
+      }[payload.luu_kho] || `Đã đọc xong ${payload.ten}`, 3000);
       return;
     }
     if (payload.trang_thai !== 'dang_xu_ly') return;
@@ -530,8 +681,17 @@ function doiTraLoiDung() {
 
 async function openChat(chat) {
   await doiTraLoiDung();
+  if (!chat.messages) {
+    try {
+      await taiNoiDungCuoc(chat);
+    } catch (error) {
+      showToast(error.message || 'Không mở được cuộc trò chuyện này.');
+      return;
+    }
+  }
   currentChat = chat;
   showMessages();
+  dungDoc();
   elements.messages.replaceChildren();
   for (const item of chat.messages || []) {
     if (item.role === 'user') addUserMessage(item.content, item.tep || []);
@@ -547,11 +707,15 @@ async function openChat(chat) {
   renderHistory();
   closeSidebar();
   scrollToBottom(false);
+  window.khongGianHoc?.doiCuocTroChuyen();
 }
 
 async function newChat() {
   await doiTraLoiDung();
   currentChat = null;
+  datMaHoiThoaiNhap();
+  window.khongGianHoc?.doiCuocTroChuyen();
+  dungDoc();
   elements.messages.replaceChildren();
   elements.messages.classList.remove('visible');
   elements.welcome.classList.remove('hidden');
@@ -778,6 +942,19 @@ function renderSources(container, sourceList) {
       chip.rel = 'noopener noreferrer';
       const action = source.external ? 'Mở trang nguồn' : 'Mở tài liệu gốc';
       chip.title = source.excerpt ? `${action}\n${source.excerpt}` : action;
+      // PDF/ảnh trong kho mở ngay bên cạnh khung chat, đúng trang được trích,
+      // để khoanh chỗ chưa hiểu mà hỏi tiếp. Ctrl/giữa chuột vẫn mở tab mới.
+      const taiLieu = !source.external && window.khongGianHoc?.tuDuongDan(source.url, source.name);
+      if (taiLieu) {
+        chip.title = source.excerpt
+          ? `Mở trong trình đọc bên cạnh\n${source.excerpt}`
+          : 'Mở trong trình đọc bên cạnh';
+        chip.addEventListener('click', (event) => {
+          if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+          event.preventDefault();
+          window.khongGianHoc.moTaiLieu({ ...taiLieu, trang: Number(source.page) || 1 });
+        });
+      }
     } else if (isMedia) {
       chip.classList.add('playable');
       chip.tabIndex = 0;
@@ -975,6 +1152,114 @@ function renderAnswer(container, content, messageId, sourceCount = 0) {
   }
 }
 
+// ============================================================
+// ĐỌC TO CÂU TRẢ LỜI
+// ============================================================
+// Dùng giọng có sẵn của trình duyệt/hệ điều hành (Web Speech API): không gửi
+// câu trả lời ra máy chủ nào khác. Mỗi lúc chỉ đọc một câu trả lời.
+let dangDoc = null;
+
+function chonGiongViet() {
+  const cacGiong = speechSynthesis.getVoices()
+    .filter((g) => g.lang.replace('_', '-').toLowerCase().startsWith('vi'));
+  // Giọng "Natural"/"Online" của Edge (HoaiMy, NamMinh) nghe tự nhiên hơn hẳn
+  // giọng cài sẵn của Windows.
+  return cacGiong.find((g) => /natural|online/i.test(g.name)) || cacGiong[0] || null;
+}
+
+function vanBanDeDoc(phanTraLoi) {
+  const ban = phanTraLoi.cloneNode(true);
+  // "[1]", "[2]" đọc thành "một", "hai" giữa câu chỉ làm người nghe rối.
+  ban.querySelectorAll('.citation-link, .answer-warning, .answer-notice').forEach((n) => n.remove());
+  const tam = document.createElement('div');
+  tam.style.cssText = 'position:absolute;left:-9999px;white-space:pre-wrap';
+  tam.append(ban);
+  document.body.append(tam);
+  const chu = ban.innerText;
+  tam.remove();
+  return chu
+    .replace(/\s*\[\d+(?:\s*[,–-]\s*\d+)*\]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ ([.,;:!?…])/g, '$1')
+    .trim();
+}
+
+// Chrome/Edge tự ngắt một lượt đọc dài quá chừng 15 giây, nên chia theo câu
+// rồi xếp hàng từng đoạn ngắn.
+function chiaDoanDoc(chu, toiDa = 220) {
+  const cau = chu.split(/(?<=[.!?;:…])\s+|\n+/).map((c) => c.trim()).filter(Boolean);
+  const doan = [];
+  let hienTai = '';
+  for (const c of cau) {
+    if (hienTai && (hienTai + ' ' + c).length > toiDa) {
+      doan.push(hienTai);
+      hienTai = c;
+    } else {
+      hienTai = hienTai ? `${hienTai} ${c}` : c;
+    }
+  }
+  if (hienTai) doan.push(hienTai);
+  return doan;
+}
+
+function datNutNghe(nut, dang) {
+  nut.innerHTML = dang ? `${stopIcon}<span>Dừng đọc</span>` : `${loaIcon}<span>Nghe</span>`;
+  nut.classList.toggle('dang-doc', dang);
+  nut.setAttribute('aria-pressed', String(dang));
+}
+
+function dungDoc() {
+  if (!dangDoc) return;
+  const { nut } = dangDoc;
+  dangDoc = null;
+  speechSynthesis.cancel();
+  datNutNghe(nut, false);
+}
+
+function docCauTraLoi(nut, phanTraLoi) {
+  const dangDocChinhNo = dangDoc?.nut === nut;
+  dungDoc();
+  if (dangDocChinhNo) return;
+
+  const giongViet = chonGiongViet();
+  if (!giongViet && speechSynthesis.getVoices().length) {
+    showToast('Trình duyệt này chưa có giọng đọc tiếng Việt - mở bằng Microsoft Edge, hoặc cài giọng tiếng Việt trong Cài đặt > Thời gian và ngôn ngữ > Giọng nói của Windows', 5200);
+    return;
+  }
+  const doan = chiaDoanDoc(vanBanDeDoc(phanTraLoi));
+  if (!doan.length) return;
+
+  const phien = { nut };
+  dangDoc = phien;
+  datNutNghe(nut, true);
+  doan.forEach((chu, viTri) => {
+    const loiNoi = new SpeechSynthesisUtterance(chu);
+    loiNoi.lang = 'vi-VN';
+    if (giongViet) loiNoi.voice = giongViet;
+    if (viTri === doan.length - 1) {
+      loiNoi.onend = () => {
+        if (dangDoc === phien) {
+          dangDoc = null;
+          datNutNghe(nut, false);
+        }
+      };
+    }
+    loiNoi.onerror = (event) => {
+      // "interrupted"/"canceled" là do chính người dùng bấm dừng.
+      if (dangDoc !== phien || ['interrupted', 'canceled'].includes(event.error)) return;
+      dungDoc();
+      showToast('Không đọc được câu trả lời này');
+    };
+    speechSynthesis.speak(loiNoi);
+  });
+}
+
+if ('speechSynthesis' in window) {
+  // Danh sách giọng nạp bất đồng bộ: gọi sớm để lúc bấm "Nghe" đã có sẵn.
+  speechSynthesis.getVoices();
+  window.addEventListener('pagehide', () => speechSynthesis.cancel());
+}
+
 function renderCompletedActions(ui, content, elapsed, tuCache = null) {
   ui.actions.replaceChildren();
   const copy = document.createElement('button');
@@ -986,6 +1271,40 @@ function renderCompletedActions(ui, content, elapsed, tuCache = null) {
     showToast('Đã sao chép câu trả lời');
   });
   ui.actions.append(copy);
+  if ('speechSynthesis' in window && content.trim()) {
+    const nghe = document.createElement('button');
+    nghe.type = 'button';
+    nghe.className = 'action-button';
+    nghe.title = 'Đọc to câu trả lời';
+    datNutNghe(nghe, false);
+    nghe.addEventListener('click', () => docCauTraLoi(nghe, ui.answer));
+    ui.actions.append(nghe);
+  }
+  if (window.khongGianHoc) {
+    const ghi = document.createElement('button');
+    ghi.type = 'button';
+    ghi.className = 'action-button';
+    ghi.innerHTML = `${soTayIcon}<span>Ghi vào sổ</span>`;
+    ghi.title = 'Chép câu hỏi và câu trả lời này vào sổ tay của cuộc trò chuyện';
+    ghi.addEventListener('click', () => {
+      const cauHoi = ui.article.previousElementSibling?.querySelector('.user-bubble')?.textContent || '';
+      window.khongGianHoc.ghiCauTraLoi(cauHoi, ui.answer);
+    });
+    ui.actions.append(ghi);
+  }
+  if (window.dichGiaoDien && content.trim()) {
+    const dich = document.createElement('button');
+    dich.type = 'button';
+    dich.className = 'action-button';
+    dich.innerHTML = `${dichIcon}<span>Dịch</span>`;
+    dich.title = 'Dịch câu trả lời sang ngôn ngữ khác';
+    dich.setAttribute('aria-haspopup', 'menu');
+    dich.addEventListener('click', (event) => {
+      event.stopPropagation();
+      window.dichGiaoDien.moMenuDichCauTraLoi(dich, ui.answer);
+    });
+    ui.actions.append(dich);
+  }
   if (tuCache) {
     // Nói rõ câu này lấy lại từ câu hỏi tương tự, kèm nguyên văn câu hỏi cũ.
     // Trả lời tức thì mà không giải thích gì sẽ khiến người dùng tưởng hệ thống
@@ -1036,13 +1355,16 @@ function formatTime(seconds) {
   return `${mins}:${secs}`;
 }
 
-async function submitQuestion(question) {
+// tuyChon.doanTrich: đoạn vừa khoanh trong trình đọc tài liệu, gửi kèm để máy
+// chủ dùng làm bằng chứng số 1 (xem so-tay.js).
+async function submitQuestion(question, tuyChon = {}) {
   question = question.trim();
   if (question.length < 2 || inFlight || serviceState !== 'ready') return;
   if (dangDocTep()) {
     showToast('Đang đọc tệp đính kèm, vui lòng đợi giây lát');
     return;
   }
+  const doanTrich = tuyChon.doanTrich || window.khongGianHoc?.doanTrichCho(question) || null;
   const tepDangDung = tepSanSang();
   const tepIds = tepDangDung.map((tep) => tep.id);
   const tenTep = tepDangDung.map((tep) => tep.ten);
@@ -1078,7 +1400,7 @@ async function submitQuestion(question) {
   // localStorage bên dưới - nhờ vậy lịch sử trên máy và trên máy chủ trỏ về
   // cùng một cuộc trò chuyện mà không cần thêm vòng gọi nào. Mã phải nằm ngoài
   // try: nhánh catch cũng cần nó để lưu lại cuộc trò chuyện bị dừng giữa chừng.
-  const hoiThoaiId = currentChat?.id || taoMaHoiThoai();
+  const hoiThoaiId = maCuocTroChuyenHienTai();
 
   // Ghi cuộc trò chuyện vào lịch sử trình duyệt. Dùng chung cho cả lúc trả lời
   // xong lẫn lúc bị dừng giữa chừng, nhờ vậy câu hỏi không bao giờ biến mất chỉ
@@ -1102,6 +1424,7 @@ async function submitQuestion(question) {
       body: JSON.stringify({
         question, history, tep_ids: tepIds, hoi_thoai_id: hoiThoaiId,
         pham_vi: phamViDangChon(),
+        ...(doanTrich ? { doan_trich: doanTrich } : {}),
       }),
       signal: abortController.signal,
     });
@@ -1616,7 +1939,174 @@ function renderDocumentFilters() {
   }
 }
 
+// ============================================================
+// QUẢN TRỊ KHO: chờ duyệt, gỡ, thùng rác (chỉ quản trị viên thấy)
+// ============================================================
+let cheDoKho = 'tai-lieu';
+let danhSachChoDuyet = [];
+let danhSachThungRac = [];
+
+const dinhDangNgay = (giay) => (giay
+  ? new Date(giay * 1000).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  : '');
+
+function capNhatDemChoDuyet(so) {
+  const nhan = so > 0 ? String(so) : '';
+  for (const id of ['libraryPending', 'khoDemChoDuyet']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.textContent = nhan;
+    el.classList.toggle('hidden', !nhan);
+  }
+  const nut = elements.libraryButton;
+  if (nut) nut.title = so > 0 ? `${so} tệp đang chờ bạn duyệt vào kho` : '';
+}
+
+async function taiDuLieuQuanTriKho() {
+  if (!laQuanTri()) return;
+  try {
+    const [choDuyet, thungRac] = await Promise.all([
+      fetch('/api/quan-ly/tai-len?trang_thai=cho_duyet', { cache: 'no-store' }).then((r) => r.json()),
+      fetch('/api/quan-ly/thung-rac', { cache: 'no-store' }).then((r) => r.json()),
+    ]);
+    danhSachChoDuyet = choDuyet.tai_len || [];
+    danhSachThungRac = thungRac.thung_rac || [];
+    capNhatDemChoDuyet(choDuyet.so_cho_duyet || 0);
+  } catch {
+    danhSachChoDuyet = [];
+    danhSachThungRac = [];
+  }
+}
+
+function chonCheDoKho(cheDo) {
+  cheDoKho = cheDo;
+  document.querySelectorAll('#khoTabs [data-kho]').forEach((nut) => {
+    nut.setAttribute('aria-selected', String(nut.dataset.kho === cheDo));
+  });
+  elements.documentFilters.classList.toggle('hidden', cheDo !== 'tai-lieu');
+  renderDocuments(elements.documentSearch.value);
+}
+
+async function goiQuanTriKho(duongDan, hanhDong, than) {
+  const phanHoi = await fetch(duongDan, {
+    method: 'POST',
+    headers: { 'X-RAG-Action': hanhDong, ...(than ? { 'Content-Type': 'application/json' } : {}) },
+    body: than ? JSON.stringify(than) : undefined,
+  });
+  const noiDung = await phanHoi.json().catch(() => ({}));
+  if (!phanHoi.ok) throw new Error(noiDung.detail || `Máy chủ trả về lỗi ${phanHoi.status}.`);
+  return noiDung;
+}
+
+async function lamMoiKhoSauThaoTac(thongBao) {
+  showToast(thongBao, 2600);
+  const cheDo = cheDoKho;
+  await openDocumentLibrary();
+  chonCheDoKho(cheDo);
+  pollStatus();
+}
+
+function taoNutKho(chu, lop, khiBam) {
+  const nut = document.createElement('button');
+  nut.type = 'button';
+  nut.className = `kho-nut ${lop}`.trim();
+  nut.textContent = chu;
+  nut.addEventListener('click', async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    nut.disabled = true;
+    try {
+      await khiBam();
+    } catch (error) {
+      showToast(error.message || 'Không thực hiện được');
+    } finally {
+      nut.disabled = false;
+    }
+  });
+  return nut;
+}
+
+async function goTaiLieuKhoiKho(tenTaiLieu) {
+  const dongY = await hoiXacNhan({
+    tieuDe: 'Gỡ tài liệu khỏi kho?',
+    moTa: `"${tenTaiLieu}" sẽ chuyển vào thùng rác của kho và không còn được dùng để trả lời. Có thể khôi phục lại trong thẻ "Thùng rác".`,
+    nhanDongY: 'Gỡ khỏi kho',
+  });
+  if (!dongY) return;
+  await goiQuanTriKho('/api/quan-ly/kho/go', 'go-tai-lieu', { ten: tenTaiLieu });
+  await lamMoiKhoSauThaoTac(`Đã gỡ ${tenTaiLieu} - chỉ mục sẽ cập nhật khi máy rảnh`);
+}
+
+function renderKhoQuanTri(query) {
+  const tuKhoa = query.trim().toLocaleLowerCase('vi-VN');
+  const laChoDuyet = cheDoKho === 'cho-duyet';
+  const nguon = (laChoDuyet ? danhSachChoDuyet : danhSachThungRac)
+    .filter((muc) => muc.ten.toLocaleLowerCase('vi-VN').includes(tuKhoa));
+  elements.documentList.replaceChildren();
+  if (!nguon.length) {
+    const trong = document.createElement('div');
+    trong.className = 'document-empty';
+    trong.textContent = tuKhoa
+      ? 'Không tìm thấy tệp phù hợp.'
+      : (laChoDuyet ? 'Không có tệp nào đang chờ duyệt.' : 'Thùng rác của kho đang trống.');
+    elements.documentList.append(trong);
+    return;
+  }
+  for (const muc of nguon) {
+    const hang = document.createElement('div');
+    hang.className = 'document-row kho-hang';
+    const icon = document.createElement('span');
+    icon.className = 'document-type';
+    icon.textContent = (muc.ten.split('.').pop() || 'FILE').slice(0, 5);
+    const info = document.createElement('span');
+    info.className = 'document-info';
+    const ten = document.createElement('strong');
+    ten.textContent = muc.ten;
+    ten.title = muc.ten;
+    const phu = document.createElement('small');
+    phu.textContent = laChoDuyet
+      ? [`Gửi bởi ${muc.nguoi_ten}`, dinhDangNgay(muc.tao_luc), formatFileSize(muc.kich_thuoc),
+        muc.nguon === 'dinh_kem' ? 'đính kèm trong chat' : ''].filter(Boolean).join(' · ')
+      : [`Gỡ bởi ${muc.go_boi}`, dinhDangNgay(muc.go_luc), formatFileSize(muc.kich_thuoc)].join(' · ');
+    info.append(ten, phu);
+    const nut = document.createElement('span');
+    nut.className = 'kho-hanh-dong';
+    if (laChoDuyet) {
+      nut.append(
+        taoNutKho('Xem', '', async () => {
+          window.open(`/api/quan-ly/tai-len/${encodeURIComponent(muc.id)}/tep`, '_blank', 'noopener');
+        }),
+        taoNutKho('Từ chối', 'phu', async () => {
+          const dongY = await hoiXacNhan({
+            tieuDe: 'Từ chối tệp này?',
+            moTa: `"${muc.ten}" sẽ không được đưa vào kho. Người gửi vẫn dùng được tệp trong cuộc trò chuyện của họ.`,
+            nhanDongY: 'Từ chối',
+          });
+          if (!dongY) return;
+          await goiQuanTriKho(`/api/quan-ly/tai-len/${encodeURIComponent(muc.id)}/tu-choi`, 'tu-choi-tep');
+          await lamMoiKhoSauThaoTac(`Đã từ chối ${muc.ten}`);
+        }),
+        taoNutKho('Duyệt', 'chinh', async () => {
+          const kq = await goiQuanTriKho(`/api/quan-ly/tai-len/${encodeURIComponent(muc.id)}/duyet`, 'duyet-tep');
+          await lamMoiKhoSauThaoTac(`Đã duyệt: ${kq.ket_qua} - sẽ vào chỉ mục khi máy rảnh`);
+        }),
+      );
+    } else {
+      nut.append(taoNutKho('Khôi phục', 'chinh', async () => {
+        const kq = await goiQuanTriKho(`/api/quan-ly/thung-rac/${encodeURIComponent(muc.id)}/khoi-phuc`, 'khoi-phuc');
+        await lamMoiKhoSauThaoTac(`Đã khôi phục ${kq.ten} vào kho`);
+      }));
+    }
+    hang.append(icon, info, nut);
+    elements.documentList.append(hang);
+  }
+}
+
 function renderDocuments(query = '') {
+  if (cheDoKho !== 'tai-lieu') {
+    renderKhoQuanTri(query);
+    return;
+  }
   const normalizedQuery = query.trim().toLocaleLowerCase('vi-VN');
   const documents = documentsCache.filter((document) =>
     `${document.name} ${document.folder}`.toLocaleLowerCase('vi-VN').includes(normalizedQuery)
@@ -1651,6 +2141,16 @@ function renderDocuments(query = '') {
       item.href = document.url;
       item.target = '_blank';
       item.rel = 'noopener noreferrer';
+      const taiLieu = window.khongGianHoc?.tuDuongDan(document.url, document.name);
+      if (taiLieu) {
+        item.title = 'Mở trong trình đọc bên cạnh khung chat (Ctrl + bấm để mở tab mới)';
+        item.addEventListener('click', (event) => {
+          if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+          event.preventDefault();
+          elements.documentDialog.close();
+          window.khongGianHoc.moTaiLieu(taiLieu);
+        });
+      }
     }
     const icon = window.document.createElement('span');
     icon.className = 'document-type';
@@ -1660,7 +2160,12 @@ function renderDocuments(query = '') {
     const name = window.document.createElement('strong');
     name.textContent = document.name;
     const meta = window.document.createElement('small');
-    meta.textContent = `${document.folder} · ${formatFileSize(document.size_bytes)}`;
+    meta.textContent = [
+      document.folder,
+      formatFileSize(document.size_bytes),
+      // Chỉ quản trị viên nhận được các trường này từ máy chủ.
+      document.nguoi_gui ? `đưa vào bởi ${document.nguoi_gui} (${dinhDangNgay(document.gui_luc)})` : '',
+    ].filter(Boolean).join(' · ');
     info.append(name, meta);
     const status = window.document.createElement('span');
     status.className = `document-status ${document.status}`;
@@ -1668,6 +2173,10 @@ function renderDocuments(query = '') {
       ? nhanKhongCoChu(document)
       : (statusLabels[document.status] || document.status);
     item.append(icon, info, status);
+    if (laQuanTri() && document.url) {
+      item.classList.add('co-go');
+      item.append(taoNutKho('Gỡ', 'go', () => goTaiLieuKhoiKho(document.name)));
+    }
     elements.documentList.append(item);
   }
 }
@@ -1675,6 +2184,7 @@ function renderDocuments(query = '') {
 async function openDocumentLibrary() {
   closeSidebar();
   elements.documentSearch.value = '';
+  if (!elements.documentDialog.open) chonCheDoKho('tai-lieu');
   elements.documentList.innerHTML = '<div class="document-empty">Đang đọc danh sách tài liệu...</div>';
   if (!elements.documentDialog.open) elements.documentDialog.showModal();
   try {
@@ -1693,6 +2203,7 @@ async function openDocumentLibrary() {
     if (summary.duplicate) summaryParts.push(`${summary.duplicate} tệp trùng`);
     if (summary.error) summaryParts.push(`${summary.error} không đọc được`);
     elements.documentSummary.textContent = summaryParts.join(' · ');
+    await taiDuLieuQuanTriKho();
     renderDocuments();
     renderDocumentFilters();
     elements.documentSearch.focus();
@@ -1913,6 +2424,9 @@ elements.documentDialog.addEventListener('click', (event) => {
   if (event.target === elements.documentDialog) elements.documentDialog.close();
 });
 elements.documentSearch.addEventListener('input', () => renderDocuments(elements.documentSearch.value));
+document.querySelectorAll('#khoTabs [data-kho]').forEach((nut) => {
+  nut.addEventListener('click', () => chonCheDoKho(nut.dataset.kho));
+});
 elements.clearHistory.addEventListener('click', async () => {
   const soCuoc = loadHistory().length;
   if (!soCuoc) {
@@ -1921,13 +2435,19 @@ elements.clearHistory.addEventListener('click', async () => {
   }
   const dongY = await hoiXacNhan({
     tieuDe: 'Xóa lịch sử trò chuyện?',
-    moTa: `Toàn bộ ${soCuoc} cuộc trò chuyện sẽ bị xóa khỏi trình duyệt và khỏi máy chủ, không khôi phục lại được.`,
+    moTa: nguoiDung
+      ? `Toàn bộ ${soCuoc} cuộc trò chuyện và sổ tay của tài khoản ${nguoiDung.email} sẽ bị xóa trên mọi thiết bị, không khôi phục lại được.`
+      : `Toàn bộ ${soCuoc} cuộc trò chuyện sẽ bị xóa khỏi trình duyệt và khỏi máy chủ, không khôi phục lại được.`,
     nhanDongY: 'Xóa lịch sử',
   });
   if (!dongY) return;
-  localStorage.removeItem(STORAGE_KEY);
-  // Xóa luôn khóa cũ, nếu không loadHistory() sẽ khôi phục lại lịch sử từ đó.
-  localStorage.removeItem(LEGACY_STORAGE_KEY);
+  if (nguoiDung) {
+    lichSuMayChu = [];
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+    // Xóa luôn khóa cũ, nếu không loadHistory() sẽ khôi phục lại lịch sử từ đó.
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  }
   // Người dùng bấm "xóa lịch sử" là muốn xóa thật. Bản trên máy chủ mà còn lại
   // thì lời hứa trong hộp xác nhận thành sai.
   let xoaMayChu = true;
@@ -1941,6 +2461,7 @@ elements.clearHistory.addEventListener('click', async () => {
     xoaMayChu = false;
   }
   toggleHistorySearch(false);
+  await window.khongGianHoc?.xoaHetSo();
   newChat();
   showToast(xoaMayChu
     ? 'Đã xóa lịch sử trên trình duyệt và máy chủ'
@@ -2000,6 +2521,11 @@ elements.driveSync.addEventListener('click', async () => {
 
 elements.modelButton.addEventListener('click', async (event) => {
   event.stopPropagation();
+  // Đổi mô hình là đổi cho mọi người đang dùng máy chủ, không riêng mình.
+  if (!laQuanTri()) {
+    showToast('Chỉ quản trị viên mới đổi được mô hình trả lời');
+    return;
+  }
   const dangMo = !elements.modelMenu.classList.contains('hidden');
   if (dangMo) {
     closeModelMenu();
@@ -2141,6 +2667,18 @@ try {
   apDungGapThanhBen(false);
 }
 
+// Mã nháp đã thành một cuộc trò chuyện thật (đã hỏi) thì không dùng lại: màn
+// hình chào mà gửi câu hỏi bằng mã đó sẽ đè lên cuộc trò chuyện cũ.
+(() => {
+  let daNho = '';
+  try {
+    daNho = localStorage.getItem(KHOA_HOI_THOAI_NHAP) || '';
+  } catch {
+    daNho = '';
+  }
+  if (daNho && !loadHistory().some((chat) => chat.id === daNho)) maHoiThoaiNhap = daNho;
+  else datMaHoiThoaiNhap();
+})();
 renderHistory();
 resizeInput();
 taiGoiYMoDau();

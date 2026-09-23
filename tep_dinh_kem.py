@@ -45,7 +45,11 @@ _hook_luu_kho = None
 
 
 def dat_hook_luu_kho(hook) -> None:
-    """Đăng ký hàm (duong_dan, ten) -> (trang_thai, thong_bao) lưu tệp vào kho."""
+    """Đăng ký hàm (duong_dan, ten, nguoi) -> (trang_thai, thong_bao) lưu tệp vào kho.
+
+    nguoi là người đính kèm (None nếu khách): tệp của quản trị viên vào thẳng
+    kho, của người khác thì chờ duyệt (xem quan_ly_kho).
+    """
     global _hook_luu_kho
     _hook_luu_kho = hook
 
@@ -55,7 +59,7 @@ def _luu_vao_kho(tep: "TepDinhKem") -> tuple[str, str]:
     if _hook_luu_kho is None:
         return "tat", ""
     try:
-        return _hook_luu_kho(tep.duong_dan, tep.ten)
+        return _hook_luu_kho(tep.duong_dan, tep.ten, tep.nguoi)
     except Exception as exc:
         return "loi", f"Chưa thêm được vào kho tài liệu: {exc}"
 
@@ -86,11 +90,13 @@ class TepDinhKem:
     thong_bao: str = "Đang đọc nội dung tệp..."
     so_chunk: int = 0
     so_ky_tu: int = 0
-    # cho | da_luu | da_co | tat | loi - tình trạng đưa tệp vào kho tài liệu chung
+    # cho | da_luu | da_co | cho_duyet | tat | loi - tình trạng đưa tệp vào kho chung
     luu_kho: str = "cho"
     thong_bao_kho: str = ""
     chunks: list = field(default_factory=list)
     bm25: object | None = None
+    # Người đính kèm (không lộ ra cong_khai): quyết định tệp vào thẳng kho hay chờ duyệt.
+    nguoi: dict | None = None
 
     def cong_khai(self) -> dict:
         """Bản mô tả trả cho giao diện - không lộ đường dẫn trên máy."""
@@ -115,7 +121,7 @@ class KhoTepDinhKem:
         self._lock = threading.Lock()
 
     # ----- vòng đời -----
-    def them(self, ten_goc: str, du_lieu: bytes) -> TepDinhKem:
+    def them(self, ten_goc: str, du_lieu: bytes, nguoi: dict | None = None) -> TepDinhKem:
         ten = _ten_an_toan(ten_goc)
         duoi = os.path.splitext(ten)[1].lower()
         if duoi not in DINH_DANG_HO_TRO:
@@ -145,6 +151,7 @@ class KhoTepDinhKem:
             duong_dan=duong_dan,
             kich_thuoc=len(du_lieu),
             tao_luc=time.time(),
+            nguoi=nguoi,
         )
         with self._lock:
             self._tep[ma] = tep
