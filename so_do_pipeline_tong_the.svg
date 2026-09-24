@@ -32,7 +32,7 @@
     <rect x="58" y="198" width="304" height="68" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
     <text x="210" y="219" font-size="15" font-weight="600">Nguồn nạp</text>
     <text x="210" y="238" font-size="13">Google Drive (tự đồng bộ) · thư mục kho</text>
-    <text x="210" y="255" font-size="13">tải lên qua web · tệp đính kèm trong chat</text>
+    <text x="210" y="255" font-size="13">quản trị viên tải lên · tài liệu riêng được duyệt</text>
     <line x1="210" y1="266" x2="210" y2="280" stroke="#6d7f96" stroke-width="2" marker-end="url(#mui)"/>
 
     <rect x="58" y="282" width="304" height="68" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>

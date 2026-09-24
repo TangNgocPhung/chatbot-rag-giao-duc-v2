@@ -42,7 +42,7 @@
     <text x="1008" y="234">Sinh câu trả lời</text>
   </g>
   <g font-family="'IBM Plex Mono','Consolas','Courier New',monospace" font-size="10" fill="#7d8a97">
-    <text x="60" y="274">api.py · /api/hoi</text>
+    <text x="60" y="274">api.py · /api/chat/stream</text>
     <text x="60" y="288">luồng phát dần (SSE)</text>
     <text x="297" y="274">rag_service.py</text>
     <text x="297" y="288">cache_ngu_nghia.py</text>
