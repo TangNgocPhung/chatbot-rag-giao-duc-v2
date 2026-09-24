@@ -17,7 +17,8 @@ Giảng viên hướng dẫn: TS. Nguyễn Minh Hải
 
 Ứng dụng hỏi đáp tài liệu giáo dục chạy cục bộ bằng FastAPI, Ollama, FAISS và giao diện web tiếng Việt. Hệ thống hỗ trợ:
 
-- Tìm kiếm lai FAISS + BM25, trích dẫn nguồn kèm vị trí trong tài liệu, chặn câu hỏi ngoài phạm vi kho
+- Tìm kiếm lai FAISS + BM25, chặn câu hỏi ngoài phạm vi kho
+- Trích dẫn nguồn chỉ đúng dòng trên trang gốc: tô sáng đoạn được trích ngay trên ảnh trang PDF, kể cả bản scan
 - Cập nhật chỉ mục tăng dần (chỉ xử lý tệp thêm, sửa hoặc xóa)
 - Đọc PDF, Word (`.docx`, `.doc`), PowerPoint (`.pptx`), Excel/CSV, TXT, Markdown, HTML, EPUB
 - OCR PDF scan và ảnh bằng Tesseract
@@ -70,6 +71,24 @@ Mô hình ngôn ngữ chạy cục bộ qua Ollama và chỉ soạn câu trả l
 ![Tác tử AI trong Chatbot RAG Giáo dục](so_do_tac_tu_ai.svg)
 
 ## Tính năng trên giao diện
+
+### Nguồn trích dẫn chỉ đúng chỗ
+
+Mỗi câu trả lời kèm danh sách bằng chứng đã dùng. Với nguồn PDF hoặc ảnh trong kho, giao diện không chỉ ghi số trang mà chỉ đúng các dòng được trích:
+
+- Dưới câu trả lời có ảnh thu nhỏ của trang gốc: **tô vàng** cả đoạn đã đưa cho mô hình, **viền đỏ** câu sát câu hỏi nhất, ảnh tự cuộn tới đoạn đó. Hai bằng chứng cùng một trang thì gộp vào một ảnh (`[2][3] Trang 5`).
+- Bấm vào nguồn hoặc ảnh trang thì sổ tay mở tài liệu đúng trang, cuộn tới và tô sáng các dòng ấy. Đoạn trích vắt sang trang kế bên thì tô cả phần ở trang đó.
+- Chunk lập chỉ mục từ trước khi có số trang vẫn hiện được trang: máy chủ dò lại chính chữ của đoạn trích trong tệp gốc, nên không phải lập lại chỉ mục.
+
+Cách định vị (`POST /api/doc/dinh-vi`, xem `dinh_vi_doan` trong `trinh_doc_tai_lieu.py`):
+
+- **PDF có lớp chữ**: lấy hộp từng chữ bằng `pypdfium2`, đổi sang toạ độ của ảnh trang đang nhìn nên trang xoay 90° vẫn tô đúng chỗ.
+- **PDF scan và ảnh**: tìm trang bằng bản OCR đã lưu lúc lập chỉ mục; hộp chữ của trang đó lấy từ Tesseract (đầu ra TSV) ở lần xem đầu tiên, mất vài giây, rồi lưu vào `ocr_cache/<hash>--vie--hop-<trang>.json` nên các lần sau gần như tức thì.
+- Chữ OCR sai vài ký tự hay lớp chữ PDF tách từ khác lúc lập chỉ mục vẫn khớp được: hai dãy chữ được gióng bằng `difflib` rồi lấy cụm khớp dày nhất, bỏ các chữ khớp lẻ loi ở chỗ khác.
+- Đang có câu trả lời được sinh thì máy chủ không OCR (OCR cùng lúc với mô hình làm câu trả lời chậm đi nhiều lần trên máy chỉ có CPU): ảnh trang hiện trước, phần tô sáng được hỏi lại khi máy rảnh.
+- Dải ảnh trang chỉ tự tải cho PDF và ảnh. Nguồn Word/HTML phải chuyển sang PDF bằng LibreOffice trước nên chỉ được định vị khi người dùng bấm vào nguồn.
+
+PDF scan chỉ định vị được khi đã có bản OCR trong `ocr_cache` (thư mục này không nằm trong repository). Chuyển kho sang máy khác thì chép kèm `ocr_cache`, nếu không các PDF scan chỉ còn số trang theo metadata.
 
 ### Tài khoản và quyền quản trị
 
