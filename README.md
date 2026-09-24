@@ -25,7 +25,7 @@ Giảng viên hướng dẫn: TS. Nguyễn Minh Hải
 - Phiên âm video/âm thanh offline bằng faster-whisper, đọc phụ đề `.srt`/`.vtt`
 - Tệp đính kèm trong cuộc trò chuyện, lịch sử chat, cache ngữ nghĩa
 - Tài khoản người dùng và quyền quản trị; tệp người dùng gửi lên phải được duyệt mới vào kho
-- Sổ tay bên cạnh cuộc trò chuyện: ghi chú, bảng vẽ, trình đọc PDF/ảnh với công cụ **Khoanh để hỏi**
+- Sổ tay bên cạnh cuộc trò chuyện: ghi chú, bảng vẽ, trình đọc PDF, ảnh, Word, Excel, PowerPoint, HTML với công cụ **Khoanh để hỏi**, đánh dấu và tải tài liệu kèm nét đánh dấu
 - Dịch hơn 130 ngôn ngữ ngay trong giao diện
 - Nói thay vì gõ: nhận giọng nói bằng faster-whisper trên máy chủ, tự nhận ra ngôn ngữ
 - Mỗi người tự chọn mô hình trả lời cho câu hỏi của mình
@@ -110,13 +110,18 @@ Mật khẩu băm bằng scrypt, phiên đăng nhập nằm trong cookie HttpOnl
 
 ### Sổ tay của cuộc trò chuyện
 
-Mỗi cuộc trò chuyện có một cuốn sổ riêng nằm bên cạnh (phím tắt `Ctrl + /`):
+Mỗi cuộc trò chuyện có một cuốn sổ riêng nằm bên cạnh (phím tắt `Ctrl + /`); khi đăng nhập, sổ được lưu trên máy chủ theo tài khoản.
 
-- **Ghi chú**: gõ tự do, hoặc chép nhanh câu trả lời và đoạn đã bôi đen.
-- **Bảng vẽ**: vẽ tay sơ đồ, công thức.
-- **Tài liệu**: đọc thẳng PDF hoặc ảnh chụp trang sách. Chọn **Khoanh để hỏi** rồi kéo một khung chữ nhật (như Snipping Tool) quanh đoạn chưa hiểu; máy chủ đọc đúng chữ trong khung (lớp chữ của PDF, hoặc OCR ở 300 DPI nếu là bản scan) để bấm **Giải thích**, **Hỏi câu khác** hay **Ghi vào sổ**. Trang được render ở máy chủ bằng `pypdfium2`.
+- **Ghi chú**: gõ tự do với chữ đậm, tô vàng, tiêu đề, danh sách và ô "việc cần ôn"; chép nhanh câu trả lời vào sổ. Bôi đen một đoạn trong cuộc trò chuyện thì hiện thanh **Ghi vào sổ**, **Dịch**, **Hỏi về đoạn này**.
+- **Bảng vẽ**: vẽ tay sơ đồ, công thức bằng bút, bút tô sáng và tẩy, chọn màu và cỡ nét, có hoàn tác.
+- **Tài liệu**: đọc PDF, ảnh chụp trang sách, Word (`.docx`, `.doc`, `.odt`, `.rtf`), Excel/CSV (`.xlsx`, `.xls`, `.ods`, `.csv`, `.tsv`), PowerPoint (`.pptx`, `.ppt`, `.odp`) và HTML. Mở bằng **Mở tài liệu hoặc ảnh** (tệp trên máy được đính kèm vào cuộc trò chuyện, nên câu hỏi sau đó trả lời theo đúng tệp này), **Mở từ Kho tài liệu**, hoặc bấm một nguồn dưới câu trả lời (xem [Nguồn trích dẫn chỉ đúng chỗ](#nguồn-trích-dẫn-chỉ-đúng-chỗ)).
+  - **Khoanh để hỏi**: kéo một khung chữ nhật (như Snipping Tool) quanh đoạn chưa hiểu; máy chủ đọc đúng chữ trong khung (lớp chữ của PDF, hoặc OCR ở 300 DPI nếu là bản scan) để bấm **Giải thích**, **Hỏi câu khác** hay **Ghi vào sổ**.
+  - **Bút**, **tô sáng** và **tẩy** để đánh dấu ngay trên trang; nét vẽ lưu cùng sổ, mở lại tài liệu vẫn còn.
+  - Trang được render ở máy chủ bằng `pypdfium2` thay vì nhúng trình xem PDF vào trình duyệt, vì phần lớn PDF trong kho là bản scan không có lớp chữ để chọn.
 
-Sổ tay tải về được dạng Word, bản in PDF hoặc ảnh bảng vẽ.
+Word, Excel, PowerPoint và HTML được LibreOffice chuyển một lần sang PDF (`chuyen_pdf.py`) rồi đi đúng con đường của PDF: xem trang, khoanh để hỏi, đánh dấu, tải về. Bản PDF được nhớ trong `ban_pdf_tam/` (giữ 300 bản dùng gần nhất, đổi bằng `RAG_SO_BAN_PDF_TOI_DA`) nên mở lại không phải chuyển lại. Vì tệp người dùng tải lên có thể trỏ tới địa chỉ nội bộ của máy chủ, trên Linux LibreOffice chạy trong vùng mạng cô lập (`unshare -rn`), còn HTML được gỡ script, iframe và mọi đường dẫn ra ngoài trước khi chuyển. Máy chủ chưa cài LibreOffice thì sổ tay báo rõ lý do, PDF và ảnh vẫn đọc bình thường.
+
+Sổ tay tải về được dạng Word (ghi chú, ảnh vùng khoanh và bảng vẽ), bản in PDF hoặc ảnh bảng vẽ. Tài liệu đang đọc tải về được thành PDF kèm mọi nét bút, tô sáng và vùng khoanh: nét được vẽ thành đường véc-tơ ngay trên trang PDF gốc nên chữ của tài liệu vẫn chọn và tìm được; ảnh chụp thì thành PDF một trang.
 
 ### Dịch đa ngôn ngữ
 
@@ -140,7 +145,7 @@ Mỗi người chọn mô hình trả lời cho câu hỏi của mình trong men
 - Model embedding `bge-m3`
 - Một model hội thoại, mặc định `qwen3.5:4b` (đổi bằng biến môi trường `RAG_LLM_MODEL` hoặc chọn trên giao diện)
 - Tesseract OCR (kèm dữ liệu tiếng Việt `vie`) nếu cần đọc PDF scan hoặc ảnh
-- Microsoft Word hoặc LibreOffice nếu cần đọc tệp `.doc` đời cũ
+- Microsoft Word hoặc LibreOffice nếu cần đọc tệp `.doc` đời cũ; LibreOffice (`soffice`) để sổ tay mở được Word, Excel, PowerPoint và HTML
 - Tuỳ chọn: model `qwen2.5:3b-instruct` để dịch khi không có khóa Google Cloud Translation. Model faster-whisper `small` (khoảng 480 MB) tự tải ở lần phiên âm hoặc nhận giọng nói đầu tiên.
 
 ## Cài đặt
