@@ -94,13 +94,22 @@ PDF scan chỉ định vị được khi đã có bản OCR trong `ocr_cache` (t
 
 Không bắt buộc đăng nhập: khách vẫn hỏi đáp như thường. Khi đăng nhập, lịch sử chat và sổ tay được lưu trên máy chủ theo tài khoản nên mở ở máy khác vẫn thấy. Chỉ tài khoản quản trị mới được cập nhật chỉ mục, đổi mô hình mặc định, đồng bộ Drive và quản lý kho.
 
-Mật khẩu băm bằng scrypt, phiên đăng nhập nằm trong cookie HttpOnly và máy chủ chỉ giữ bản băm của phiên. Nếu không đặt `RAG_EMAIL_QUAN_TRI` thì tài khoản đăng ký đầu tiên là quản trị viên. Chưa có máy chủ gửi thư, nên quản trị viên xử lý tài khoản bằng dòng lệnh:
+- **Xác minh email**: máy chủ gửi mã 6 số qua thư (`gui_thu.py`, mặc định Gmail với mật khẩu ứng dụng). Mã sống 15 phút, nhập sai 5 lần là huỷ, mỗi giờ chỉ xin được vài mã. Chưa xác minh vẫn dùng bình thường; riêng email trong `RAG_EMAIL_QUAN_TRI` phải xác minh mới thành quản trị viên, nên người lạ đăng ký trước bằng email của quản trị viên không chiếm được quyền. Máy chủ chưa cấu hình gửi thư thì giao diện ẩn nút xác minh và bỏ qua điều kiện này.
+- **Thông tin cá nhân**: tự đổi tên hiển thị và ảnh đại diện (ảnh tới 8 MB được cắt vuông, nén còn 256×256). Đổi email phải nhập mật khẩu hiện tại và xác minh lại email mới. Đổi mật khẩu thì các phiên đăng nhập ở máy khác bị đăng xuất.
+- **Quản lý tài khoản** (menu tài khoản > Quản lý tài khoản, chỉ quản trị viên): xem mọi tài khoản, lọc tài khoản chưa xác minh hoặc bị khoá, khoá / mở khoá, xoá tài khoản. Xoá tài khoản thì xoá luôn phiên đăng nhập, sổ tay, ảnh, lịch sử trò chuyện và tài liệu riêng của người đó. Không khoá hay xoá được chính mình và quản trị viên khác; muốn thì thu quyền bằng dòng lệnh trước.
+
+Mật khẩu băm bằng scrypt; phiên đăng nhập là chuỗi ngẫu nhiên trong cookie HttpOnly, máy chủ chỉ giữ bản băm nên lộ tệp cơ sở dữ liệu cũng không dùng lại được phiên của ai. Đăng nhập sai 10 lần liên tiếp thì bị khoá tạm 15 phút theo cả địa chỉ IP lẫn email. Nếu không đặt `RAG_EMAIL_QUAN_TRI` thì tài khoản đăng ký đầu tiên là quản trị viên.
+
+Quên mật khẩu, cấp hoặc thu quyền quản trị, xác minh hộ khi chưa cấu hình gửi thư: quản trị viên chạy trên máy chủ.
 
 ```powershell
 .\.venv\Scripts\python.exe tai_khoan.py dat-lai-mat-khau email@truong.edu.vn
-.\.venv\Scripts\python.exe tai_khoan.py quan-tri email@truong.edu.vn
+.\.venv\Scripts\python.exe tai_khoan.py quan-tri email@truong.edu.vn         # thêm --bo để thu quyền
+.\.venv\Scripts\python.exe tai_khoan.py xac-minh email@truong.edu.vn
 .\.venv\Scripts\python.exe tai_khoan.py danh-sach
 ```
+
+Cấu hình gửi thư bằng Gmail: bật xác minh 2 bước cho hộp thư gửi đi, tạo mật khẩu ứng dụng ở <https://myaccount.google.com/apppasswords>, rồi đặt `RAG_SMTP_TAI_KHOAN` và `RAG_SMTP_MAT_KHAU` trong `khoa_api.bat` (xem `khoa_api.mau.bat`). Dịch vụ khác thì đặt thêm `RAG_SMTP_MAY_CHU`, `RAG_SMTP_CONG` (465 là SSL, 587 là STARTTLS) và `RAG_SMTP_NGUOI_GUI`.
 
 ### Quản lý kho tài liệu
 
@@ -216,6 +225,9 @@ Sao chép `khoa_api.mau.bat` thành `khoa_api.bat`, sau đó điền khóa API c
 | --- | --- | --- |
 | `RAG_KHOA_QUAN_TRI` | `1` | `0` tắt khóa quản trị (máy cá nhân một người dùng) |
 | `RAG_EMAIL_QUAN_TRI` | trống | Email quản trị viên, phân cách bằng dấu phẩy; trống thì tài khoản đầu tiên là quản trị |
+| `RAG_SMTP_TAI_KHOAN` | trống | Hộp thư gửi mã xác minh email; trống thì tắt xác minh email |
+| `RAG_SMTP_MAT_KHAU` | trống | Mật khẩu ứng dụng của hộp thư đó |
+| `RAG_SMTP_MAY_CHU`, `RAG_SMTP_CONG` | `smtp.gmail.com`, `465` | Máy chủ thư khi không dùng Gmail |
 | `RAG_MO_HINH_CHO_PHEP` | trống | Các mô hình người dùng được tự chọn; trống là mọi mô hình |
 | `RAG_GOOGLE_TRANSLATE_KEY` | trống | Khóa Google Cloud Translation; trống thì dịch bằng mô hình trên máy |
 | `RAG_MO_HINH_DICH` | `qwen2.5:3b-instruct` | Mô hình dịch trên máy (không có thì dùng mô hình trả lời) |
