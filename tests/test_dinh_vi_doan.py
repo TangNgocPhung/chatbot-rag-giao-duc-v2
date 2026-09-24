@@ -147,10 +147,33 @@ class DinhViPdfScanTests(unittest.TestCase):
             tdtl.dinh_vi_doan(self.pdf, TRANG_2[2])
         self.assertEqual(ocr.call_count, 1)
 
+    def test_dang_sinh_cau_tra_loi_thi_hoan_ocr(self):
+        """OCR cùng lúc mô hình đang sinh làm câu trả lời chậm hàng chục lần trên
+        VPS: trả trang trước, báo cho_ocr để giao diện hỏi lại, không OCR."""
+        with patch.object(ocr_pdf, "doc_cache", return_value=["\n".join(TRANG_1), "\n".join(TRANG_2)]), \
+                patch.object(tdtl, "_tu_ocr") as ocr:
+            kq = tdtl.dinh_vi_doan(self.pdf, TRANG_2[1], cho_phep_ocr=False)
+            self.assertEqual(kq, {"trang": 2, "danh_dau": {}, "cho_ocr": True})
+            ocr.assert_not_called()
+            # Máy rảnh rồi thì OCR bình thường - lần hoãn trước không bị nhớ nhầm.
+            ocr.return_value = [(tu, 0.1, 0.5, 0.2, 0.52) for tu in TRANG_2[1].lower().split()]
+            kq = tdtl.dinh_vi_doan(self.pdf, TRANG_2[1])
+        self.assertNotIn("cho_ocr", kq)
+        self.assertEqual(len(kq["danh_dau"][2]["vung"]), 1)
+
     def test_chua_ocr_thi_khong_do_duoc_nhung_khong_loi(self):
         with patch.object(ocr_pdf, "doc_cache", return_value=None):
             kq = tdtl.dinh_vi_doan(self.pdf, TRANG_2[1], trang_goi_y=2)
         self.assertEqual(kq, {"trang": 2, "danh_dau": {}})
+
+    def test_ocr_xong_sau_do_thi_do_duoc_ngay(self):
+        """Lỗi gặp trên VPS: lần hỏi lúc chưa có bản OCR bị nhớ là "không có chữ",
+        chép cache OCR lên rồi vẫn trả trang null tới khi khởi động lại."""
+        with patch.object(ocr_pdf, "doc_cache", return_value=None):
+            self.assertIsNone(tdtl.dinh_vi_doan(self.pdf, TRANG_2[1])["trang"])
+        with patch.object(ocr_pdf, "doc_cache", return_value=["\n".join(TRANG_1), "\n".join(TRANG_2)]), \
+                patch.object(tdtl, "_tu_ocr", return_value=[]):
+            self.assertEqual(tdtl.dinh_vi_doan(self.pdf, TRANG_2[1])["trang"], 2)
 
 
 class CumKhopTests(unittest.TestCase):

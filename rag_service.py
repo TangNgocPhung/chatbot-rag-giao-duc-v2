@@ -699,6 +699,10 @@ class RAGService:
         chủ vừa bật, chưa dựng xong chuỗi nào, mới phải đợi."""
         return self.status.state in {"ready", "updating", "loading"} and self.rag_chain is not None
 
+    def dang_sinh(self) -> bool:
+        """Có câu trả lời đang sinh (hoặc lượt cập nhật chỉ mục đang giữ khoá)."""
+        return self._generation_lock.locked() or self._khoa_sinh_khi_cap_nhat.locked()
+
     @contextmanager
     def _luot_sinh_tep(self):
         """Giữ lượt sinh cho một câu hỏi về tệp đính kèm.

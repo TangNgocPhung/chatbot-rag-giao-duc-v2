@@ -1102,7 +1102,9 @@ function dinhViNguon(source, taiLieu) {
       .then((phanHoi) => (phanHoi.ok ? phanHoi.json() : null))
       .catch(() => null)
       .then((ketQua) => {
-        if (!ketQua) daDinhVi.delete(khoa);
+        // Lỗi, hoặc máy chủ hoãn OCR vì đang sinh câu trả lời: không nhớ, lần
+        // gọi sau hỏi lại máy chủ.
+        if (!ketQua || ketQua.cho_ocr) daDinhVi.delete(khoa);
         return ketQua;
       });
     daDinhVi.set(khoa, hen);
@@ -1162,13 +1164,17 @@ function giuaDanhDau(muc) {
 // được trích tô vàng, câu sát câu hỏi nhất viền đỏ, khung ảnh cuộn sẵn tới đó.
 const SO_TRANG_GOC_TOI_DA = 4;
 const TI_LE_KHUNG_TRANG = 1.414; // khớp aspect-ratio của .source-page-hinh
+// Word / HTML cũng mở được trong trình đọc nhưng phải chuyển sang PDF bằng
+// LibreOffice trước; dải ảnh tự tải cho mọi câu trả lời thì chỉ lấy PDF và
+// ảnh, nguồn Word vẫn định vị được khi người dùng bấm vào chip.
+const DUOI_ANH_TRANG = /\.(pdf|png|jpe?g|webp|bmp|tiff?)$/i;
 
 function renderTrangGoc(container, sourceList, cacNhan = []) {
   const ungVien = [];
   sourceList.forEach((source, index) => {
     if (source.external) return;
     const taiLieu = window.khongGianHoc?.tuDuongDan(source.url, source.name);
-    if (taiLieu) ungVien.push({ source, taiLieu, index, evidence: source.evidence || index + 1 });
+    if (taiLieu && DUOI_ANH_TRANG.test(taiLieu.ten || '')) ungVien.push({ source, taiLieu, index, evidence: source.evidence || index + 1 });
   });
   if (!ungVien.length) return;
 
@@ -1207,8 +1213,21 @@ async function dungTheTrang(dai, ungVien, cacNhan) {
       theoTrang.set(khoa, the);
     }
     the.them(evidence, ketQua?.danh_dau);
+    if (ketQua?.cho_ocr) toKhiMayRanh(dai, source, taiLieu, (moi) => the.them(evidence, moi.danh_dau));
   }
   if (!dai.children.length) dai.remove();
+}
+
+// Trang scan chưa có hộp chữ và máy chủ đang bận sinh câu trả lời: ảnh trang
+// đã hiện, hỏi lại định kỳ tới khi máy rảnh để OCR rồi tô.
+function toKhiMayRanh(dai, source, taiLieu, khiCo, lan = 0) {
+  if (lan >= 20) return;
+  window.setTimeout(async () => {
+    if (!dai.isConnected) return;
+    const ketQua = await dinhViNguon(source, taiLieu);
+    if (ketQua?.cho_ocr) toKhiMayRanh(dai, source, taiLieu, khiCo, lan + 1);
+    else if (ketQua) khiCo(ketQua);
+  }, 12000);
 }
 
 function taoTheTrang(dai, source, taiLieu, trang) {
@@ -1264,7 +1283,7 @@ function taoTheTrang(dai, source, taiLieu, trang) {
 
   return {
     them(evidence, moi) {
-      cacSo.push(evidence);
+      if (!cacSo.includes(evidence)) cacSo.push(evidence);
       nhan.textContent = `${cacSo.map((so) => `[${so}]`).join('')} Trang ${trang}`;
       for (const [so, muc] of Object.entries(moi || {})) {
         const cu = danhDau[so] || (danhDau[so] = { vung: [], chinh: [] });

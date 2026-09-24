@@ -845,8 +845,11 @@ def dinh_vi_doan_trich(yeu_cau: DoanCanDinhVi):
     """Trang và các dòng chứa đoạn bằng chứng, để tô sáng đúng chỗ được trích."""
     duong_dan = _tai_lieu_can_doc(yeu_cau.tep, yeu_cau.nguon)
     try:
+        # Đang sinh câu trả lời thì không OCR trang scan (xem dinh_vi_doan):
+        # giao diện hiện ảnh trang trước, lát nữa hỏi lại để tô.
         return trinh_doc_tai_lieu.dinh_vi_doan(
-            duong_dan, yeu_cau.doan, yeu_cau.trong_tam, yeu_cau.trang
+            duong_dan, yeu_cau.doan, yeu_cau.trong_tam, yeu_cau.trang,
+            cho_phep_ocr=not service.dang_sinh(),
         )
     except trinh_doc_tai_lieu.LoiDocTaiLieu as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

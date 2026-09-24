@@ -363,8 +363,11 @@ def _van_ban_cac_trang(duong_dan: str) -> list[str]:
     # PDF scan: lớp chữ gần như trống, chữ thật nằm trong bản OCR lúc lập chỉ mục.
     if sum(len(t.strip()) for t in cac_trang) < ocr_pdf.KY_TU_TOI_THIEU_MOI_TRANG * max(1, len(cac_trang)):
         cache = ocr_pdf.doc_cache(duong_dan)
-        if cache and len(cache) == len(cac_trang):
-            cac_trang = cache
+        if not cache or len(cache) != len(cac_trang):
+            # Chưa OCR thì đừng nhớ: tệp được OCR sau đó (lượt cập nhật ban
+            # đêm, cache chép từ máy khác) phải dò được ngay, không đợi khởi động lại.
+            return cac_trang
+        cac_trang = cache
     return _nho(_chu_theo_trang, khoa, cac_trang, SO_TAI_LIEU_NHO)
 
 
@@ -470,8 +473,12 @@ def _tep_nho_ocr(duong_dan: str, so_trang: int) -> str:
     )
 
 
-def _tu_cua_trang(duong_dan: str, so_trang: int) -> list[tuple]:
-    """Các chữ trên trang theo thứ tự đọc: [(chữ, x0, y0, x1, y1)]."""
+def _tu_cua_trang(duong_dan: str, so_trang: int, cho_phep_ocr: bool = True) -> list[tuple] | None:
+    """Các chữ trên trang theo thứ tự đọc: [(chữ, x0, y0, x1, y1)].
+
+    None nghĩa là trang scan chưa có hộp chữ trong cache mà lúc này không được
+    OCR (máy đang sinh câu trả lời) - hỏi lại sau.
+    """
     khoa = (duong_dan, _moc(duong_dan), so_trang)
     da_co = _lay_nho(_tu_theo_trang, khoa)
     if da_co is not None:
@@ -479,7 +486,7 @@ def _tu_cua_trang(duong_dan: str, so_trang: int) -> list[tuple]:
 
     import ocr_pdf
 
-    cac_tu, anh, tep_nho = [], None, None
+    cac_tu, anh, tep_nho, hoan = [], None, None, False
     if _la_pdf(duong_dan):
         import pypdfium2
 
@@ -493,17 +500,27 @@ def _tu_cua_trang(duong_dan: str, so_trang: int) -> list[tuple]:
                 if len(cac_tu) < 10:
                     cac_tu = []
                     tep_nho = _tep_nho_ocr(duong_dan, so_trang)
-                    if not os.path.exists(tep_nho):
+                    if os.path.exists(tep_nho):
+                        pass
+                    elif cho_phep_ocr:
                         anh = trang.render(scale=ocr_pdf.DPI / 72).to_pil()
+                    else:
+                        hoan = True
                 trang.close()
             finally:
                 tai_lieu.close()
     else:
         _kiem_trang(so_trang, 1)
         tep_nho = _tep_nho_ocr(duong_dan, so_trang)
-        if not os.path.exists(tep_nho):
+        if os.path.exists(tep_nho):
+            pass
+        elif cho_phep_ocr:
             anh = _mo_anh(duong_dan)
+        else:
+            hoan = True
 
+    if hoan:
+        return None
     if anh is not None:
         cac_tu = _tu_ocr(anh)
         if cac_tu:
@@ -584,13 +601,18 @@ def _shingle(tu: list[str], n: int = 3) -> set:
 
 
 def dinh_vi_doan(
-    duong_dan: str, doan: str, trong_tam: str = "", trang_goi_y: int | None = None
+    duong_dan: str, doan: str, trong_tam: str = "", trang_goi_y: int | None = None,
+    cho_phep_ocr: bool = True,
 ) -> dict:
     """Trang chứa đoạn trích và các hình chữ nhật cần tô sáng trên đó.
 
     Trả về {"trang": n | None, "danh_dau": {n: {"vung": [...], "chinh": [...]}}}.
     "vung" phủ cả đoạn đã đưa cho mô hình, "chinh" là câu trọng tâm trong đó
     (câu sát câu hỏi nhất) để mắt người đọc rơi đúng chỗ.
+
+    cho_phep_ocr=False: trang scan chưa có hộp chữ thì không OCR ngay mà trả
+    thêm "cho_ocr": True để giao diện hỏi lại sau. Trên VPS, OCR chạy cùng lúc
+    với mô hình đang sinh câu trả lời làm câu trả lời chậm đi hàng chục lần.
     """
     if not doc_duoc(duong_dan):
         raise LoiDocTaiLieu("Chỉ định vị được trong tệp PDF và ảnh.")
@@ -619,9 +641,12 @@ def dinh_vi_doan(
         if abs(d[2] - so_chinh) == 1 and d[0] >= max(2, 0.2 * len(mau_doan))
     ]
 
-    danh_dau = {}
+    danh_dau, cho_ocr = {}, False
     for so in cac_so:
-        cac_tu = _tu_cua_trang(duong_dan, so)
+        cac_tu = _tu_cua_trang(duong_dan, so, cho_phep_ocr)
+        if cac_tu is None:
+            cho_ocr = True
+            continue
         tu_trang = [t[0] for t in cac_tu]
         cum = _cum_khop(tu_trang, tu_doan)
         if not cum:
@@ -633,4 +658,7 @@ def dinh_vi_doan(
             if cum_tam and cum_tam[2] >= min(len(tu_tam), max(KHOP_TOI_THIEU, len(tu_tam) // 3)):
                 muc["chinh"] = _hop_theo_dong(cac_tu[dau + cum_tam[0]:dau + cum_tam[1]])
         danh_dau[so] = muc
-    return {"trang": so_chinh, "danh_dau": danh_dau}
+    ket_qua = {"trang": so_chinh, "danh_dau": danh_dau}
+    if cho_ocr:
+        ket_qua["cho_ocr"] = True
+    return ket_qua
