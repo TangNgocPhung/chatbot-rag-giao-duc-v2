@@ -368,7 +368,7 @@ Cài một lần:
 winget install --id UB-Mannheim.TesseractOCR -e
 ```
 
-Gói ngôn ngữ tiếng Việt `vie.traineddata` đã có sẵn trong thư mục `tessdata/` của dự án (bản `tessdata_best`, cho dấu tiếng Việt chính xác hơn bản thường).
+Gói ngôn ngữ tiếng Việt `vie.traineddata` đặt trong thư mục `tessdata/` của dự án. Nên dùng bản `tessdata_best` (tải từ <https://github.com/tesseract-ocr/tessdata_best>), cho dấu tiếng Việt chính xác hơn bản thường. Thư mục này không nằm trong repository, bản sao mới phải tải về.
 
 OCR trước toàn bộ PDF scan, có tiến độ từng trang:
 

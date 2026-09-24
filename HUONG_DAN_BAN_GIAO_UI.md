@@ -1,6 +1,8 @@
-# Chatbot RAG Giáo dục — Tài liệu bàn giao cho đội làm UI
+# Chatbot RAG Giáo dục — Tài liệu bàn giao kỹ thuật
 
-> Tài liệu này mô tả phần **RAG backend** đã hoàn thiện và benchmark thật (không phải giả định). Người làm UI **không cần hiểu retrieval/embedding hoạt động bên trong ra sao** — chỉ cần đọc mục 4 (Cách chạy) và mục 6 (Hook cho UI) để nối vào giao diện.
+> Tài liệu này mô tả phần **RAG backend** và các lần đo đạc thật (không phải giả định). Ban đầu viết cho đội làm UI; giao diện web nay đã hoàn thiện: cách chạy và các tính năng xem [README.md](README.md), API và biến môi trường xem [HUONG_DAN_CHAY_GIAO_DIEN.md](HUONG_DAN_CHAY_GIAO_DIEN.md).
+>
+> Số liệu ở mục 7 và 11.3 là số đo **tại thời điểm ghi** (có ghi ngày hoặc cỡ kho lúc đo), giữ nguyên làm hồ sơ các lần thử nghiệm, không tự cập nhật theo kho.
 
 ---
 
@@ -10,7 +12,9 @@ Chatbot hỏi-đáp dựa trên kho tài liệu bao quát nhiều bậc và lĩn
 
 - Trả lời câu hỏi dựa **CHỈ trên** nội dung tài liệu đã nạp (không bịa, có cơ chế từ chối khi không tìm thấy thông tin).
 - Đọc trực tiếp 1 URL do người dùng dán trong câu hỏi (đọc ngay, không cần nạp trước vào kho).
-- Trích dẫn nguồn (tên file/Chương/Điều) trong câu trả lời.
+- Trích dẫn nguồn (tên file/Chương/Điều) trong câu trả lời, chỉ đúng dòng được trích trên trang PDF gốc.
+- Công cụ tính bằng Python (lương, định mức tiết dạy, điểm và xếp loại học sinh, số học) thay vì để mô hình làm toán.
+- Giao diện web: tài khoản, lịch sử, tệp đính kèm và tài liệu riêng, sổ tay có trình đọc tài liệu, dịch, nhận giọng nói (danh sách đầy đủ ở README).
 
 **Phạm vi ĐÃ làm** (mục 8 liệt kê rõ giới hạn CHƯA làm).
 
@@ -20,19 +24,21 @@ Chatbot hỏi-đáp dựa trên kho tài liệu bao quát nhiều bậc và lĩn
 
 | Thành phần | Yêu cầu |
 |---|---|
-| Python | 3.11 (venv sẵn tại `Học Ai\.venv\`) |
-| Ollama | Cài & chạy nền (`ollama serve`), có 2 model đã pull: `bge-m3` (embedding) và `llama3.2:3b` (LLM) |
-| RAM | Đủ chạy 2 model Ollama cùng lúc (~4-5GB) |
+| Python | 3.11, môi trường ảo `.venv` trong thư mục dự án |
+| Ollama | Cài & chạy nền (`ollama serve`), có 2 model đã pull: `bge-m3` (embedding) và `qwen3.5:4b` (LLM mặc định; đổi bằng `RAG_LLM_MODEL` hoặc chọn trên giao diện) |
+| RAM | Đủ chạy mô hình nhúng và mô hình trả lời cùng lúc; bậc `qwen3.5:9b` cần máy từ 12 GB RAM |
 | GPU | **Không bắt buộc** — hệ thống hiện chạy 100% CPU (đã đo và xác nhận, xem mục 7.5). Có GPU sẽ nhanh hơn nhưng không phải bắt buộc để chạy đúng. |
 | Dữ liệu | Tài liệu nguồn tại `./ollama-rag-desktop/data_giao_duc`; FAISS index mới được lưu tại `./faiss_index_data_giao_duc`. |
+| Tesseract OCR | Để đọc PDF scan và ảnh. Gói tiếng Việt `vie.traineddata` (bản `tessdata_best`, tải từ github.com/tesseract-ocr/tessdata_best) đặt trong thư mục `tessdata/` của dự án; thư mục này không nằm trong repo |
+| LibreOffice | Để đọc `.doc` đời cũ và để sổ tay mở Word, Excel, PowerPoint, HTML |
 
 Cài đặt:
-```bash
+```powershell
 cd Mr_Hai
-pip install -r requirements.txt
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ollama pull bge-m3
-ollama pull llama3.2:3b
-ollama serve
+ollama pull qwen3.5:4b
 ```
 
 ---
@@ -60,17 +66,28 @@ ollama serve
 | `capnhat_tailieu_moi.py` | Cập nhật kho tài liệu incremental (chạy riêng, không phải lúc hỏi-đáp) |
 | `faiss_index_data_giao_duc/` | Vector store được build từ thư mục `data_giao_duc` |
 | `data_giao_duc_da_xu_ly.json` | "Sổ ghi chép" hash + chunk_id từng file đã nạp (dùng cho incremental update) |
+| `run_ui.py`, `start_ui.bat` | Chạy máy chủ web (FastAPI) và mở trình duyệt; `start_ui.bat` cố định cổng 8010 |
+| `lich_su_chat.py`, `cache_ngu_nghia.py` | Lịch sử hội thoại phía máy chủ (SQLite); cache ngữ nghĩa trả lời ngay câu hỏi lặp lại |
+| `tai_khoan.py`, `gui_thu.py` | Tài khoản, phiên đăng nhập, sổ tay theo tài khoản, xác minh email (gửi mã qua SMTP), quản lý tài khoản |
+| `tep_dinh_kem.py`, `tom_tat_tep.py` | Tệp đính kèm và tài liệu riêng (chunk + BM25 riêng từng tệp, không embed vào FAISS); tóm tắt tệp |
+| `quan_ly_kho.py` | Hàng chờ duyệt, gỡ tài liệu và thùng rác của kho chung |
+| `trinh_doc_tai_lieu.py`, `chuyen_pdf.py` | Trình đọc trong sổ tay: render trang, khoanh để hỏi, tô sáng đoạn được trích, xuất PDF kèm đánh dấu; chuyển Word/Excel/PowerPoint/HTML sang PDF bằng LibreOffice |
+| `tinh_luong.py`, `dinh_muc_tiet_day.py`, `danh_gia_hoc_sinh.py`, `tinh_toan.py`, `can_cu_van_ban.py` | Công cụ tính bằng Python (lương, định mức tiết dạy, điểm và xếp loại, số học) kèm căn cứ pháp lý |
+| `hieu_luc_bo_sung.py` | Hiệu lực theo thời gian: dự thảo, văn bản chưa tới ngày áp dụng |
+| `tu_vung_kho.py`, `goi_y_cau_hoi.py` | Từ vựng kho để chặn câu hỏi lạc đề và chấm khớp tên tài liệu theo IDF; gợi ý câu hỏi |
+| `dich_thuat.py`, `giong_noi.py` | Dịch hơn 130 ngôn ngữ; nhận giọng nói bằng faster-whisper |
+| `bao_ve_truy_cap.py`, `trien_khai_vps/` | Lớp mật khẩu cho bản chạy công khai; bộ script và hướng dẫn triển khai lên VPS |
 
 ---
 
 ## 4. Cách chạy nhanh (để test trước khi nối UI)
 
-```bash
+```powershell
 cd Mr_Hai
-"Học Ai/.venv/Scripts/python.exe" main.py
+.\.venv\Scripts\python.exe main.py
 ```
 
-Gõ câu hỏi vào console, gõ `thoat` để dừng. Nếu chạy lần đầu và chưa có FAISS index, hệ thống sẽ tự build từ thư mục `ollama-rag-desktop/data_giao_duc` (`DATA_PATH` trong `main.py`).
+Gõ câu hỏi vào console, gõ `thoat` để dừng. Giao diện web thì chạy `start_ui.bat` (mở `http://127.0.0.1:8010`). Nếu chạy lần đầu và chưa có FAISS index, hệ thống sẽ tự build từ thư mục `ollama-rag-desktop/data_giao_duc` (`DATA_PATH` trong `main.py`).
 
 ---
 
@@ -79,8 +96,8 @@ Gõ câu hỏi vào console, gõ `thoat` để dừng. Nếu chạy lần đầu
 | Thành phần | Lựa chọn | Vì sao |
 |---|---|---|
 | **Embedding model** | `bge-m3` (qua Ollama) | Đa ngôn ngữ, hỗ trợ tiếng Việt tốt, chạy local không cần API ngoài |
-| **Vector store** | FAISS (CPU, local, thư viện `faiss-cpu`) | Local, miễn phí, đủ nhanh cho quy mô ~3.500 vector (search chỉ mất ~0.3-5s) |
-| **LLM chính thức** | `llama3.2:3b` (qua Ollama) | Chọn qua A/B test thật với `llama3:latest` (8B): 3B cho accuracy gần bằng (17-18/30 vs 18/30) nhưng **hallucination ít hơn 2.7 lần** (3 vs 8/30) và **nhanh hơn 2.5 lần** (51s vs 126s/câu) |
+| **Vector store** | FAISS (CPU, local, thư viện `faiss-cpu`) | Local, miễn phí. Lúc chọn kho mới ~3.500 vector (search chỉ mất ~0.3-5s); kho nay đã lên hàng chục nghìn vector (25.761 lúc đo mục 7.7) và vẫn dùng FAISS |
+| **LLM** | Mặc định hiện tại `qwen3.5:4b` (qua Ollama); mỗi người tự chọn mô hình khác trên giao diện | Bản đầu dùng `llama3.2:3b`, chọn qua A/B test thật với `llama3:latest` (8B): 3B cho accuracy gần bằng (17-18/30 vs 18/30) nhưng **hallucination ít hơn 2.7 lần** (3 vs 8/30) và **nhanh hơn 2.5 lần** (51s vs 126s/câu) — xem mục 7.3 |
 | **Retrieval** | Hybrid: FAISS (dense) + BM25 (lexical, có structural tokenization cho "Điều N"/"Chương N") + Reciprocal Rank Fusion + evidence dominance có điều kiện | Qua 5 lần lặp (V1→V5), mỗi bản sửa đúng 1 lỗi phát hiện từ benchmark thật — xem mục 7 |
 | **Chunking** | Structure-aware: tách theo Điều/Chương cho văn bản pháp lý, `RecursiveCharacterTextSplitter` (1200/150) cho phần còn lại | Giữ nguyên vẹn ngữ cảnh 1 Điều trong 1 chunk, tránh cắt giữa câu |
 | **Metadata đặc biệt** | `context_label` (vd "Hình thức đào tạo: vừa làm vừa học") | Phân biệt 2 bảng số liệu khác nhau nằm trong CÙNG 1 Điều — lỗi thật gặp phải và đã sửa |
@@ -120,6 +137,8 @@ def tra_loi(cau_hoi: str) -> str:
     ngu_canh = format_docs(tai_lieu)
     return rag_chain.invoke({"context": ngu_canh, "question": cau_hoi})  # dùng .invoke() thay .stream() nếu UI không cần streaming
 ```
+
+Máy chủ web còn truyền thêm hai tham số tùy chọn cho `truy_hoi`: `bo_loc` (phạm vi môn/cấp học/lớp, mục 11) và `tu_vung` (từ vựng kho để chấm khớp tên tài liệu theo IDF, mục 7.8). Gọi như trên thì xếp hạng có thể lệch một chút so với giao diện web — xem `RAGService._retrieve` trong `rag_service.py`.
 
 **Lưu ý quan trọng khi bọc API**:
 - `rag_chain.stream(...)` cho phép trả lời dần từng chữ (dùng cho UI kiểu streaming/typing effect) — xem `hoi_dap()` trong `main.py` để tham khảo cách dùng.
@@ -246,26 +265,27 @@ Kiểm định theo cặp trên cùng rổ ứng viên (bootstrap 5.000 lần tr
 | Không đọc YouTube / Google Drive private | Báo lỗi rõ, cần pipeline khác |
 | Trang danh sách/thông báo (không phải bài viết) | Có thể tải đúng nhưng LLM đôi khi bỏ sót dữ kiện rời rạc (xem 7.6) |
 | 1 file `.pptx` hỏng | Cần người dùng export lại từ PowerPoint |
-| Chưa test đa người dùng đồng thời | Hiện tại thiết kế cho 1 phiên hỏi-đáp tại 1 thời điểm |
+| Sinh câu trả lời lần lượt | Nhiều người dùng cùng lúc được (tài khoản, bản chạy trên VPS), nhưng mô hình chạy CPU nên máy chủ sinh từng câu trả lời một; câu hỏi đến sau chờ câu trước xong |
 
 ---
 
-## 9. Gợi ý kiến trúc khi thêm tính năng "học sinh upload tài liệu riêng"
+## 9. Tài liệu riêng của người dùng (đã làm)
 
-Đã thảo luận, khuyến nghị bản tối thiểu trước khi làm hệ thống multi-user đầy đủ:
-- Tái sử dụng `tao_loader_cho_file()` + `chunking_utils` + `vector_store.add_documents()` đã có sẵn — không viết lại pipeline.
-- Đánh dấu chunk upload bằng metadata (vd `metadata["nguon_upload"] = True`) để phân biệt với kho hệ thống, lọc SAU khi search (FAISS gốc không filter theo metadata lúc search).
-- Chưa cần Django/multi-tenant/auth đầy đủ nếu mục tiêu là demo — 1 endpoint FastAPI đơn giản là đủ để chứng minh luồng "upload → xử lý → hỏi được ngay".
+Tính năng "người dùng tải tài liệu riêng" đã làm, theo hướng khác với gợi ý ban đầu (thêm chunk upload vào FAISS rồi lọc theo metadata):
+
+- **Không embed vào FAISS.** Mỗi tệp chỉ được chunk rồi dựng BM25 riêng (`tep_dinh_kem.py`): `bge-m3` trên CPU mất hàng phút cho một tệp dày, và thêm vào FAISS sẽ làm bẩn chỉ mục chung. Phạm vi tìm chỉ còn vài chục đoạn của đúng tệp đó nên BM25 là đủ, và hỏi được ngay sau khi tệp đọc xong.
+- **Tệp là của người tải lên**: chỉ chủ tệp thấy (kể cả quản trị viên không xem được), mỗi tài khoản tối đa 100 tệp, tệp của khách giữ 30 ngày.
+- **Muốn chia sẻ thì chủ tệp bấm "Đề xuất vào kho chung"**: tệp vào hàng chờ, quản trị viên duyệt rồi mới chép vào kho và được lập chỉ mục bình thường (`quan_ly_kho.py`).
 
 ---
 
 ## 10. Câu hỏi thường gặp
 
 **Đổi model LLM để test khác không cần sửa code?**
-Có — set biến môi trường `RAG_LLM_MODEL` (mặc định `llama3.2:3b`).
+Có — chọn trên giao diện (chỉ áp dụng cho câu hỏi của mình), hoặc set biến môi trường `RAG_LLM_MODEL` để ép mô hình mặc định (mặc định `qwen3.5:4b`).
 
 **Đổi cấu hình retrieval để thử nghiệm?**
-Set biến môi trường `RAG_RETRIEVAL_VARIANT` (mặc định `v5` — cấu hình chính thức; `v6b` là nhánh thực nghiệm dynamic-cap, không khuyến nghị dùng mặc định vì đã chứng minh gây regression).
+Biến `RAG_RETRIEVAL_VARIANT` và nhánh thực nghiệm `v6b` (mục 7.4) đã gỡ khỏi mã vì đã chứng minh gây regression. Muốn đổi lượng ngữ cảnh đưa vào mô hình thì dùng `RAG_SO_BANG_CHUNG` (số đoạn, mặc định 4) và `RAG_KY_TU_MOI_BANG_CHUNG` (mặc định 900), rồi đo lại bằng `benchmark_chatbot.py`.
 
 **Cập nhật tài liệu mới vào kho?**
 Chạy `capnhat_tailieu_moi.py` (không phải `main.py`) — tự động phát hiện file mới/sửa/xóa qua so sánh hash SHA-256, chỉ embedding lại phần thay đổi.
