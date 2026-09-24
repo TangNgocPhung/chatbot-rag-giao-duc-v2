@@ -24,7 +24,7 @@ Giảng viên hướng dẫn: TS. Nguyễn Minh Hải
 - OCR PDF scan và ảnh bằng Tesseract
 - Phiên âm video/âm thanh offline bằng faster-whisper, đọc phụ đề `.srt`/`.vtt`
 - Tệp đính kèm trong cuộc trò chuyện, lịch sử chat, cache ngữ nghĩa
-- Tài khoản người dùng và quyền quản trị; tệp người dùng gửi lên phải được duyệt mới vào kho
+- Tài khoản người dùng và quyền quản trị; tệp người dùng tải lên là tài liệu riêng, chỉ vào kho chung khi chủ tệp đề xuất và quản trị viên duyệt
 - Sổ tay bên cạnh cuộc trò chuyện: ghi chú, bảng vẽ, trình đọc PDF, ảnh, Word, Excel, PowerPoint, HTML với công cụ **Khoanh để hỏi**, đánh dấu và tải tài liệu kèm nét đánh dấu
 - Dịch hơn 130 ngôn ngữ ngay trong giao diện
 - Nói thay vì gõ: nhận giọng nói bằng faster-whisper trên máy chủ, tự nhận ra ngôn ngữ
@@ -113,9 +113,14 @@ Cấu hình gửi thư bằng Gmail: bật xác minh 2 bước cho hộp thư g�
 
 ### Quản lý kho tài liệu
 
-- Quản trị viên tải tệp lên (nút `+` trong Kho tài liệu hoặc đính kèm) thì tệp vào thẳng kho, có ghi tên người đưa vào.
-- Người dùng đã đăng nhập bấm nút `+` hoặc đính kèm tệp trong chat thì tệp vào hàng chờ cho tới khi quản trị viên duyệt; tệp đính kèm vẫn hỏi đáp được ngay trong cuộc trò chuyện của họ. Khách phải đăng nhập mới gửi được tệp vào kho.
-- Tệp bị từ chối và tài liệu bị gỡ khỏi kho đều chuyển vào thùng rác. Khôi phục tài liệu đã gỡ thì nó về lại kho (chỉ mục cập nhật ở lần kế tiếp); khôi phục tệp bị từ chối thì nó về lại hàng chờ duyệt.
+Hộp thoại **Kho tài liệu** có các thẻ: kho chung (ai cũng xem), **Của tôi** (khi đăng nhập), **Chờ duyệt** và **Thùng rác** (chỉ quản trị viên).
+
+- **Tài liệu riêng**: tệp người dùng đính kèm trong chat hoặc tải lên bằng nút `+` là tài liệu riêng, nằm trong thẻ **Của tôi** và chỉ chủ tệp thấy — kể cả quản trị viên cũng không xem được tài liệu riêng của người khác. Tài liệu riêng hỏi đáp được ngay (nút **Hỏi**) và mở được trong sổ tay, không cần đợi lập chỉ mục. Mỗi tài khoản giữ tối đa 100 tài liệu riêng; tệp khách đính kèm không cần đăng nhập thì giữ 30 ngày.
+- **Đề xuất vào kho chung**: tài liệu riêng không tự vào kho chung. Chủ tệp bấm **Đề xuất** thì tệp vào hàng chờ, ghi rõ ai đề xuất; thẻ **Của tôi** hiện trạng thái (chờ duyệt, đã vào kho chung, kho chung đã có, không được duyệt). Quản trị viên đề xuất tệp của mình (**Đưa vào kho chung**) hoặc tải lên bằng nút `+` thì tệp vào thẳng kho chung, có ghi tên người đưa vào.
+- **Duyệt**: quản trị viên duyệt hoặc từ chối trong thẻ **Chờ duyệt**. Tệp đề xuất dạng HTML/SVG được mở kèm CSP `sandbox` nên script trong tệp không chạy được với phiên đăng nhập của quản trị viên.
+- **Thùng rác**: tệp bị từ chối và tài liệu bị gỡ khỏi kho chung đều chuyển vào đây. Khôi phục tài liệu đã gỡ thì nó về lại kho; khôi phục tệp bị từ chối thì nó về lại hàng chờ duyệt.
+
+Tệp mới vào kho chung (duyệt, tải lên, đồng bộ Drive) được lập chỉ mục khi máy rảnh. Lượt cập nhật khoá câu hỏi trên cả kho vài phút, nên máy có người dùng ban ngày (như VPS) đặt `RAG_TU_NAP_CHI_MUC=0`: tệp vẫn vào kho ngay nhưng chờ lượt cập nhật ban đêm hoặc tới khi quản trị viên tự bấm cập nhật. Trong lúc cập nhật, câu hỏi về cả kho vẫn trả lời bằng chỉ mục cũ đang nằm trong RAM.
 
 ### Sổ tay của cuộc trò chuyện
 
@@ -228,6 +233,8 @@ Sao chép `khoa_api.mau.bat` thành `khoa_api.bat`, sau đó điền khóa API c
 | `RAG_SMTP_TAI_KHOAN` | trống | Hộp thư gửi mã xác minh email; trống thì tắt xác minh email |
 | `RAG_SMTP_MAT_KHAU` | trống | Mật khẩu ứng dụng của hộp thư đó |
 | `RAG_SMTP_MAY_CHU`, `RAG_SMTP_CONG` | `smtp.gmail.com`, `465` | Máy chủ thư khi không dùng Gmail |
+| `RAG_TU_NAP_CHI_MUC` | `1` | `0` để tệp mới vào kho chờ lượt cập nhật ban đêm thay vì cập nhật chỉ mục ngay khi máy rảnh |
+| `RAG_SO_TAI_LIEU_RIENG_TOI_DA` | `100` | Số tài liệu riêng tối đa của mỗi tài khoản |
 | `RAG_MO_HINH_CHO_PHEP` | trống | Các mô hình người dùng được tự chọn; trống là mọi mô hình |
 | `RAG_GOOGLE_TRANSLATE_KEY` | trống | Khóa Google Cloud Translation; trống thì dịch bằng mô hình trên máy |
 | `RAG_MO_HINH_DICH` | `qwen2.5:3b-instruct` | Mô hình dịch trên máy (không có thì dùng mô hình trả lời) |
