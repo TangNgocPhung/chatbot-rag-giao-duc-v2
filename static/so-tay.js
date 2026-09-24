@@ -1574,7 +1574,7 @@
       const dau = `Giải thích dễ hiểu giúp mình đoạn sau trong tài liệu "${doc.ten}" (trang ${soTrang}):\n"`;
       const cauHoi = `${dau}${catNgan(chu, CAU_HOI_TOI_DA - dau.length - 1)}"`;
       dongHoiVung();
-      if (inFlight || serviceState !== 'ready' || dangDocTep()) {
+      if (inFlight || !hoiDuoc() || dangDocTep()) {
         doanChoHoi = { tienTo: cauHoi, doan: taoDoanTrich(chu) };
         dienKhungHoi(cauHoi);
         showToast(dangDocTep()

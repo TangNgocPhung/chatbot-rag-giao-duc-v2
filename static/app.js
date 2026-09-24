@@ -157,6 +157,12 @@ function maCuocTroChuyenHienTai() {
 }
 const LEGACY_STORAGE_KEY = 'rag-k35-history-v1';
 let serviceState = 'starting';
+// Máy chủ báo hỏi về tệp đính kèm được hay không. Tệp không cần chỉ mục nên
+// kho đang cập nhật (thường ngay sau khi quản trị viên duyệt tệp) vẫn hỏi được.
+let hoiTepDuoc = false;
+// Máy chủ có tự cập nhật chỉ mục ban ngày không (VPS: không, đợi lượt ban đêm).
+let tuNapChiMuc = true;
+const lucNapChiMuc = () => (tuNapChiMuc ? 'khi máy rảnh' : 'trong lượt cập nhật ban đêm');
 let currentChat = null;
 let inFlight = false;
 let abortController = null;
@@ -476,6 +482,12 @@ function tepSanSang() {
   return [...tepDinhKem.values()].filter((tep) => tep.trang_thai === 'san_sang');
 }
 
+// Kho sẵn sàng thì hỏi gì cũng được; kho đang cập nhật thì chỉ hỏi về tệp
+// đã đính kèm.
+function hoiDuoc() {
+  return serviceState === 'ready' || (hoiTepDuoc && tepSanSang().length > 0);
+}
+
 function dangDocTep() {
   return [...tepDinhKem.values()].some((tep) => tep.trang_thai === 'dang_xu_ly');
 }
@@ -590,8 +602,59 @@ async function boTepDinhKem(tepId, imLang = false) {
   if (!imLang) showToast('Đã bỏ tệp đính kèm');
 }
 
-async function xoaMoiTepDinhKem() {
-  for (const tepId of [...tepDinhKem.keys()]) await boTepDinhKem(tepId, true);
+// Tệp đính kèm theo từng cuộc trò chuyện (mã cuộc -> mã tệp). Tệp của người
+// dùng thường có khi nằm chờ duyệt vài ngày; mở lại cuộc trò chuyện là tệp
+// được gắn lại để hỏi tiếp, không phải tải lên lần nữa. Máy chủ giữ tệp theo
+// số ngày nên chỉ cần nhớ mã ở trình duyệt.
+const KHOA_TEP_THEO_CUOC = 'rag-tep-theo-cuoc-v1';
+
+function docTepTheoCuoc() {
+  try {
+    return JSON.parse(localStorage.getItem(KHOA_TEP_THEO_CUOC)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function ghiTepCuaCuoc(maCuoc, tepIds) {
+  if (!maCuoc) return;
+  const bang = docTepTheoCuoc();
+  delete bang[maCuoc];
+  if (tepIds.length) bang[maCuoc] = tepIds.slice(0, SO_TEP_TOI_DA);
+  // Chỉ giữ 100 cuộc gần nhất (khóa mới thêm nằm cuối).
+  const cacMa = Object.keys(bang);
+  for (const ma of cacMa.slice(0, Math.max(0, cacMa.length - 100))) delete bang[ma];
+  try {
+    localStorage.setItem(KHOA_TEP_THEO_CUOC, JSON.stringify(bang));
+  } catch {
+    // Hết bộ nhớ trình duyệt thì chỉ mất việc tự gắn lại tệp.
+  }
+}
+
+// Đổi cuộc trò chuyện: bỏ tệp của cuộc cũ khỏi khung hỏi (không xoá trên máy
+// chủ - cuộc cũ mở lại vẫn cần) rồi gắn tệp của cuộc được mở.
+async function ganTepCuaCuoc(maCuoc) {
+  tepDinhKem.clear();
+  renderAttachments();
+  const tepIds = docTepTheoCuoc()[maCuoc] || [];
+  const conLai = [];
+  for (const tepId of tepIds) {
+    try {
+      const phanHoi = await fetch(`/api/tep/${encodeURIComponent(tepId)}`);
+      if (!phanHoi.ok) continue;
+      const tep = await phanHoi.json();
+      if (tep.trang_thai === 'loi') continue;
+      // Người dùng đã chuyển sang cuộc khác trong lúc chờ thì thôi.
+      if (maCuocTroChuyenHienTai() !== maCuoc) return;
+      tepDinhKem.set(tep.id, tep);
+      conLai.push(tep.id);
+      renderAttachments();
+      if (tep.trang_thai === 'dang_xu_ly') theoDoiTep(tep.id);
+    } catch {
+      conLai.push(tepId);
+    }
+  }
+  if (conLai.length !== tepIds.length) ghiTepCuaCuoc(maCuoc, conLai);
 }
 
 // Trả về mô tả các tệp đã tải lên được, để sổ tay mở ngay tệp vừa chọn.
@@ -690,6 +753,7 @@ async function openChat(chat) {
     }
   }
   currentChat = chat;
+  ganTepCuaCuoc(chat.id);
   showMessages();
   dungDoc();
   elements.messages.replaceChildren();
@@ -721,7 +785,8 @@ async function newChat() {
   elements.welcome.classList.remove('hidden');
   elements.input.value = '';
   resizeInput();
-  xoaMoiTepDinhKem();
+  tepDinhKem.clear();
+  renderAttachments();
   renderHistory();
   closeSidebar();
   elements.input.focus();
@@ -743,7 +808,7 @@ const SO_GOI_Y_MO_DAU = 6;
 function dungGoiY(cauHoi) {
   elements.input.value = cauHoi;
   resizeInput();
-  if (serviceState === 'ready' && !inFlight && !dangDocTep()) {
+  if (hoiDuoc() && !inFlight && !dangDocTep()) {
     submitQuestion(cauHoi);
     return;
   }
@@ -1343,7 +1408,7 @@ function resizeInput() {
 }
 
 function updateSendButton() {
-  elements.send.disabled = serviceState !== 'ready'
+  elements.send.disabled = !hoiDuoc()
     || inFlight
     || dangDocTep()
     || elements.input.value.trim().length < 2;
@@ -1359,7 +1424,7 @@ function formatTime(seconds) {
 // chủ dùng làm bằng chứng số 1 (xem so-tay.js).
 async function submitQuestion(question, tuyChon = {}) {
   question = question.trim();
-  if (question.length < 2 || inFlight || serviceState !== 'ready') return;
+  if (question.length < 2 || inFlight || !hoiDuoc()) return;
   if (dangDocTep()) {
     showToast('Đang đọc tệp đính kèm, vui lòng đợi giây lát');
     return;
@@ -1415,6 +1480,7 @@ async function submitQuestion(question, tuyChon = {}) {
     chat.messages.push({ role: 'assistant', content: noiDung, sources, ...thongTinThem });
     currentChat = chat;
     saveHistory(chat);
+    if (tepIds.length) ghiTepCuaCuoc(chat.id, tepIds);
   };
 
   try {
@@ -1548,6 +1614,8 @@ async function pollStatus() {
     if (!response.ok) throw new Error('status');
     const status = await response.json();
     serviceState = status.state;
+    hoiTepDuoc = Boolean(status.hoi_tep_duoc);
+    tuNapChiMuc = status.tu_nap_chi_muc !== false;
     currentModel = status.model || currentModel;
     capNhatNhanMoHinh();
     const stateLabel = status.state === 'ready'
@@ -1569,7 +1637,9 @@ async function pollStatus() {
       if (status.no_text_file_count) parts.push(`${status.no_text_file_count.toLocaleString('vi-VN')} cần OCR`);
       if (status.duplicate_file_count) parts.push(`${status.duplicate_file_count.toLocaleString('vi-VN')} tệp trùng`);
       if (status.error_file_count) parts.push(`${status.error_file_count.toLocaleString('vi-VN')} không đọc được`);
-      if (status.tep_cho_nap) parts.push(`${status.tep_cho_nap.toLocaleString('vi-VN')} tệp chờ nạp chỉ mục`);
+      if (status.tep_cho_nap) {
+        parts.push(`${status.tep_cho_nap.toLocaleString('vi-VN')} tệp chờ nạp chỉ mục${tuNapChiMuc ? '' : ' (đêm nay)'}`);
+      }
       elements.systemMeta.textContent = parts.join(' · ');
       elements.libraryCount.textContent = (status.data_file_count || 0).toLocaleString('vi-VN');
     } else {
@@ -1582,18 +1652,23 @@ async function pollStatus() {
       elements.retry.classList.add('hidden');
       elements.updateIndex.classList.add('hidden');
     } else if (status.state === 'ready' && status.data_stale) {
-      elements.alert.textContent = 'Kho tài liệu đã thay đổi. Hãy cập nhật chỉ mục để dùng dữ liệu mới nhất.';
+      elements.alert.textContent = tuNapChiMuc
+        ? 'Kho tài liệu đã thay đổi. Hãy cập nhật chỉ mục để dùng dữ liệu mới nhất.'
+        : 'Kho có tài liệu mới, sẽ được nạp vào chỉ mục trong lượt cập nhật ban đêm.';
       elements.alert.className = 'connection-alert';
       elements.retry.classList.add('hidden');
       elements.updateIndex.classList.remove('hidden');
     } else {
-      elements.alert.textContent = status.message;
+      elements.alert.textContent = hoiTepDuoc
+        ? `${status.message} Trong lúc này vẫn hỏi được về tệp bạn đính kèm.`
+        : status.message;
       elements.alert.className = `connection-alert${status.state === 'error' ? ' error' : ''}`;
       elements.retry.classList.toggle('hidden', status.state !== 'error');
       elements.updateIndex.classList.add('hidden');
     }
   } catch {
     serviceState = 'error';
+    hoiTepDuoc = false;
     elements.statusTitle.textContent = 'Mất kết nối';
     elements.statusMessage.textContent = 'Không kết nối được với máy chủ ứng dụng.';
     elements.miniStatus.textContent = 'Mất kết nối';
@@ -2090,7 +2165,7 @@ async function goTaiLieuKhoiKho(tenTaiLieu) {
   });
   if (!dongY) return;
   await goiQuanTriKho('/api/quan-ly/kho/go', 'go-tai-lieu', { ten: tenTaiLieu });
-  await lamMoiKhoSauThaoTac(`Đã gỡ ${tenTaiLieu} - chỉ mục sẽ cập nhật khi máy rảnh`);
+  await lamMoiKhoSauThaoTac(`Đã gỡ ${tenTaiLieu} - chỉ mục sẽ cập nhật ${lucNapChiMuc()}`);
 }
 
 function renderKhoQuanTri(query) {
@@ -2144,7 +2219,7 @@ function renderKhoQuanTri(query) {
         }),
         taoNutKho('Duyệt', 'chinh', async () => {
           const kq = await goiQuanTriKho(`/api/quan-ly/tai-len/${encodeURIComponent(muc.id)}/duyet`, 'duyet-tep');
-          await lamMoiKhoSauThaoTac(`Đã duyệt: ${kq.ket_qua} - sẽ vào chỉ mục khi máy rảnh`);
+          await lamMoiKhoSauThaoTac(`Đã duyệt: ${kq.ket_qua} - sẽ vào chỉ mục ${lucNapChiMuc()}`);
         }),
       );
     } else {

@@ -13,10 +13,17 @@ diện hỏi trạng thái qua /api/tep/{id} cho tới khi "san_sang".
 Đọc xong, bản gốc còn được chép sang kho tài liệu chung (hook do rag_service
 gắn vào) để lần sau hỏi không phải đính kèm lại; việc embed vào FAISS vẫn hoãn
 tới lúc máy rảnh vì bge-m3 trên CPU khóa chat vài phút.
+
+Tệp của người dùng thường phải chờ quản trị viên duyệt mới vào kho, mà quản
+trị viên có thể mấy ngày sau mới rảnh. Trong lúc chờ, người gửi vẫn phải hỏi
+được về tệp của mình, nên các đoạn đã đọc được ghi ra đĩa ({id}.json cạnh tệp
+gốc): máy chủ khởi động lại không làm mất tệp, và tệp được giữ theo số ngày
+chứ không bị tệp của người khác đẩy ra sau vài lượt tải lên.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import threading
 import time
@@ -36,7 +43,9 @@ THU_MUC_TEP = os.path.abspath(os.getenv(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "tep_dinh_kem"),
 ))
 GIOI_HAN_BYTE = max(1, int(os.getenv("RAG_GIOI_HAN_TEP_MB", "40"))) * 1024 * 1024
-SO_TEP_TOI_DA = max(1, int(os.getenv("RAG_SO_TEP_DINH_KEM_TOI_DA", "12")))
+# Giới hạn cho cả máy chủ (mọi người dùng cộng lại), không phải mỗi người.
+SO_TEP_TOI_DA = max(1, int(os.getenv("RAG_SO_TEP_DINH_KEM_TOI_DA", "200")))
+NGAY_GIU_TEP = max(1, int(os.getenv("RAG_NGAY_GIU_TEP_DINH_KEM", "30")))
 KY_TU_TOI_THIEU = 40  # ít hơn mức này coi như không đọc được nội dung
 
 # rag_service gắn hàm chép tệp vào kho tài liệu ở đây. Để dạng hook vì
@@ -189,23 +198,96 @@ class KhoTepDinhKem:
         return True
 
     def _don_bot_tep_cu(self) -> None:
-        """Giữ lại SO_TEP_TOI_DA tệp mới nhất để không phình thư mục tạm."""
+        """Bỏ tệp quá NGAY_GIU_TEP ngày, rồi giữ lại SO_TEP_TOI_DA tệp mới nhất
+        để không phình thư mục tạm."""
+        han = time.time() - NGAY_GIU_TEP * 86400
         with self._lock:
-            if len(self._tep) <= SO_TEP_TOI_DA:
-                return
             theo_thoi_gian = sorted(self._tep.values(), key=lambda t: t.tao_luc)
-            qua_han = theo_thoi_gian[: len(self._tep) - SO_TEP_TOI_DA]
+            qua_han = [t for t in theo_thoi_gian if t.tao_luc < han]
+            con_lai = [t for t in theo_thoi_gian if t.tao_luc >= han]
+            if len(con_lai) > SO_TEP_TOI_DA:
+                qua_han += con_lai[: len(con_lai) - SO_TEP_TOI_DA]
             for tep in qua_han:
                 self._tep.pop(tep.id, None)
         for tep in qua_han:
             self._xoa_tren_dia(tep)
 
     @staticmethod
-    def _xoa_tren_dia(tep: TepDinhKem) -> None:
+    def _duong_dan_ban_ghi(tep_id: str) -> str:
+        return os.path.join(THU_MUC_TEP, f"{tep_id}.json")
+
+    @classmethod
+    def _xoa_tren_dia(cls, tep: TepDinhKem) -> None:
+        for duong_dan in (tep.duong_dan, cls._duong_dan_ban_ghi(tep.id)):
+            try:
+                os.remove(duong_dan)
+            except OSError:
+                pass
+
+    # ----- lưu ra đĩa / nạp lại khi khởi động -----
+    def _ghi_ra_dia(self, tep: TepDinhKem) -> None:
+        """Ghi các đoạn đã đọc để khởi động lại không phải OCR/phiên âm lại.
+        Ghi hỏng thì tệp vẫn hỏi được tới lần khởi động kế, nên chỉ bỏ qua."""
+        ban_ghi = {
+            "id": tep.id, "ten": tep.ten, "duoi": tep.duoi, "loai": tep.loai,
+            "kich_thuoc": tep.kich_thuoc, "tao_luc": tep.tao_luc,
+            "thong_bao": tep.thong_bao, "so_ky_tu": tep.so_ky_tu,
+            "luu_kho": tep.luu_kho, "thong_bao_kho": tep.thong_bao_kho,
+            "nguoi": tep.nguoi,
+            "chunks": [
+                {"noi_dung": c.page_content, "metadata": c.metadata} for c in tep.chunks
+            ],
+        }
+        dich = self._duong_dan_ban_ghi(tep.id)
+        tam = dich + ".tmp"
         try:
-            os.remove(tep.duong_dan)
-        except OSError:
-            pass
+            with open(tam, "w", encoding="utf-8") as f:
+                json.dump(ban_ghi, f, ensure_ascii=False, default=str)
+            os.replace(tam, dich)
+        except (OSError, TypeError, ValueError):
+            try:
+                os.remove(tam)
+            except OSError:
+                pass
+
+    def nap_lai_tu_dia(self) -> int:
+        """Nạp lại các tệp đã đọc xong ở lần chạy trước. Tệp đang đọc dở lúc
+        máy chủ tắt không có bản ghi nên bị bỏ qua (người dùng tải lại)."""
+        if not os.path.isdir(THU_MUC_TEP):
+            return 0
+        da_nap = 0
+        for ten_file in os.listdir(THU_MUC_TEP):
+            if not ten_file.endswith(".json"):
+                continue
+            try:
+                with open(os.path.join(THU_MUC_TEP, ten_file), encoding="utf-8") as f:
+                    ban_ghi = json.load(f)
+                ma = ban_ghi["id"]
+                duong_dan = os.path.join(THU_MUC_TEP, f"{ma}{ban_ghi['duoi']}")
+                if not os.path.isfile(duong_dan):
+                    os.remove(os.path.join(THU_MUC_TEP, ten_file))
+                    continue
+                chunks = [
+                    Document(page_content=c["noi_dung"], metadata=c.get("metadata") or {})
+                    for c in ban_ghi.get("chunks") or []
+                ]
+                tep = TepDinhKem(
+                    id=ma, ten=ban_ghi["ten"], duoi=ban_ghi["duoi"], loai=ban_ghi["loai"],
+                    duong_dan=duong_dan, kich_thuoc=int(ban_ghi["kich_thuoc"]),
+                    tao_luc=float(ban_ghi["tao_luc"]), trang_thai="san_sang",
+                    thong_bao=ban_ghi.get("thong_bao") or f"Đã đọc {len(chunks)} đoạn nội dung.",
+                    so_chunk=len(chunks), so_ky_tu=int(ban_ghi.get("so_ky_tu") or 0),
+                    luu_kho=ban_ghi.get("luu_kho") or "tat",
+                    thong_bao_kho=ban_ghi.get("thong_bao_kho") or "",
+                    chunks=chunks, nguoi=ban_ghi.get("nguoi"),
+                )
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+            with self._lock:
+                self._tep.setdefault(ma, tep)
+            da_nap += 1
+        self._don_bot_tep_cu()
+        return da_nap
 
     # ----- đọc và chunk -----
     def _xu_ly(self, tep: TepDinhKem) -> None:
@@ -243,6 +325,7 @@ class KhoTepDinhKem:
             tep.luu_kho, tep.thong_bao_kho = _luu_vao_kho(tep)
             tep.trang_thai = "san_sang"
             tep.thong_bao = f"Đã đọc {len(chunks)} đoạn nội dung."
+            self._ghi_ra_dia(tep)
         except Exception as exc:  # loader bên thứ ba có thể ném đủ loại lỗi
             tep.trang_thai = "loi"
             tep.thong_bao = f"Không đọc được tệp: {exc}"
@@ -270,6 +353,9 @@ class KhoTepDinhKem:
         """Xếp hạng các đoạn của riêng tệp này theo BM25; không khớp thì lấy đầu tệp."""
         if not tep.chunks:
             return []
+        if tep.bm25 is None and so_ket_qua > 0:
+            # Tệp nạp lại từ đĩa chưa có BM25; dựng lúc được hỏi lần đầu.
+            tep.bm25 = self._dung_bm25(tep.chunks)
         if tep.bm25 is None or so_ket_qua <= 0:
             return tep.chunks[:so_ket_qua]
         tokens = mo_rong_truy_van(tach_tu_mo_rong(cau_hoi), cau_hoi)

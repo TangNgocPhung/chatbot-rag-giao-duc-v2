@@ -88,6 +88,11 @@ async def lifespan(_: FastAPI):
     # Kiểm ngay lúc khởi động: bật chế độ công khai mà thiếu mật khẩu thì dừng
     # hẳn, đừng để đường hầm mở ra rồi mới phát hiện cửa không khóa.
     bao_ve_truy_cap.kiem_tra_cau_hinh()
+    # Tệp người dùng đã đính kèm (nhiều tệp còn đang chờ duyệt vào kho) phải
+    # hỏi tiếp được sau khi máy chủ khởi động lại.
+    threading.Thread(
+        target=kho_tep.nap_lai_tu_dia, daemon=True, name="nap-tep-dinh-kem"
+    ).start()
     threading.Thread(
         target=service.initialize, daemon=True, name="rag-initialize"
     ).start()
@@ -242,6 +247,19 @@ GIAY_CHO_BEN_NHAN = 20.0     # hàng chờ đầy lâu hơn thế coi như bên 
 _HET_SU_KIEN = object()
 
 
+def _loi_sinh_de_hieu(exc: Exception, ten_mo_hinh: str) -> str:
+    """Ollama báo lỗi bằng thông điệp kỹ thuật; lỗi hay gặp nhất trên VPS là
+    hết RAM khi người dùng chọn mô hình lớn - hệ điều hành giết llama-server
+    giữa chừng. Người dùng cần biết phải làm gì, không cần "signal: killed"."""
+    thong_bao = str(exc)
+    if "llama-server process has terminated" in thong_bao or "signal: killed" in thong_bao:
+        return (
+            f"Máy chủ không đủ bộ nhớ để chạy mô hình {ten_mo_hinh} nên nó bị dừng "
+            "giữa chừng. Hãy chọn mô hình nhẹ hơn (ví dụ llama3.2:3b) rồi hỏi lại."
+        )
+    return thong_bao
+
+
 def _xep_hang(hang: queue.Queue, su_kien) -> bool:
     """Đưa sự kiện vào hàng chờ; False nghĩa là thôi sinh tiếp."""
     han = time.monotonic() + GIAY_CHO_BEN_NHAN
@@ -275,7 +293,9 @@ def chat_stream(
     x_rag_client: str | None = Header(default=None),
     http: Request = None,
 ):
-    if service.status.state != "ready":
+    # Hỏi về tệp đính kèm không cần chỉ mục, nên kho đang cập nhật (thường là
+    # ngay sau khi quản trị viên duyệt tệp) vẫn hỏi được.
+    if service.status.state != "ready" and not (request.tep_ids and service.hoi_tep_duoc()):
         raise HTTPException(status_code=503, detail=service.status.message)
     chu_so_huu = _chu_so_huu(http, x_rag_client, bat_buoc=False)
 
@@ -325,7 +345,9 @@ def chat_stream(
                 if not _xep_hang(hang, event):
                     break
         except Exception as exc:
-            _xep_hang(hang, {"type": "error", "message": str(exc)})
+            _xep_hang(hang, {"type": "error", "message": _loi_sinh_de_hieu(
+                exc, service.chon_mo_hinh(request.model)
+            )})
         finally:
             # Đóng tay ngay trong luồng vừa lặp nó: lúc này bộ sinh đang treo ở
             # một yield chứ không đang chạy, nên close() vào được, khối "with

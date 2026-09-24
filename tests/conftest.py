@@ -57,6 +57,15 @@ def cach_ly_quan_ly_kho(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def cach_ly_tep_dinh_kem(tmp_path, monkeypatch):
+    """Tệp đính kèm giờ được ghi ra đĩa và nạp lại khi app khởi động: test
+    không được đọc/ghi thư mục tep_dinh_kem thật của dự án."""
+    import tep_dinh_kem
+
+    monkeypatch.setattr(tep_dinh_kem, "THU_MUC_TEP", str(tmp_path / "tep_dinh_kem"))
+
+
+@pytest.fixture(autouse=True)
 def mo_khoa_quan_tri(monkeypatch):
     """Các test cũ gọi thẳng endpoint quản trị (cập nhật chỉ mục, đổi mô hình...)
     mà không đăng nhập. Chúng kiểm tra việc khác, nên tắt khoá quản trị cho

@@ -64,6 +64,9 @@ Thiết lập biến môi trường trước khi chạy nếu cấu hình máy k
 | `RAG_LUU_TEP_DINH_KEM` | `1` | Tệp đính kèm trong chat được gửi vào kho: của quản trị viên thì vào thẳng, của người khác thì vào hàng chờ duyệt; đặt `0` để tắt |
 | `RAG_THU_MUC_TEP_DINH_KEM_TRONG_KHO` | `tai_lieu_dinh_kem` | Thư mục con trong kho dùng chứa tệp đính kèm |
 | `RAG_CHO_NAP_TEP_GIAY` | `90` | Đợi bao lâu sau câu hỏi cuối mới nạp tệp mới vào chỉ mục |
+| `RAG_TU_NAP_CHI_MUC` | `1` | `0` = không tự cập nhật chỉ mục khi kho có tệp mới (duyệt tệp, tải lên, Drive); tệp chờ lượt cập nhật ban đêm. Đặt `0` trên VPS |
+| `RAG_SO_TEP_DINH_KEM_TOI_DA` | `200` | Số tệp đính kèm máy chủ giữ cho mọi người dùng cộng lại |
+| `RAG_NGAY_GIU_TEP_DINH_KEM` | `30` | Tệp đính kèm được giữ (và hỏi được) bao nhiêu ngày |
 | `RAG_WHISPER_MODEL` | `small` | Model phiên âm video: tiny/base/small/medium/large-v3 |
 | `RAG_TRANSCRIBE_ON_INDEX` | `1` | Đặt `0` nếu chỉ nạp video đã phiên âm sẵn |
 | `RAG_TU_CHOI_KHI_LAC_DE` | `1` | Tự trả lời "không tìm thấy" khi truy hồi lạc đề |

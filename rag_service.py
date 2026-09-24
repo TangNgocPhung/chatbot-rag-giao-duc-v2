@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Iterator
 from urllib.parse import quote
@@ -158,6 +159,19 @@ def _giay_cho_truoc_khi_nap() -> int:
         return 90
 
 
+def _tu_nap_chi_muc() -> bool:
+    """Tự cập nhật chỉ mục khi máy rảnh sau khi kho có tệp mới (duyệt tệp, tải
+    lên, đồng bộ Drive). Lượt cập nhật khoá câu hỏi trên cả kho nhiều phút, nên
+    máy có người dùng ban ngày (VPS) đặt RAG_TU_NAP_CHI_MUC=0: tệp mới vẫn vào
+    kho ngay nhưng chờ lượt cập nhật ban đêm (timer riêng) hoặc tới khi quản
+    trị viên tự bấm cập nhật."""
+    return os.getenv("RAG_TU_NAP_CHI_MUC", "1") == "1"
+
+
+def _luc_nap_chi_muc() -> str:
+    return "khi máy rảnh" if _tu_nap_chi_muc() else "trong lượt cập nhật ban đêm"
+
+
 def _phut_tu_dong_dong_bo() -> int:
     """0 = tắt tự động. Mặc định 15 phút: đủ nhanh để 'upload xong là hỏi được'."""
     try:
@@ -216,6 +230,10 @@ class RAGService:
         self._no_text_sources: list[str] = []
         self._initialization_lock = threading.Lock()
         self._generation_lock = threading.Lock()
+        # Lượt cập nhật chỉ mục giữ _generation_lock suốt nhiều phút. Câu hỏi về
+        # tệp đính kèm không đụng tới chỉ mục nên không phải đợi: trong lúc đó
+        # chúng xếp hàng với nhau ở khoá này, vẫn chỉ một câu sinh mỗi lúc.
+        self._khoa_sinh_khi_cap_nhat = threading.Lock()
         # Cờ xin dừng câu trả lời đang sinh. Người dùng bấm "Cuộc trò chuyện
         # mới" hay nút dừng thì trình duyệt cắt kết nối, nhưng bộ sinh phía máy
         # chủ không tự biết điều đó - phải có tín hiệu tường minh, nếu không nó
@@ -618,7 +636,9 @@ class RAGService:
             "model": self.llm_model,
             "reasoning": os.getenv("RAG_REASONING", "0") == "1",
             "busy": self._generation_lock.locked(),
+            "hoi_tep_duoc": self.hoi_tep_duoc(),
             "tep_cho_nap": len(self.tep_cho_nap),
+            "tu_nap_chi_muc": _tu_nap_chi_muc(),
             "index_progress": index_progress,
             "drive": self.drive_dict(),
             "thu_muc_nong": {
@@ -627,6 +647,33 @@ class RAGService:
                 "phut_quet": _phut_quet_thu_muc_nong(),
             },
         }
+
+    def hoi_tep_duoc(self) -> bool:
+        """Hỏi về tệp đính kèm được không. Luồng này chỉ cần mô hình trả lời,
+        không cần chỉ mục, nên vẫn chạy khi kho đang cập nhật hay nạp lại sau
+        cập nhật (chuỗi cũ còn nguyên tới khi chuỗi mới thay vào). Chỉ lúc máy
+        chủ vừa bật, chưa dựng xong chuỗi nào, mới phải đợi."""
+        return self.status.state in {"ready", "updating", "loading"} and self.rag_chain is not None
+
+    @contextmanager
+    def _luot_sinh_tep(self):
+        """Giữ lượt sinh cho một câu hỏi về tệp đính kèm.
+
+        Bình thường dùng chung _generation_lock với mọi câu hỏi. Khi khoá đó
+        đang bị lượt cập nhật chỉ mục giữ thì chuyển sang khoá phụ, thay vì bắt
+        người hỏi về chính tệp của mình đợi cả kho lập chỉ mục xong.
+        """
+        while True:
+            if self._generation_lock.acquire(timeout=0.5):
+                khoa = self._generation_lock
+                break
+            if self.status.state != "ready" and self._khoa_sinh_khi_cap_nhat.acquire(timeout=0.5):
+                khoa = self._khoa_sinh_khi_cap_nhat
+                break
+        try:
+            yield
+        finally:
+            khoa.release()
 
     def start_index_update(self) -> tuple[bool, str]:
         """Khởi chạy cập nhật tăng dần, đồng thời chặn chat dùng index đang đổi."""
@@ -749,7 +796,7 @@ class RAGService:
         noi_luu = THU_MUC_TEP_TRONG_KHO or os.path.basename(DATA_PATH)
         return "da_luu", (
             f"Đã thêm vào kho tài liệu ({noi_luu}), "
-            "sẽ nạp vào chỉ mục khi máy rảnh."
+            f"sẽ nạp vào chỉ mục {_luc_nap_chi_muc()}."
         )
 
     def _chep_vao_kho(self, duong_dan: str, ten: str) -> str:
@@ -885,6 +932,8 @@ class RAGService:
 
     def _hen_cap_nhat_chi_muc(self) -> None:
         """Một luồng chờ duy nhất cho mọi tệp đang xếp hàng."""
+        if not _tu_nap_chi_muc():
+            return  # tep_cho_nap vẫn giữ để giao diện báo số tệp chờ nạp
         with self._hen_lock:
             if self._dang_hen_nap:
                 return
@@ -1006,7 +1055,7 @@ class RAGService:
             self.drive.so_file_moi = len(ket_qua.da_tai)
             self.drive.thong_bao = ket_qua.tom_tat()
             self.drive.trang_thai = "idle"
-            if ket_qua.co_thay_doi and self.status.state == "ready":
+            if ket_qua.co_thay_doi and self.status.state == "ready" and _tu_nap_chi_muc():
                 self.start_index_update()
         except Exception as exc:
             self.drive.trang_thai = "error"
@@ -1315,7 +1364,7 @@ class RAGService:
         hỏi về tệp đó, trộn thêm văn bản khác chỉ làm câu trả lời khó kiểm chứng.
         """
         cac_tep = [tep_dinh_kem.kho_tep.lay_san_sang(ma) for ma in tep_ids[:4]]
-        with self._generation_lock:
+        with self._luot_sinh_tep():
             started = time.perf_counter()
             retrieval_question, model_question = self._conversation_inputs(
                 question, history
@@ -1556,7 +1605,8 @@ class RAGService:
         doan_trich: dict | None = None,
         ten_mo_hinh: str | None = None,
     ) -> Iterator[dict]:
-        if self.status.state != "ready":
+        # Tệp đính kèm không cần chỉ mục: kho đang cập nhật vẫn hỏi được.
+        if self.status.state != "ready" and not (tep_ids and self.hoi_tep_duoc()):
             raise RuntimeError(self.status.message)
         ten_mo_hinh = ten_mo_hinh or self.llm_model
         doan_khoanh = doan_khoanh_thanh_bang_chung(doan_trich)

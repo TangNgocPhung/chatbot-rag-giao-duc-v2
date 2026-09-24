@@ -291,6 +291,12 @@ systemctl list-timers | grep capnhat
 - **02:00** giờ VN: `capnhat-chi-muc-dem.timer` bật cập nhật chỉ mục
 - **06:30** giờ VN: `dung-capnhat-chi-muc.timer` dừng hẳn và khởi động lại dịch vụ
 
+Vì vậy `/etc/chatbot-rag.env` trên VPS đặt `RAG_TU_NAP_CHI_MUC=0`: quản trị viên
+duyệt tệp (hay đồng bộ Drive có tệp mới) thì tệp vào kho ngay nhưng **không** tự
+cập nhật chỉ mục giữa ban ngày — lượt cập nhật khoá câu hỏi trên cả kho nhiều
+phút. Tệp nằm chờ tới lượt 02:00. Người gửi vẫn hỏi được về tệp của mình qua
+tệp đính kèm trong lúc chờ duyệt và chờ nạp.
+
 Kết quả OCR được cache theo từng tệp trong `ocr_cache/`, nên dừng giữa chừng
 không mất công: đêm sau chạy tiếp từ chỗ dở. Muốn chạy ngay (chấp nhận trang
 chậm):
