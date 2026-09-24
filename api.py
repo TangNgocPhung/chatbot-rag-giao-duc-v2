@@ -9,6 +9,7 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
@@ -18,15 +19,18 @@ from starlette.concurrency import run_in_threadpool
 
 import bao_ve_truy_cap
 import cache_ngu_nghia
+import chuyen_pdf
 import dich_thuat
 import giong_noi
+import gui_thu
 import lich_su_chat
 import phan_loai_giao_duc
 import quan_ly_kho
 import tai_khoan
 import trinh_doc_tai_lieu
 from rag_service import service
-from tep_dinh_kem import GIOI_HAN_BYTE, LoiTepDinhKem, kho_tep
+from chunking_utils import tinh_hash_file
+from tep_dinh_kem import GIOI_HAN_BYTE, LoiTepDinhKem, chu_cua, kho_tep
 
 
 ROOT = Path(__file__).resolve().parent
@@ -293,11 +297,15 @@ def chat_stream(
     x_rag_client: str | None = Header(default=None),
     http: Request = None,
 ):
-    # Hỏi về tệp đính kèm không cần chỉ mục, nên kho đang cập nhật (thường là
-    # ngay sau khi quản trị viên duyệt tệp) vẫn hỏi được.
-    if service.status.state != "ready" and not (request.tep_ids and service.hoi_tep_duoc()):
+    # Kho đang cập nhật vẫn hỏi được: câu hỏi cả kho dùng chỉ mục cũ còn trong
+    # bộ nhớ, câu hỏi về tệp đính kèm không cần chỉ mục. Chỉ lúc nạp lại mới đợi.
+    if not service.hoi_kho_duoc() and not (request.tep_ids and service.hoi_tep_duoc()):
         raise HTTPException(status_code=503, detail=service.status.message)
     chu_so_huu = _chu_so_huu(http, x_rag_client, bat_buoc=False)
+    # Chỉ hỏi được về tài liệu riêng của chính mình.
+    chu = _chu_tep(http)
+    if any(kho_tep.cua(ma, chu) is None for ma in request.tep_ids):
+        raise HTTPException(status_code=404, detail="Tệp đính kèm không còn trên máy chủ, hãy tải lại tệp.")
 
     history = [message.model_dump() for message in request.history]
     hang: queue.Queue = queue.Queue(maxsize=SO_SU_KIEN_CHO)
@@ -412,6 +420,14 @@ def chat_stream(
 # mã X-RAG-Client do trình duyệt tự sinh. Mã của khách KHÔNG phải xác thực - ai
 # cũng gửi được mã của người khác - nên chỉ đủ để hai khách chung máy chủ không
 # vô tình thấy hội thoại của nhau; muốn lịch sử thật sự riêng tư thì đăng nhập.
+def _chu_tep(request: Request | None) -> str | None:
+    """Chủ tài liệu riêng: tài khoản đang đăng nhập, hoặc mã trình duyệt của khách."""
+    if request is None:
+        return None
+    ma_khach = (request.headers.get("x-rag-client") or "").strip()[:60]
+    return chu_cua(nguoi_dung_hien_tai(request), ma_khach or None)
+
+
 def _chu_so_huu(request: Request, header: str | None, bat_buoc: bool = True) -> str:
     nguoi_dung = nguoi_dung_hien_tai(request)
     if nguoi_dung is not None:
@@ -515,6 +531,7 @@ def tai_khoan_hien_tai(request: Request):
     return {
         "nguoi_dung": nguoi_dung_hien_tai(request),
         "khoa_quan_tri": tai_khoan.bat_khoa_quan_tri(),
+        "gui_thu": gui_thu.da_cau_hinh(),
         "so_cho_duyet": quan_ly_kho.dem_cho_duyet() if _la_quan_tri(request) else 0,
     }
 
@@ -536,6 +553,7 @@ def dang_ky(
     ma_khach = _chu_so_huu(request, x_rag_client, bat_buoc=False)
     if ma_khach and not ma_khach.startswith("nd:"):
         lich_su_chat.chuyen_chu_so_huu(ma_khach, f"nd:{nguoi_dung['id']}")
+        kho_tep.chuyen_chu(chu_cua(None, ma_khach), chu_cua(nguoi_dung), nguoi_dung)
     return _phan_hoi_tai_khoan(request, nguoi_dung)
 
 
@@ -571,6 +589,113 @@ def doi_mat_khau(thong_tin: DoiMatKhau, request: Request):
     except tai_khoan.LoiTaiKhoan as exc:
         raise _loi_tai_khoan(exc) from exc
     return {"ok": True}
+
+
+class ThongTinTaiKhoan(BaseModel):
+    ten: str | None = Field(default=None, max_length=120)
+    email: str | None = Field(default=None, max_length=254)
+    mat_khau: str = Field(default="", max_length=200)
+
+
+@app.post("/api/tai-khoan/thong-tin")
+def sua_thong_tin_tai_khoan(thong_tin: ThongTinTaiKhoan, request: Request):
+    """Sửa tên hiển thị / email của chính mình (đổi email cần mật khẩu, xác minh lại)."""
+    nguoi_dung = nguoi_dung_hien_tai(request)
+    if nguoi_dung is None:
+        raise HTTPException(status_code=401, detail="Hãy đăng nhập trước.")
+    try:
+        nd = tai_khoan.doi_thong_tin(
+            nguoi_dung["id"], thong_tin.ten, thong_tin.email, thong_tin.mat_khau
+        )
+    except tai_khoan.LoiTaiKhoan as exc:
+        raise _loi_tai_khoan(exc) from exc
+    return {"nguoi_dung": nd}
+
+
+class XacMinh(BaseModel):
+    ma: str = Field(min_length=1, max_length=20)
+
+
+def _dang_nhap_bat_buoc(request: Request) -> dict:
+    nguoi_dung = nguoi_dung_hien_tai(request)
+    if nguoi_dung is None:
+        raise HTTPException(status_code=401, detail="Hãy đăng nhập trước.")
+    return nguoi_dung
+
+
+@app.post("/api/tai-khoan/gui-ma-xac-minh")
+def gui_ma_xac_minh(request: Request):
+    nguoi_dung = _dang_nhap_bat_buoc(request)
+    if not gui_thu.da_cau_hinh():
+        raise HTTPException(
+            status_code=503,
+            detail="Máy chủ chưa cấu hình gửi thư. Hãy nhờ quản trị viên xác minh giúp.",
+        )
+    try:
+        nd, ma = tai_khoan.tao_ma_xac_minh(nguoi_dung["id"])
+    except tai_khoan.LoiTaiKhoan as exc:
+        raise _loi_tai_khoan(exc) from exc
+    try:
+        gui_thu.gui_ma_xac_minh(nd["email"], nd["ten"], ma, tai_khoan.PHUT_MA_XAC_MINH)
+    except gui_thu.LoiGuiThu as exc:
+        tai_khoan.huy_lan_gui_ma(nguoi_dung["id"])
+        print(f"[gui_thu] {exc}", flush=True)
+        raise HTTPException(status_code=502, detail="Chưa gửi được thư, hãy thử lại sau ít phút.") from exc
+    return {"email": nd["email"], "phut": tai_khoan.PHUT_MA_XAC_MINH}
+
+
+@app.post("/api/tai-khoan/xac-minh")
+def xac_minh_email(thong_tin: XacMinh, request: Request):
+    nguoi_dung = _dang_nhap_bat_buoc(request)
+    try:
+        return {"nguoi_dung": tai_khoan.xac_minh(nguoi_dung["id"], thong_tin.ma)}
+    except tai_khoan.LoiTaiKhoan as exc:
+        raise _loi_tai_khoan(exc) from exc
+
+
+@app.put("/api/tai-khoan/anh-dai-dien")
+async def doi_anh_dai_dien(request: Request, x_rag_action: str | None = Header(default=None)):
+    """Nhận thẳng byte ảnh trong body như /api/giong-noi."""
+    nguoi_dung = _dang_nhap_bat_buoc(request)
+    if x_rag_action != "avatar":
+        raise HTTPException(status_code=403, detail="Yêu cầu đổi ảnh không hợp lệ.")
+    do_dai = request.headers.get("content-length")
+    if do_dai and do_dai.isdigit() and int(do_dai) > tai_khoan.ANH_TOI_DA_BYTE:
+        raise HTTPException(status_code=413, detail="Ảnh quá lớn (tối đa 8 MB).")
+    du_lieu = await request.body()
+    try:
+        nd = await run_in_threadpool(tai_khoan.luu_anh_dai_dien, nguoi_dung["id"], du_lieu)
+    except tai_khoan.LoiTaiKhoan as exc:
+        raise _loi_tai_khoan(exc) from exc
+    return {"nguoi_dung": nd}
+
+
+@app.delete("/api/tai-khoan/anh-dai-dien")
+def xoa_anh_dai_dien(request: Request):
+    nguoi_dung = _dang_nhap_bat_buoc(request)
+    return {"nguoi_dung": tai_khoan.xoa_anh_dai_dien(nguoi_dung["id"])}
+
+
+@app.get("/api/tai-khoan/anh-dai-dien/{nguoi_dung_id}")
+def xem_anh_dai_dien(nguoi_dung_id: str, request: Request):
+    # Ảnh chỉ hiện cho chính chủ, nên chỉ chính chủ tải được.
+    nguoi_dung = nguoi_dung_hien_tai(request)
+    if nguoi_dung is None or nguoi_dung["id"] != nguoi_dung_id:
+        raise HTTPException(status_code=404, detail="Không có ảnh.")
+    anh = tai_khoan.lay_anh_dai_dien(nguoi_dung_id)
+    if anh is None:
+        raise HTTPException(status_code=404, detail="Không có ảnh.")
+    du_lieu, kieu = anh
+    return Response(
+        du_lieu,
+        media_type=kieu,
+        # Đường dẫn có ?v=<lúc đổi ảnh>: đổi ảnh là đổi đường dẫn, nên cache lâu được.
+        headers={
+            "Cache-Control": "private, max-age=31536000, immutable",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'",
+        },
+    )
 
 
 # ------------------------------------------------------------
@@ -656,21 +781,27 @@ async def tai_len_tep(
         )
     du_lieu = await request.body()
     try:
-        tep = kho_tep.them(ten, du_lieu, nguoi=nguoi_dung_hien_tai(request))
+        tep = kho_tep.them(ten, du_lieu, nguoi=nguoi_dung_hien_tai(request), chu=_chu_tep(request))
     except LoiTepDinhKem as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return tep.cong_khai()
 
 
-@app.post("/api/kho/tep", dependencies=[Depends(yeu_cau_quan_tri)])
+@app.post("/api/kho/tep")
 async def tai_tep_vao_kho(
     request: Request,
     ten: str,
     x_rag_action: str | None = Header(default=None),
 ):
-    """Nút "+" trong Kho tài liệu: lưu tệp vào kho rồi hẹn lập chỉ mục."""
+    """Nút "+" trong Kho tài liệu. Quản trị viên: lưu thẳng vào kho chung rồi
+    hẹn lập chỉ mục. Người dùng đã đăng nhập: lưu thành tài liệu RIÊNG (chỉ họ
+    thấy, trong thẻ "Của tôi"), muốn chia sẻ thì tự bấm "Đề xuất vào kho chung".
+    Khách phải đăng nhập trước - tài liệu riêng cần một tài khoản để gắn vào."""
     if x_rag_action != "upload-library":
         raise HTTPException(status_code=403, detail="Yêu cầu tải tệp không hợp lệ.")
+    nguoi = nguoi_dung_hien_tai(request)
+    if tai_khoan.bat_khoa_quan_tri() and nguoi is None:
+        raise HTTPException(status_code=401, detail="Hãy đăng nhập để thêm tài liệu.")
     do_dai = request.headers.get("content-length")
     if do_dai and do_dai.isdigit() and int(do_dai) > GIOI_HAN_BYTE:
         raise HTTPException(
@@ -678,37 +809,100 @@ async def tai_tep_vao_kho(
             detail=f"Tệp vượt quá giới hạn {GIOI_HAN_BYTE // 1048576} MB.",
         )
     du_lieu = await request.body()
-    trang_thai, thong_bao = service.nhap_tep_tu_giao_dien(
-        ten, du_lieu, nguoi=nguoi_dung_hien_tai(request)
-    )
+    if not _la_quan_tri(request):
+        try:
+            tep = kho_tep.them(ten, du_lieu, nguoi=nguoi, chu=_chu_tep(request))
+        except LoiTepDinhKem as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {
+            "trang_thai": "rieng",
+            "thong_bao": "Đã lưu vào Tài liệu của tôi - chỉ bạn thấy.",
+            "tep": tep.cong_khai(),
+        }
+    trang_thai, thong_bao = service.nhap_tep_tu_giao_dien(ten, du_lieu, nguoi=nguoi)
     if trang_thai in {"loi", "khong_ho_tro"}:
         raise HTTPException(status_code=400, detail=thong_bao)
     return {"trang_thai": trang_thai, "thong_bao": thong_bao}
 
 
+# ------------------------------------------------------------
+# TÀI LIỆU RIÊNG ("Tài liệu của tôi"): mọi đường dẫn đều chỉ trả tệp của chính
+# người hỏi (tep_dinh_kem.KhoTepDinhKem.duoc_dung) - kể cả quản trị viên.
+# ------------------------------------------------------------
+_KHO_CHUNG_THEO_DUYET = {"cho_duyet": "cho_duyet", "trong_kho": "da_luu", "tu_choi": "tu_choi"}
+
+
+def _mo_ta_tep(tep) -> dict:
+    """cong_khai() kèm tình trạng đề xuất vào kho chung, tra lại theo nội dung
+    tệp: quản trị viên duyệt / từ chối sau đó thì chủ tệp vẫn thấy đúng."""
+    ban = tep.cong_khai()
+    if tep.luu_kho != "rieng":
+        if not tep.ma_bam and Path(tep.duong_dan).is_file():
+            tep.ma_bam = tinh_hash_file(tep.duong_dan)
+        ban["luu_kho"] = _KHO_CHUNG_THEO_DUYET.get(
+            quan_ly_kho.trang_thai_theo_ma_bam(tep.ma_bam), tep.luu_kho
+        )
+    return ban
+
+
+def _tep_cua_toi(tep_id: str, request: Request):
+    tep = kho_tep.cua(tep_id, _chu_tep(request))
+    if tep is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tệp đính kèm.")
+    return tep
+
+
 @app.get("/api/tep")
-def danh_sach_tep():
-    return {"tep": kho_tep.danh_sach()}
+def danh_sach_tep(request: Request):
+    return {"tep": [_mo_ta_tep(tep) for tep in kho_tep.cac_tep_cua(_chu_tep(request))]}
 
 
 @app.get("/api/tep/{tep_id}")
-def trang_thai_tep(tep_id: str):
-    tep = kho_tep.lay(tep_id)
-    if tep is None:
-        raise HTTPException(status_code=404, detail="Không tìm thấy tệp đính kèm.")
-    return tep.cong_khai()
+def trang_thai_tep(tep_id: str, request: Request):
+    return _mo_ta_tep(_tep_cua_toi(tep_id, request))
 
 
 @app.delete("/api/tep/{tep_id}")
-def xoa_tep(tep_id: str):
-    if not kho_tep.xoa(tep_id):
+def xoa_tep(tep_id: str, request: Request):
+    if not kho_tep.xoa(tep_id, _chu_tep(request)):
         raise HTTPException(status_code=404, detail="Không tìm thấy tệp đính kèm.")
     return {"da_xoa": tep_id}
 
 
+@app.post("/api/tep/{tep_id}/de-xuat")
+def de_xuat_vao_kho_chung(tep_id: str, request: Request, x_rag_action: str | None = Header(default=None)):
+    """Chủ tài liệu riêng muốn chia sẻ: quản trị viên thì vào thẳng kho chung,
+    người khác thì vào hàng chờ duyệt (ghi rõ ai đề xuất)."""
+    if x_rag_action != "de-xuat-kho":
+        raise HTTPException(status_code=403, detail="Yêu cầu không hợp lệ.")
+    nguoi = nguoi_dung_hien_tai(request)
+    if nguoi is None and tai_khoan.bat_khoa_quan_tri():
+        raise HTTPException(status_code=401, detail="Hãy đăng nhập để đề xuất tài liệu vào kho chung.")
+    tep = _tep_cua_toi(tep_id, request)
+    try:
+        kho_tep.de_xuat(tep, tinh_hash_file(tep.duong_dan), nguoi)
+    except LoiTepDinhKem as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return _mo_ta_tep(tep)
+
+
+# Tệp HTML/SVG do người dùng tải lên mà mở thẳng trên tên miền chatbot thì
+# <script> trong đó chạy với phiên đăng nhập của người xem - quản trị viên mở
+# một đề xuất độc hại là bị gọi API thay mình. CSP "sandbox" cho trang đó một
+# nguồn gốc riêng và tắt script, trang vẫn hiển thị để đọc bình thường.
+_DUOI_CACH_LY = {".html", ".htm", ".xhtml", ".svg", ".xml"}
+
+
+def _tieu_de_tep(duong_dan: str) -> dict:
+    tieu_de = {"X-Content-Type-Options": "nosniff"}
+    if Path(duong_dan).suffix.lower() in _DUOI_CACH_LY:
+        tieu_de["Content-Security-Policy"] = "sandbox"
+    return tieu_de
+
+
 @app.get("/api/tep/{tep_id}/noi-dung")
-def mo_tep_dinh_kem(tep_id: str):
-    tep = kho_tep.lay(tep_id)
+def mo_tep_dinh_kem(tep_id: str, request: Request):
+    tep = kho_tep.cua(tep_id, _chu_tep(request))
     if tep is None:
         raise HTTPException(status_code=404, detail="Không tìm thấy tệp đính kèm.")
     xem_truc_tiep = {
@@ -720,7 +914,7 @@ def mo_tep_dinh_kem(tep_id: str):
         tep.duong_dan,
         filename=tep.ten,
         content_disposition_type="inline" if tep.duoi in xem_truc_tiep else "attachment",
-        headers={"X-Content-Type-Options": "nosniff"},
+        headers=_tieu_de_tep(tep.duong_dan),
     )
 
 
@@ -742,7 +936,7 @@ def open_source(name: str):
         source_path,
         filename=name,
         content_disposition_type=disposition,
-        headers={"X-Content-Type-Options": "nosniff"},
+        headers=_tieu_de_tep(source_path),
     )
 
 
@@ -757,9 +951,9 @@ _GIAY_NHO_NGUON = 300.0
 _nguon_da_tim: dict[str, tuple[float, str]] = {}
 
 
-def _tai_lieu_can_doc(tep: str | None, nguon: str | None) -> str:
+def _tai_lieu_can_doc(tep: str | None, nguon: str | None, chu: str | None = None) -> str:
     if tep:
-        tep_dinh_kem = kho_tep.lay(tep)
+        tep_dinh_kem = kho_tep.cua(tep, chu)
         if tep_dinh_kem is None:
             raise HTTPException(status_code=404, detail="Tệp đính kèm không còn trên máy chủ.")
         duong_dan = tep_dinh_kem.duong_dan
@@ -774,14 +968,20 @@ def _tai_lieu_can_doc(tep: str | None, nguon: str | None) -> str:
             _nguon_da_tim[nguon] = (time.monotonic(), duong_dan)
     else:
         raise HTTPException(status_code=400, detail="Thiếu tệp cần đọc.")
+    if chuyen_pdf.chuyen_duoc(duong_dan):
+        # Word / HTML: trình đọc làm việc trên bản PDF do LibreOffice chuyển (có nhớ).
+        try:
+            duong_dan = chuyen_pdf.ban_pdf(duong_dan)
+        except chuyen_pdf.LoiChuyenPdf as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not trinh_doc_tai_lieu.doc_duoc(duong_dan):
-        raise HTTPException(status_code=415, detail="Chỉ đọc trực tiếp được tệp PDF và ảnh.")
+        raise HTTPException(status_code=415, detail="Sổ tay đọc được PDF, ảnh, Word và HTML.")
     return duong_dan
 
 
 @app.get("/api/doc/thong-tin")
-def thong_tin_tai_lieu(tep: str | None = None, nguon: str | None = None):
-    duong_dan = _tai_lieu_can_doc(tep, nguon)
+def thong_tin_tai_lieu(request: Request, tep: str | None = None, nguon: str | None = None):
+    duong_dan = _tai_lieu_can_doc(tep, nguon, _chu_tep(request))
     try:
         return trinh_doc_tai_lieu.thong_tin(duong_dan)
     except trinh_doc_tai_lieu.LoiDocTaiLieu as exc:
@@ -792,9 +992,9 @@ def thong_tin_tai_lieu(tep: str | None = None, nguon: str | None = None):
 
 @app.get("/api/doc/trang")
 def anh_trang_tai_lieu(
-    so: int, rong: int = 1000, tep: str | None = None, nguon: str | None = None
+    request: Request, so: int, rong: int = 1000, tep: str | None = None, nguon: str | None = None
 ):
-    duong_dan = _tai_lieu_can_doc(tep, nguon)
+    duong_dan = _tai_lieu_can_doc(tep, nguon, _chu_tep(request))
     try:
         du_lieu, kieu = trinh_doc_tai_lieu.render_trang(duong_dan, so, rong)
     except trinh_doc_tai_lieu.LoiDocTaiLieu as exc:
@@ -819,9 +1019,9 @@ class VungKhoanh(BaseModel):
 
 
 @app.post("/api/doc/vung")
-def chu_trong_vung_khoanh(vung: VungKhoanh):
+def chu_trong_vung_khoanh(vung: VungKhoanh, request: Request):
     """Chữ nằm trong vùng người dùng vừa khoanh trên trang."""
-    duong_dan = _tai_lieu_can_doc(vung.tep, vung.nguon)
+    duong_dan = _tai_lieu_can_doc(vung.tep, vung.nguon, _chu_tep(request))
     try:
         return trinh_doc_tai_lieu.chu_trong_vung(
             duong_dan, vung.so, (vung.x0, vung.y0, vung.x1, vung.y1)
@@ -841,9 +1041,9 @@ class DoanCanDinhVi(BaseModel):
 
 
 @app.post("/api/doc/dinh-vi")
-def dinh_vi_doan_trich(yeu_cau: DoanCanDinhVi):
+def dinh_vi_doan_trich(yeu_cau: DoanCanDinhVi, request: Request):
     """Trang và các dòng chứa đoạn bằng chứng, để tô sáng đúng chỗ được trích."""
-    duong_dan = _tai_lieu_can_doc(yeu_cau.tep, yeu_cau.nguon)
+    duong_dan = _tai_lieu_can_doc(yeu_cau.tep, yeu_cau.nguon, _chu_tep(request))
     try:
         # Đang sinh câu trả lời thì không OCR trang scan (xem dinh_vi_doan):
         # giao diện hiện ảnh trang trước, lát nữa hỏi lại để tô.
@@ -855,6 +1055,51 @@ def dinh_vi_doan_trich(yeu_cau: DoanCanDinhVi):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Không định vị được đoạn trích: {exc}") from exc
+
+
+class NetDanhDau(BaseModel):
+    """Một nét trong sổ tay: xem veNet trong static/so-tay.js."""
+
+    c: Literal["but", "to-sang", "khoanh"]
+    m: str | None = Field(default=None, max_length=16)
+    d: float | None = Field(default=None, ge=0, le=0.2)
+    h: str | None = Field(default=None, max_length=8)
+    p: list[float] = Field(max_length=20000)
+
+
+class TaiVeDanhDau(BaseModel):
+    tep: str | None = Field(default=None, max_length=64)
+    nguon: str | None = Field(default=None, max_length=260)
+    ten: str = Field(default="", max_length=260)
+    net: dict[int, list[NetDanhDau]] = Field(default_factory=dict)
+
+
+@app.post("/api/doc/tai-ve")
+def tai_ve_ban_danh_dau(yeu_cau: TaiVeDanhDau, request: Request):
+    """PDF của tài liệu kèm mọi nét bút, tô sáng, khoanh người dùng đã vẽ."""
+    so_net = sum(len(ds) for ds in yeu_cau.net.values())
+    if so_net > 5000 or sum(len(n.p) for ds in yeu_cau.net.values() for n in ds) > 400000:
+        raise HTTPException(status_code=413, detail="Quá nhiều nét vẽ để ghép vào tài liệu.")
+    duong_dan = _tai_lieu_can_doc(yeu_cau.tep, yeu_cau.nguon, _chu_tep(request))
+    try:
+        du_lieu = trinh_doc_tai_lieu.xuat_pdf_danh_dau(
+            duong_dan,
+            {so: [n.model_dump() for n in ds] for so, ds in yeu_cau.net.items()},
+        )
+    except trinh_doc_tai_lieu.LoiDocTaiLieu as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Không tạo được bản tải về: {exc}") from exc
+    goc = Path(yeu_cau.ten or Path(duong_dan).name).stem or "tai-lieu"
+    ten = f"{goc} (đã đánh dấu).pdf" if so_net else f"{goc}.pdf"
+    return Response(
+        du_lieu,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=\"tai-lieu.pdf\"; filename*=UTF-8''{quote(ten)}",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 # ============================================================
@@ -890,7 +1135,7 @@ def xem_tep_cho_duyet(ma: str, request: Request):
         raise _loi_kho(exc) from exc
     return FileResponse(
         duong_dan, filename=ban["ten"], content_disposition_type="inline",
-        headers={"X-Content-Type-Options": "nosniff"},
+        headers=_tieu_de_tep(duong_dan),
     )
 
 
@@ -946,11 +1191,57 @@ def khoi_phuc_tai_lieu(ma: str, request: Request, x_rag_action: str | None = Hea
     _nguoi_quan_tri(request)
     if x_rag_action != "khoi-phuc":
         raise HTTPException(status_code=403, detail="Yêu cầu không hợp lệ.")
+    ve_cho_duyet = quan_ly_kho.la_tep_bi_tu_choi(ma)
     try:
         ten = service.khoi_phuc_tai_lieu(ma)
     except quan_ly_kho.LoiQuanLyKho as exc:
         raise _loi_kho(exc) from exc
-    return {"ten": ten}
+    return {"ten": ten, "ve_cho_duyet": ve_cho_duyet}
+
+
+# ============================================================
+# QUẢN TRỊ TÀI KHOẢN: xem mọi tài khoản, khoá / mở khoá, xoá
+# ============================================================
+@app.get("/api/quan-ly/tai-khoan")
+def danh_sach_tai_khoan(request: Request):
+    nguoi = _nguoi_quan_tri(request)
+    ds = tai_khoan.danh_sach_tai_khoan()
+    for nd in ds:
+        nd["la_toi"] = nd["id"] == nguoi.get("id")
+    return {"tai_khoan": ds, "gui_thu": gui_thu.da_cau_hinh()}
+
+
+class KhoaTaiKhoan(BaseModel):
+    khoa: bool
+
+
+@app.post("/api/quan-ly/tai-khoan/{ma}/khoa")
+def khoa_tai_khoan(
+    ma: str, thong_tin: KhoaTaiKhoan, request: Request, x_rag_action: str | None = Header(default=None)
+):
+    nguoi = _nguoi_quan_tri(request)
+    if x_rag_action != "khoa-tai-khoan":
+        raise HTTPException(status_code=403, detail="Yêu cầu không hợp lệ.")
+    try:
+        return {"tai_khoan": tai_khoan.dat_cam(ma, thong_tin.khoa, nguoi)}
+    except tai_khoan.LoiTaiKhoan as exc:
+        raise _loi_tai_khoan(exc) from exc
+
+
+@app.delete("/api/quan-ly/tai-khoan/{ma}")
+def xoa_tai_khoan(ma: str, request: Request, x_rag_action: str | None = Header(default=None)):
+    nguoi = _nguoi_quan_tri(request)
+    if x_rag_action != "xoa-tai-khoan":
+        raise HTTPException(status_code=403, detail="Yêu cầu không hợp lệ.")
+    try:
+        email = tai_khoan.xoa_tai_khoan(ma, nguoi)
+    except tai_khoan.LoiTaiKhoan as exc:
+        raise _loi_tai_khoan(exc) from exc
+    return {
+        "email": email,
+        "so_hoi_thoai": lich_su_chat.xoa_theo_client(f"nd:{ma}"),
+        "so_tai_lieu": kho_tep.xoa_het_cua(f"nd:{ma}"),
+    }
 
 
 # ============================================================

@@ -37,20 +37,23 @@ def cho_san_sang(kho, tep_id, giay=20.0):
 
 class LuuTepRaDiaTests(unittest.TestCase):
     def setUp(self):
+        self.addCleanup(tep_dinh_kem.dat_hook_luu_kho, tep_dinh_kem._hook_luu_kho)
         tep_dinh_kem.dat_hook_luu_kho(lambda *_: ("cho_duyet", "Chờ duyệt"))
-        self.addCleanup(tep_dinh_kem.dat_hook_luu_kho, None)
 
     def test_khoi_dong_lai_van_hoi_duoc_tep_dang_cho_duyet(self):
         kho = tep_dinh_kem.KhoTepDinhKem()
         tep = cho_san_sang(kho, kho.them("ban-phim.txt", NOI_DUNG, nguoi={"id": "hs1"}).id)
         self.assertEqual(tep.trang_thai, "san_sang")
-        self.assertEqual(tep.luu_kho, "cho_duyet")
+        self.assertEqual(tep.luu_kho, "rieng")  # không tự gửi duyệt nữa
+        self.assertEqual(kho.de_xuat(tep, "bam", {"id": "hs1"})[0], "cho_duyet")
 
         kho_moi = tep_dinh_kem.KhoTepDinhKem()  # như máy chủ vừa khởi động lại
         self.assertEqual(kho_moi.nap_lai_tu_dia(), 1)
-        tep_nap = kho_moi.lay_san_sang(tep.id)
+        tep_nap = kho_moi.lay_san_sang(tep.id, "nd:hs1")
         self.assertEqual(tep_nap.luu_kho, "cho_duyet")
         self.assertEqual(tep_nap.nguoi, {"id": "hs1"})
+        self.assertEqual(tep_nap.chu, "nd:hs1")
+        self.assertIsNone(kho_moi.cua(tep.id, "nd:nguoi-khac"))
         doan = kho_moi.truy_hoi(tep_nap, "đặt ngón trỏ lên phím nào", 2)
         self.assertTrue(doan)
         self.assertIn("F và J", doan[0].page_content)
@@ -99,17 +102,31 @@ class HoiTepKhiKhoDangCapNhatTests(unittest.TestCase):
         self.addCleanup(gia.stop)
 
     def test_cau_hoi_ve_tep_van_duoc_tra_loi(self):
+        tep = tep_dinh_kem.kho_tep.them("ban-phim.txt", NOI_DUNG)
+        self.addCleanup(tep_dinh_kem.kho_tep.xoa, tep.id, kiem_chu=False)
         with TestClient(app) as client:
             phan_hoi = client.post(
-                "/api/chat/stream", json={"question": "tệp nói gì", "tep_ids": ["abc"]}
+                "/api/chat/stream", json={"question": "tệp nói gì", "tep_ids": [tep.id]}
             )
             self.assertEqual(phan_hoi.status_code, 200)
             self.assertTrue(client.get("/api/status").json()["hoi_tep_duoc"])
 
-    def test_cau_hoi_ca_kho_van_phai_doi(self):
+    def test_cau_hoi_ca_kho_dung_chi_muc_cu(self):
+        # Chỉ mục mới đang dựng trên đĩa; bản cũ trong bộ nhớ vẫn trả lời được.
+        # Không dùng "with TestClient": lifespan chạy initialize() ở luồng nền,
+        # nó đổi trạng thái sang "loading" giữa chừng bài kiểm tra.
+        client = TestClient(app)
+        phan_hoi = client.post("/api/chat/stream", json={"question": "học phí"})
+        self.assertEqual(phan_hoi.status_code, 200)
+        self.assertTrue(client.get("/api/status").json()["hoi_kho_duoc"])
+
+    def test_luc_nap_lai_chi_muc_thi_cau_hoi_ca_kho_phai_doi(self):
+        # initialize() thay vector_store, BM25 lần lượt: hỏi giữa chừng sẽ trộn hai bản.
+        service.status.state = "loading"
         with TestClient(app) as client:
             phan_hoi = client.post("/api/chat/stream", json={"question": "học phí"})
             self.assertEqual(phan_hoi.status_code, 503)
+            self.assertFalse(client.get("/api/status").json()["hoi_kho_duoc"])
 
     def test_may_chu_vua_bat_chua_co_chuoi_thi_doi(self):
         service.status.state = "loading"

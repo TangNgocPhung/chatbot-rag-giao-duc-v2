@@ -271,6 +271,154 @@ def chu_trong_vung(duong_dan: str, so_trang: int, vung: tuple[float, float, floa
 
 
 # ------------------------------------------------------------
+# TẢI VỀ BẢN ĐÃ ĐÁNH DẤU
+# ------------------------------------------------------------
+# Nét vẽ của sổ tay ({c, m, d, h, p} - xem veNet trong static/so-tay.js) được
+# vẽ thành đường véc-tơ ngay trên trang PDF gốc: chữ của tài liệu vẫn chọn và
+# tìm được, phóng to không vỡ, tệp chỉ nặng hơn bản gốc vài KB. Ảnh chụp thì
+# chuyển thành PDF một trang rồi vẽ y như vậy.
+MAU_KHOANH = (214, 69, 52)
+MAU_TO_SANG = (255, 212, 59)
+_MAU_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _mau(hex_: str | None, mac_dinh: tuple[int, int, int]) -> str:
+    r, g, b = (
+        (int(hex_[1:3], 16), int(hex_[3:5], 16), int(hex_[5:7], 16))
+        if hex_ and _MAU_HEX.match(hex_) else mac_dinh
+    )
+    return f"{r / 255:.3f} {g / 255:.3f} {b / 255:.3f}"
+
+
+def _phep_doi(trang) -> tuple:
+    """(hàm đổi toạ độ 0..1 trên trang đang nhìn -> điểm PDF, bề rộng trang đang nhìn).
+
+    Giao diện vẽ trên ảnh đã xoay theo /Rotate và cắt theo CropBox (giống
+    pdfium render); nội dung PDF thì nằm trong hệ toạ độ gốc chưa xoay.
+    """
+    hop = trang.cropbox
+    x0, x1 = sorted((float(hop.left), float(hop.right)))
+    y0, y1 = sorted((float(hop.bottom), float(hop.top)))
+    rong, cao = x1 - x0, y1 - y0
+    xoay = (trang.get("/Rotate", 0) or 0) % 360
+    doi = {
+        0: lambda u, v: (x0 + u * rong, y1 - v * cao),
+        90: lambda u, v: (x0 + v * rong, y0 + u * cao),
+        180: lambda u, v: (x1 - u * rong, y0 + v * cao),
+        270: lambda u, v: (x1 - v * rong, y1 - u * cao),
+    }[xoay if xoay in (0, 90, 180, 270) else 0]
+    return doi, (rong if xoay in (0, 180) else cao)
+
+
+def _duong_net(p: list[float], doi) -> list[str]:
+    """Đường đi qua các điểm, làm mượt y như veNet: cong bậc hai qua trung điểm."""
+    diem = [(p[i], p[i + 1]) for i in range(0, len(p) - 1, 2)]
+    ra = lambda u, v: "{:.2f} {:.2f}".format(*doi(u, v))  # noqa: E731
+    lenh = [f"{ra(*diem[0])} m"]
+    if len(diem) == 1:
+        # Chấm một điểm: nét dài bằng 0 với đầu tròn vẽ ra một chấm tròn.
+        lenh.append(f"{ra(*diem[0])} l")
+        return lenh
+    hien_tai = diem[0]
+    for i in range(1, len(diem) - 1):
+        dk, sau = diem[i], diem[i + 1]
+        giua = ((dk[0] + sau[0]) / 2, (dk[1] + sau[1]) / 2)
+        # Bậc hai -> bậc ba: hai điểm điều khiển nằm 2/3 đường về phía điểm điều khiển cũ.
+        c1 = (hien_tai[0] + 2 / 3 * (dk[0] - hien_tai[0]), hien_tai[1] + 2 / 3 * (dk[1] - hien_tai[1]))
+        c2 = (giua[0] + 2 / 3 * (dk[0] - giua[0]), giua[1] + 2 / 3 * (dk[1] - giua[1]))
+        lenh.append(f"{ra(*c1)} {ra(*c2)} {ra(*giua)} c")
+        hien_tai = giua
+    lenh.append(f"{ra(*diem[-1])} l")
+    return lenh
+
+
+def _lenh_ve_trang(cac_net: list[dict], doi, rong_nhin: float) -> str:
+    lenh = []
+    for net in cac_net:
+        p = [min(1.0, max(0.0, float(x))) for x in (net.get("p") or [])]
+        if len(p) < 2:
+            continue
+        loai = net.get("c")
+        lenh.append("q 1 J 1 j")
+        if loai == "khoanh":
+            lenh.append(f"{_mau(None, MAU_KHOANH)} RG {_mau(None, MAU_KHOANH)} rg /RagNen gs")
+            lenh.append(f"{rong_nhin * 0.003:.2f} w [{rong_nhin * 0.012:.2f} {rong_nhin * 0.008:.2f}] 0 d")
+            if net.get("h") == "cn" and len(p) >= 4:
+                u0, u1 = sorted((p[0], p[2]))
+                v0, v1 = sorted((p[1], p[3]))
+                goc = [doi(u0, v0), doi(u1, v0), doi(u1, v1), doi(u0, v1)]
+                lenh.append("{:.2f} {:.2f} m".format(*goc[0]))
+                lenh += ["{:.2f} {:.2f} l".format(*g) for g in goc[1:]]
+            else:
+                lenh += _duong_net(p, doi)
+            lenh.append("h B Q")  # tô nền mờ rồi viền nét đứt
+            continue
+        to_sang = loai == "to-sang"
+        do_day = max(0.5, float(net.get("d") or 0.0035) * rong_nhin)
+        mau = _mau(net.get("m"), MAU_TO_SANG if to_sang else (31, 42, 68))
+        lenh.append(f"{mau} RG {do_day:.2f} w" + (" /RagToSang gs" if to_sang else ""))
+        lenh += _duong_net(p, doi)
+        lenh.append("S Q")
+    return "\n".join(lenh)
+
+
+def xuat_pdf_danh_dau(duong_dan: str, net_theo_trang: dict[int, list[dict]]) -> bytes:
+    """PDF của tài liệu với các nét đánh dấu vẽ đè lên từng trang."""
+    if not doc_duoc(duong_dan):
+        raise LoiDocTaiLieu("Chỉ tải được bản đánh dấu của tệp PDF và ảnh.")
+    from pypdf import PdfReader, PdfWriter
+    from pypdf.errors import PdfReadError
+    from pypdf.generic import DecodedStreamObject, DictionaryObject, FloatObject, NameObject
+
+    if _la_pdf(duong_dan):
+        nguon = duong_dan
+    else:
+        nguon = io.BytesIO()
+        _mo_anh(duong_dan).save(nguon, format="PDF", resolution=72)
+        nguon.seek(0)
+    try:
+        doc = PdfReader(nguon)
+        if doc.is_encrypted and not doc.decrypt(""):
+            raise LoiDocTaiLieu("Tài liệu có mật khẩu nên không ghép đánh dấu vào được.")
+        ghi = PdfWriter(clone_from=doc)
+    except PdfReadError as exc:
+        raise LoiDocTaiLieu(f"Không đọc được tệp PDF: {exc}") from exc
+
+    tong = len(ghi.pages)
+    for so_trang, cac_net in net_theo_trang.items():
+        if not cac_net:
+            continue
+        _kiem_trang(so_trang, tong)
+        trang = ghi.pages[so_trang - 1]
+        doi, rong_nhin = _phep_doi(trang)
+        noi_dung = _lenh_ve_trang(cac_net, doi, rong_nhin)
+        if not noi_dung:
+            continue
+        # Độ trong của bút tô sáng / nền vùng khoanh khai báo trong tài nguyên
+        # của trang (pypdf đã chép tài nguyên thừa kế từ cây trang xuống từng trang).
+        tai_nguyen = trang.get("/Resources")
+        tai_nguyen = tai_nguyen.get_object() if tai_nguyen is not None else DictionaryObject()
+        trang[NameObject("/Resources")] = tai_nguyen
+        trang_thai = tai_nguyen.get("/ExtGState")
+        trang_thai = trang_thai.get_object() if trang_thai is not None else DictionaryObject()
+        tai_nguyen[NameObject("/ExtGState")] = trang_thai
+        for ten, khoa, gia_tri in (("/RagToSang", "/CA", 0.38), ("/RagNen", "/ca", 0.08)):
+            trang_thai[NameObject(ten)] = DictionaryObject({
+                NameObject("/Type"): NameObject("/ExtGState"),
+                NameObject(khoa): FloatObject(gia_tri),
+            })
+        # Bọc nội dung cũ trong q/Q: trạng thái đồ hoạ trang để lại (phép biến
+        # đổi, màu...) không được làm lệch nét vẽ nối phía sau.
+        cu = trang.get_contents()
+        dong = DecodedStreamObject()
+        dong.set_data(b"q\n" + (cu.get_data() if cu is not None else b"") + b"\nQ\n" + noi_dung.encode("ascii"))
+        trang.replace_contents(dong)
+    ra = io.BytesIO()
+    ghi.write(ra)
+    return ra.getvalue()
+
+
+# ------------------------------------------------------------
 # ĐỊNH VỊ ĐOẠN TRÍCH TRÊN TRANG
 # ------------------------------------------------------------
 # Số trang thôi chưa đủ: một trang văn bản hành chính có vài chục dòng, người

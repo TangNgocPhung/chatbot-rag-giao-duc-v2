@@ -28,6 +28,8 @@
     dong: $id('wsDongButton'),
     taiVe: $id('wsTaiVeButton'),
     taiVeMenu: $id('wsTaiVeMenu'),
+    taiVeTaiLieu: $id('wsTaiVeTaiLieu'),
+    docTaiVe: $id('wsDocTaiVe'),
     tabs: [...document.querySelectorAll('.ws-tab')],
     panes: [...document.querySelectorAll('.ws-pane')],
     ghiChu: $id('wsGhiChuNoiDung'),
@@ -55,7 +57,8 @@
   };
   if (!ws.root) return;
 
-  const DUOI_DOC_DUOC = /\.(pdf|png|jpe?g|webp|bmp|tiff?)$/i;
+  // Word / Excel / PowerPoint / HTML được máy chủ chuyển sang PDF (chuyen_pdf.py) rồi đọc như PDF.
+  const DUOI_DOC_DUOC = /\.(pdf|png|jpe?g|webp|bmp|tiff?|docx?|odt|rtf|html?|xlsx?|xlsm|ods|csv|tsv|pptx?|ppsx?|odp)$/i;
   const KHOA_MO = 'rag-so-tay-mo';
   const KHOA_TAB = 'rag-so-tay-tab';
   const KHOA_RONG = 'rag-so-tay-rong';
@@ -1420,11 +1423,14 @@
     }
     const moThem = document.createElement('option');
     moThem.value = '__mo__';
-    moThem.textContent = '+ Mở tệp khác…';
+    moThem.textContent = '+ Mở tệp từ máy…';
+    const moKho = document.createElement('option');
+    moKho.value = '__kho__';
+    moKho.textContent = '+ Mở từ Kho tài liệu…';
     const dong = document.createElement('option');
     dong.value = '__dong__';
     dong.textContent = 'Đóng trình đọc';
-    ws.docChon.append(moThem, dong);
+    ws.docChon.append(moThem, moKho, dong);
     if (docDangMo) ws.docChon.value = docDangMo.khoa;
 
     ws.docDaMo.replaceChildren();
@@ -1451,6 +1457,10 @@
     if (giaTri === '__mo__') {
       ws.docChon.value = docDangMo?.khoa || '';
       ws.fileInput.click();
+    } else if (giaTri === '__kho__') {
+      // Bấm một tệp PDF, ảnh, Word, Excel, PowerPoint hay HTML trong kho là mở ngay tại đây.
+      ws.docChon.value = docDangMo?.khoa || '';
+      openDocumentLibrary();
     } else if (giaTri === '__dong__') {
       dongTaiLieuHienTai();
       so.taiLieuMo = null;
@@ -1462,6 +1472,7 @@
   });
 
   ws.moTep.addEventListener('click', () => ws.fileInput.click());
+  $id('wsMoKhoButton')?.addEventListener('click', () => openDocumentLibrary());
   ws.fileInput.addEventListener('change', async () => {
     const tep = ws.fileInput.files?.[0];
     ws.fileInput.value = '';
@@ -1706,6 +1717,7 @@
   ws.taiVe.addEventListener('click', (event) => {
     event.stopPropagation();
     const dangMo = !ws.taiVeMenu.classList.contains('hidden');
+    ws.taiVeTaiLieu.classList.toggle('hidden', !docDangMo);
     ws.taiVeMenu.classList.toggle('hidden', dangMo);
     ws.taiVe.setAttribute('aria-expanded', String(!dangMo));
   });
@@ -1719,8 +1731,44 @@
     await luuNgay();
     if (nut.dataset.tai === 'doc') taiWord();
     else if (nut.dataset.tai === 'pdf') inSoTay();
+    else if (nut.dataset.tai === 'tai-lieu') taiTaiLieuDanhDau();
     else taiAnhBang();
   });
+
+  // Tài liệu đang đọc, kèm mọi nét đã vẽ: máy chủ vẽ nét thành véc-tơ ngay
+  // trên trang PDF gốc nên chữ vẫn chọn được; ảnh chụp thì thành PDF một trang.
+  async function taiTaiLieuDanhDau() {
+    if (!docDangMo) {
+      showToast('Hãy mở một tài liệu trước');
+      return;
+    }
+    const doc = docDangMo;
+    const net = so?.taiLieu[doc.khoa]?.net || {};
+    const coNet = Object.values(net).some((mang) => mang.length);
+    ws.docTaiVe.disabled = true;
+    showToast(coNet ? 'Đang ghép đánh dấu vào tài liệu…' : 'Đang tải tài liệu…', 4000);
+    try {
+      const phanHoi = await fetch('/api/doc/tai-ve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // thamSo là nguồn trình đọc đang dùng thật (tệp đính kèm hết hạn thì
+        // đã chuyển sang bản trong kho), không phải doc.tep ban đầu.
+        body: JSON.stringify({ ...Object.fromEntries(new URLSearchParams(doc.thamSo)), ten: doc.ten, net }),
+      });
+      if (!phanHoi.ok) {
+        const noiDung = await phanHoi.json().catch(() => ({}));
+        throw new Error(noiDung.detail || `Máy chủ trả về lỗi ${phanHoi.status}.`);
+      }
+      const goc = (doc.ten || 'tai-lieu').replace(/\.[^.]+$/, '');
+      taiXuong(await phanHoi.blob(), coNet ? `${goc} (đã đánh dấu).pdf` : `${goc}.pdf`);
+      showToast(coNet ? 'Đã tải tài liệu kèm đánh dấu' : 'Đã tải tài liệu');
+    } catch (error) {
+      showToast(error.message || 'Không tải được tài liệu');
+    } finally {
+      ws.docTaiVe.disabled = false;
+    }
+  }
+  ws.docTaiVe.addEventListener('click', taiTaiLieuDanhDau);
 
   const thoatHtml = (chu) => String(chu).replace(/[&<>"]/g, (k) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[k]));
 

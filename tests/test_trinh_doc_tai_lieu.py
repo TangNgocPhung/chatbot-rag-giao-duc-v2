@@ -158,11 +158,12 @@ class DocTaiLieuApiTests(unittest.TestCase):
             self.client.get("/api/doc/thong-tin", params={"tep": "khong-co"}).status_code, 404,
         )
 
-    def test_tep_khong_phai_pdf_hay_anh(self):
-        docx = os.path.join(self.thu_muc.name, "a.docx")
-        open(docx, "wb").close()
-        with patch.object(api.service, "resolve_source_file", return_value=docx):
-            phan_hoi = self.client.get("/api/doc/thong-tin", params={"nguon": "a.docx"})
+    def test_dinh_dang_chua_doc_duoc(self):
+        # Word / Excel / PowerPoint / HTML nay được chuyển sang PDF (test_chuyen_pdf.py); video thì chưa.
+        video = os.path.join(self.thu_muc.name, "a.mp4")
+        open(video, "wb").close()
+        with patch.object(api.service, "resolve_source_file", return_value=video):
+            phan_hoi = self.client.get("/api/doc/thong-tin", params={"nguon": "a.mp4"})
         self.assertEqual(phan_hoi.status_code, 415)
 
     def test_vung_ngoai_khoang_bi_tu_choi(self):

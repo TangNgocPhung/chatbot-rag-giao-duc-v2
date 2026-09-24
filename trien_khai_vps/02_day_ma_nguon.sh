@@ -62,6 +62,12 @@ MAT_KHAU="$(doc_bien_bat RAG_MAT_KHAU mat_khau.bat)"
   || { echo "[LOI] mat_khau.bat chua dat mat khau that."; exit 1; }
 KHOA_DRIVE=""
 [ -f khoa_api.bat ] && KHOA_DRIVE="$(doc_bien_bat RAG_DRIVE_API_KEY khoa_api.bat)"
+# Gui ma xac minh email (gui_thu.py): Gmail + mat khau ung dung, xem khoa_api.mau.bat.
+SMTP_TK=""; SMTP_MK=""
+if [ -f khoa_api.bat ]; then
+  SMTP_TK="$(doc_bien_bat RAG_SMTP_TAI_KHOAN khoa_api.bat)"
+  SMTP_MK="$(doc_bien_bat RAG_SMTP_MAT_KHAU khoa_api.bat)"
+fi
 
 umask 077
 TEP_TAM="$(mktemp)"; TEP_MK="$(mktemp)"
@@ -82,11 +88,20 @@ printf '%s' "$MAT_KHAU" > "$TEP_MK"
   echo "PYTHONUNBUFFERED=1"
   echo "PYTHONIOENCODING=utf-8"
   [ -n "$KHOA_DRIVE" ] && echo "RAG_DRIVE_API_KEY=$KHOA_DRIVE"
+  if [ -n "$SMTP_TK" ] && [ -n "$SMTP_MK" ]; then
+    echo "RAG_SMTP_TAI_KHOAN=$SMTP_TK"
+    echo "RAG_SMTP_MAT_KHAU=$SMTP_MK"
+  fi
 } > "$TEP_TAM"
-unset MAT_KHAU KHOA_DRIVE
+unset MAT_KHAU KHOA_DRIVE SMTP_MK
 $SCP "$TEP_TAM" "$NGUOI_SSH@$MAY_CHU:/tmp/chatbot-rag.env" >/dev/null
 $SCP "$TEP_MK"  "$NGUOI_SSH@$MAY_CHU:/tmp/mk.txt" >/dev/null
-$SSH "$NHU_ROOT install -o root -g rag -m 640 /tmp/chatbot-rag.env /etc/chatbot-rag.env && rm -f /tmp/chatbot-rag.env && echo 'Da ghi /etc/chatbot-rag.env'"
+# Khoa chi dat tren VPS (RAG_EMAIL_QUAN_TRI...) ma may nay khong co thi giu
+# nguyen gia tri cu, dung de lan day ma nguon nao cung xoa mat.
+$SSH "$NHU_ROOT bash -c 'for k in RAG_EMAIL_QUAN_TRI RAG_SMTP_TAI_KHOAN RAG_SMTP_MAT_KHAU RAG_SMTP_MAY_CHU RAG_SMTP_CONG RAG_SMTP_NGUOI_GUI; do
+        grep -q \"^\$k=\" /tmp/chatbot-rag.env || grep \"^\$k=\" /etc/chatbot-rag.env >> /tmp/chatbot-rag.env 2>/dev/null || true
+      done'
+      $NHU_ROOT install -o root -g rag -m 640 /tmp/chatbot-rag.env /etc/chatbot-rag.env && rm -f /tmp/chatbot-rag.env && echo 'Da ghi /etc/chatbot-rag.env'"
 
 # KHOA_QUAN_TRI=1 thi dat mat khau cho cac duong dan quan tri; mac dinh 0 =
 # khong chan gi, dung yeu cau "bo het cho hoi mat khau" ngay 15/09/2026.

@@ -285,33 +285,44 @@ class LuuTepDinhKemVaoKhoTests(unittest.TestCase):
 
 
 class HookLuuKhoTests(unittest.TestCase):
-    def tearDown(self):
-        tep_dinh_kem.dat_hook_luu_kho(service.luu_tep_vao_kho)
+    def setUp(self):
+        self.addCleanup(tep_dinh_kem.dat_hook_luu_kho, tep_dinh_kem._hook_luu_kho)
+
+    """Tệp chỉ vào kho chung khi chủ tệp tự đề xuất (tài liệu riêng)."""
+
+    @staticmethod
+    def _tep():
+        return tep_dinh_kem.TepDinhKem(
+            id="abc", ten="quy-che.txt", duoi=".txt", loai="van_ban",
+            duong_dan="/tmp/quy-che.txt", kich_thuoc=10, tao_luc=0.0, trang_thai="san_sang",
+        )
 
     def test_status_is_reported_to_the_interface(self):
-        tep = tep_dinh_kem.TepDinhKem(
-            id="abc", ten="quy-che.txt", duoi=".txt", loai="van_ban",
-            duong_dan="/tmp/quy-che.txt", kich_thuoc=10, tao_luc=0.0,
+        tep = self._tep()
+        self.assertEqual(tep.cong_khai()["luu_kho"], "rieng")
+        nhan = []
+        tep_dinh_kem.dat_hook_luu_kho(
+            lambda duong_dan, ten, nguoi=None: nhan.append(nguoi) or ("da_luu", "Đã thêm vào kho")
         )
-        tep_dinh_kem.dat_hook_luu_kho(lambda duong_dan, ten, nguoi=None: ("da_luu", "Đã thêm vào kho"))
 
-        self.assertEqual(tep_dinh_kem._luu_vao_kho(tep), ("da_luu", "Đã thêm vào kho"))
-        self.assertIn("luu_kho", tep.cong_khai())
+        ket_qua = tep_dinh_kem.KhoTepDinhKem().de_xuat(tep, "bam", {"id": "gv", "quan_tri": True})
+        self.assertEqual(ket_qua, ("da_luu", "Đã thêm vào kho"))
+        self.assertEqual(tep.cong_khai()["luu_kho"], "da_luu")
+        # Quyền của người đang bấm quyết định vào thẳng kho hay chờ duyệt.
+        self.assertEqual(nhan, [{"id": "gv", "quan_tri": True}])
 
     def test_failure_does_not_break_the_attachment(self):
-        tep = tep_dinh_kem.TepDinhKem(
-            id="abc", ten="quy-che.txt", duoi=".txt", loai="van_ban",
-            duong_dan="/tmp/quy-che.txt", kich_thuoc=10, tao_luc=0.0,
-        )
+        tep = self._tep()
 
         def hong(duong_dan, ten, nguoi=None):
             raise OSError("ổ đĩa đầy")
 
         tep_dinh_kem.dat_hook_luu_kho(hong)
-        trang_thai, thong_bao = tep_dinh_kem._luu_vao_kho(tep)
+        trang_thai, thong_bao = tep_dinh_kem.KhoTepDinhKem().de_xuat(tep, "bam", None)
 
         self.assertEqual(trang_thai, "loi")
         self.assertIn("ổ đĩa đầy", thong_bao)
+        self.assertEqual(tep.trang_thai, "san_sang")
 
 
 class GiaoDienTinhTests(unittest.TestCase):

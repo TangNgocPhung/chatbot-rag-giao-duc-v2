@@ -6,7 +6,7 @@
   <meta name="description" content="Chatbot RAG hỗ trợ tra cứu và hỏi đáp từ kho tri thức giáo dục.">
   <title>Chatbot RAG Giáo dục</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=1.9.1">
+  <link rel="stylesheet" href="./styles.css?v=1.9.4">
   <script>
     /* Đặt nền đúng ngay từ lần vẽ đầu: app.js dùng defer nên nếu đợi nó thì
        người dùng chế độ tối sẽ thấy một nháy màu trắng khi mở trang. */
@@ -295,6 +295,7 @@
               <button type="button" role="menuitem" data-tai="doc"><strong>Word (.doc)</strong><small>Ghi chú, ảnh vùng khoanh và bảng vẽ</small></button>
               <button type="button" role="menuitem" data-tai="pdf"><strong>In hoặc lưu PDF</strong><small>Mở bản in của sổ tay</small></button>
               <button type="button" role="menuitem" data-tai="png"><strong>Ảnh bảng vẽ (.png)</strong><small>Chỉ phần đã vẽ trên bảng</small></button>
+              <button type="button" role="menuitem" data-tai="tai-lieu" id="wsTaiVeTaiLieu" class="hidden"><strong>Tài liệu đang đọc (.pdf)</strong><small>Kèm nét bút, tô sáng và vùng khoanh</small></button>
             </div>
           </div>
           <button class="icon-button" id="wsDongButton" type="button" aria-label="Đóng sổ tay" title="Đóng sổ tay">
@@ -354,14 +355,18 @@
             <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7V3Z"/><path d="M15 3v5h4"/><circle cx="12" cy="14" r="3.2"/></svg>
           </div>
           <strong>Đọc tài liệu ngay tại đây</strong>
-          <p>Mở một tệp PDF hoặc ảnh chụp trang sách, <b>khoanh vào chỗ chưa hiểu</b> rồi bấm “Giải thích” — trợ lý sẽ giải thích đúng đoạn đó.</p>
+          <p>Mở một tệp PDF, Word, Excel, PowerPoint, HTML hoặc ảnh chụp trang sách, <b>khoanh vào chỗ chưa hiểu</b> rồi bấm “Giải thích” — trợ lý sẽ giải thích đúng đoạn đó.</p>
           <button class="doc-mo-tep" id="wsMoTepButton" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-            Mở tệp PDF / ảnh
+            Mở tài liệu hoặc ảnh
+          </button>
+          <button class="doc-mo-tep phu" id="wsMoKhoButton" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H10l2 2h6.5A1.5 1.5 0 0 1 20 7.5v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13Z"/></svg>
+            Mở từ Kho tài liệu
           </button>
           <p class="doc-trong-meo">Hoặc bấm vào một nguồn PDF dưới câu trả lời, hay tài liệu trong “Kho tài liệu”.</p>
           <div class="doc-da-mo" id="wsDocDaMo"></div>
-          <input id="wsFileInput" type="file" hidden accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff">
+          <input id="wsFileInput" type="file" hidden accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff,.docx,.doc,.odt,.rtf,.html,.htm,.xlsx,.xlsm,.xls,.ods,.csv,.tsv,.pptx,.ppt,.ppsx,.pps,.odp">
         </div>
         <div class="doc-xem hidden" id="wsDocXem">
           <div class="doc-dau">
@@ -382,6 +387,9 @@
               <button class="doc-ti-le" id="wsTiLe" type="button" title="Vừa khung">100%</button>
               <button class="icon-button" id="wsPhongTo" type="button" aria-label="Phóng to" title="Phóng to">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6M11 8v6"/></svg>
+              </button>
+              <button class="icon-button" id="wsDocTaiVe" type="button" aria-label="Tải tài liệu kèm đánh dấu (PDF)" title="Tải tài liệu kèm đánh dấu (PDF)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
               </button>
             </div>
           </div>
@@ -413,9 +421,37 @@
   <!-- Menu tài khoản (bấm vào tên ở cuối thanh bên). -->
   <div class="menu-tai-khoan hidden" id="menuTaiKhoan" role="menu" aria-label="Tài khoản">
     <div class="menu-tai-khoan-dau">
-      <strong id="menuTaiKhoanTen"></strong>
-      <small id="menuTaiKhoanEmail"></small>
+      <button class="menu-tai-khoan-anh" type="button" role="menuitem" data-tk="doi-anh" aria-label="Đổi ảnh đại diện" title="Đổi ảnh đại diện">
+        <span class="avatar-tk" id="menuTaiKhoanAnh" aria-hidden="true"></span>
+        <svg class="menu-tai-khoan-may-anh" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      </button>
+      <span class="menu-tai-khoan-chu">
+        <strong id="menuTaiKhoanTen"></strong>
+        <small id="menuTaiKhoanEmail"></small>
+        <span class="nhan-xac-minh hidden" id="menuTaiKhoanXacMinh"></span>
+      </span>
     </div>
+    <button type="button" role="menuitem" data-tk="xac-minh" id="menuXacMinh" class="hidden">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
+      Xác minh email
+    </button>
+    <button type="button" role="menuitem" data-tk="doi-anh">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m4 17 5-4.5 3.5 3 3-2.5 4.5 4"/></svg>
+      <span id="menuDoiAnhChu">Tải ảnh đại diện</span>
+    </button>
+    <button type="button" role="menuitem" data-tk="xoa-anh" id="menuXoaAnh" class="hidden">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>
+      Gỡ ảnh đại diện
+    </button>
+    <input id="anhDaiDienTep" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" hidden>
+    <button type="button" role="menuitem" data-tk="quan-ly-tai-khoan" class="chi-quan-tri">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M17.5 14.2A5.5 5.5 0 0 1 20.5 19"/></svg>
+      Quản lý tài khoản
+    </button>
+    <button type="button" role="menuitem" data-tk="sua-thong-tin">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 10.5-10.5-3-3L5 16l-1 4Z"/><path d="m13.5 7.5 3 3"/></svg>
+      Sửa họ tên / email
+    </button>
     <button type="button" role="menuitem" data-tk="doi-mat-khau">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
       Đổi mật khẩu
@@ -506,7 +542,11 @@
         <span>Mật khẩu hiện tại</span>
         <input id="authMatKhauCu" type="password" autocomplete="current-password">
       </label>
-      <label class="auth-field">
+      <label class="auth-field hidden" id="authMaField">
+        <span>Mã xác minh</span>
+        <input id="authMa" class="auth-ma" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="••••••">
+      </label>
+      <label class="auth-field" id="authMatKhauField">
         <span id="authMatKhauNhan">Mật khẩu</span>
         <span class="auth-pass">
           <input id="authMatKhau" type="password" autocomplete="current-password">
@@ -521,6 +561,7 @@
         <button type="button" id="authSwitchButton">Đăng ký</button>
       </p>
       <p class="auth-note" id="authNote">Quên mật khẩu? Hãy nhờ quản trị viên đặt lại.</p>
+      <p class="auth-switch hidden" id="authSuaEmailDong"><button type="button" id="authSuaEmail">Nhập sai email? Sửa lại</button></p>
     </form>
   </dialog>
 
@@ -543,7 +584,7 @@
         <h2>Kho tài liệu</h2>
       </div>
       <div class="dialog-header-actions">
-        <button class="icon-button chi-quan-tri" id="uploadLibraryButton" type="button" aria-label="Thêm tài liệu vào kho" title="Thêm tài liệu vào kho">
+        <button class="icon-button" id="uploadLibraryButton" type="button" aria-label="Thêm tài liệu vào kho" title="Thêm tài liệu vào kho">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         </button>
         <button class="icon-button" id="closeDocumentDialog" type="button" aria-label="Đóng kho tài liệu">
@@ -553,10 +594,11 @@
       <input id="libraryFileInput" type="file" multiple hidden
         accept=".pdf,.docx,.doc,.txt,.md,.html,.htm,.epub,.jpg,.jpeg,.png,.tif,.tiff,.bmp,.webp,.xlsx,.xlsm,.xls,.csv,.tsv,.pptx,.srt,.vtt,.mp4,.mkv,.mov,.avi,.webm,.wmv,.flv,.mp3,.wav,.m4a,.aac,.flac,.ogg,.wma">
     </div>
-    <div class="kho-tabs chi-quan-tri" id="khoTabs" role="tablist" aria-label="Quản trị kho tài liệu">
-      <button type="button" role="tab" data-kho="tai-lieu" aria-selected="true">Tài liệu</button>
-      <button type="button" role="tab" data-kho="cho-duyet" aria-selected="false">Chờ duyệt <span class="kho-dem hidden" id="khoDemChoDuyet"></span></button>
-      <button type="button" role="tab" data-kho="thung-rac" aria-selected="false">Thùng rác</button>
+    <div class="kho-tabs hidden" id="khoTabs" role="tablist" aria-label="Phần của kho tài liệu">
+      <button type="button" role="tab" data-kho="tai-lieu" aria-selected="true">Kho chung</button>
+      <button class="chi-dang-nhap" type="button" role="tab" data-kho="cua-toi" aria-selected="false" title="Tài liệu bạn tải lên - chỉ bạn thấy">Của tôi <span class="qltk-dem hidden" id="khoDemCuaToi"></span></button>
+      <button class="chi-quan-tri" type="button" role="tab" data-kho="cho-duyet" aria-selected="false">Chờ duyệt <span class="kho-dem hidden" id="khoDemChoDuyet"></span></button>
+      <button class="chi-quan-tri" type="button" role="tab" data-kho="thung-rac" aria-selected="false">Thùng rác</button>
     </div>
     <div class="document-summary" id="documentSummary"></div>
     <label class="document-search">
@@ -565,6 +607,32 @@
     </label>
     <div class="document-filters" id="documentFilters" role="group" aria-label="Lọc theo loại tài liệu"></div>
     <div class="document-list" id="documentList"></div>
+  </dialog>
+
+  <!-- Quản lý tài khoản: chỉ quản trị viên mở được (menu tài khoản). -->
+  <dialog class="document-dialog qltk-dialog" id="qltkDialog" aria-labelledby="qltkTitle">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">QUẢN TRỊ</p>
+        <h2 id="qltkTitle">Tài khoản người dùng</h2>
+      </div>
+      <div class="dialog-header-actions">
+        <button class="icon-button" id="qltkDong" type="button" aria-label="Đóng quản lý tài khoản">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="kho-tabs" id="qltkTabs" role="tablist" aria-label="Lọc tài khoản">
+      <button type="button" role="tab" data-loc="tat-ca" aria-selected="true">Tất cả <span class="qltk-dem" data-dem="tat-ca"></span></button>
+      <button type="button" role="tab" data-loc="chua-xac-minh" aria-selected="false">Chưa xác minh <span class="qltk-dem" data-dem="chua-xac-minh"></span></button>
+      <button type="button" role="tab" data-loc="bi-khoa" aria-selected="false">Bị khoá <span class="qltk-dem" data-dem="bi-khoa"></span></button>
+    </div>
+    <div class="document-summary" id="qltkTomTat"></div>
+    <label class="document-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input id="qltkTim" type="search" placeholder="Tìm theo tên hoặc email..." autocomplete="off">
+    </label>
+    <div class="document-list" id="qltkDanhSach"></div>
   </dialog>
 
   <dialog class="confirm-dialog" id="confirmDialog" aria-labelledby="confirmTitle">
@@ -577,9 +645,10 @@
       </div>
     </div>
   </dialog>
-  <script src="./app.js?v=1.9.4" defer></script>
-  <script src="./so-tay.js?v=1.8.5" defer></script>
-  <script src="./tai-khoan.js?v=1.8.0" defer></script>
+  <script src="./app.js?v=1.9.6" defer></script>
+  <script src="./so-tay.js?v=1.9.4" defer></script>
+  <script src="./tai-khoan.js?v=1.9.6" defer></script>
+  <script src="./quan-ly-tai-khoan.js?v=1.9.2" defer></script>
   <script src="./dich.js?v=1.8.2" defer></script>
   <script src="./giong-noi.js?v=1.8.3" defer></script>
 </body>

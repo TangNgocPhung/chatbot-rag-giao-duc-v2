@@ -681,6 +681,7 @@ class RAGService:
             "reasoning": os.getenv("RAG_REASONING", "0") == "1",
             "busy": self._generation_lock.locked(),
             "hoi_tep_duoc": self.hoi_tep_duoc(),
+            "hoi_kho_duoc": self.hoi_kho_duoc(),
             "tep_cho_nap": len(self.tep_cho_nap),
             "tu_nap_chi_muc": _tu_nap_chi_muc(),
             "index_progress": index_progress,
@@ -699,17 +700,30 @@ class RAGService:
         chủ vừa bật, chưa dựng xong chuỗi nào, mới phải đợi."""
         return self.status.state in {"ready", "updating", "loading"} and self.rag_chain is not None
 
+    def hoi_kho_duoc(self) -> bool:
+        """Hỏi trên cả kho được không.
+
+        Lúc "updating", trình cập nhật dựng chỉ mục mới TRÊN ĐĨA; FAISS, BM25
+        và chuỗi trả lời trong bộ nhớ vẫn là bản cũ, còn nguyên vẹn, nên trả
+        lời bằng bản cũ được (chỉ thiếu các tệp đang nạp). Lúc "loading" thì
+        không: initialize() thay vector_store, BM25... lần lượt từng cái, hỏi
+        giữa chừng sẽ trộn chỉ mục mới với cũ.
+        """
+        return self.status.state == "ready" or (
+            self.status.state == "updating" and self.rag_chain is not None
+        )
+
     def dang_sinh(self) -> bool:
         """Có câu trả lời đang sinh (hoặc lượt cập nhật chỉ mục đang giữ khoá)."""
         return self._generation_lock.locked() or self._khoa_sinh_khi_cap_nhat.locked()
 
     @contextmanager
     def _luot_sinh_tep(self):
-        """Giữ lượt sinh cho một câu hỏi về tệp đính kèm.
+        """Giữ lượt sinh cho một câu hỏi (tên cũ: ban đầu chỉ dành cho tệp đính kèm).
 
         Bình thường dùng chung _generation_lock với mọi câu hỏi. Khi khoá đó
         đang bị lượt cập nhật chỉ mục giữ thì chuyển sang khoá phụ, thay vì bắt
-        người hỏi về chính tệp của mình đợi cả kho lập chỉ mục xong.
+        người hỏi đợi cả kho lập chỉ mục xong - vẫn chỉ một câu sinh mỗi lúc.
         """
         while True:
             if self._generation_lock.acquire(timeout=0.5):
@@ -813,15 +827,18 @@ class RAGService:
         return not tai_khoan.bat_khoa_quan_tri() or bool(nguoi and nguoi.get("quan_tri"))
 
     def luu_tep_vao_kho(
-        self, duong_dan: str, ten: str, nguoi: dict | None = None, *, tu_he_thong: bool = False
+        self, duong_dan: str, ten: str, nguoi: dict | None = None, *,
+        tu_he_thong: bool = False, nguon: str = "dinh_kem", de_xuat: bool = False,
     ) -> tuple[str, str]:
-        """Chép tệp vừa đính kèm vào kho tài liệu chung rồi hẹn nạp vào chỉ mục.
+        """Chép tệp vào kho tài liệu chung rồi hẹn nạp vào chỉ mục.
 
-        Gọi từ luồng đọc tệp của tep_dinh_kem (qua hook) nên chỉ làm việc rẻ:
-        băm, chép, hẹn giờ. Phần embedding đắt tiền để dành cho lúc máy rảnh.
+        Chỉ làm việc rẻ: băm, chép, hẹn giờ. Phần embedding đắt tiền để dành
+        cho lúc máy rảnh.
         tu_he_thong: thư mục nóng do quản trị viên cấu hình, không cần duyệt.
+        de_xuat: chủ tài liệu riêng tự bấm "Đề xuất vào kho chung" - không bị
+        RAG_LUU_TEP_DINH_KEM=0 chặn (biến đó là để tắt việc tự lưu tệp).
         """
-        if not _luu_tep_dinh_kem_vao_kho():
+        if not de_xuat and not _luu_tep_dinh_kem_vao_kho():
             return "tat", ""
 
         ma_bam = tinh_hash_file(duong_dan)
@@ -830,7 +847,7 @@ class RAGService:
             return "da_co", f"Kho tài liệu đã có tệp này ({os.path.basename(trung)})."
 
         if not tu_he_thong and not self._vao_thang_kho(nguoi):
-            quan_ly_kho.gui_cho_duyet(duong_dan, ten, ma_bam, "dinh_kem", nguoi)
+            quan_ly_kho.gui_cho_duyet(duong_dan, ten, ma_bam, nguon, nguoi)
             return "cho_duyet", (
                 "Đã gửi quản trị viên duyệt để đưa vào kho tài liệu chung. "
                 "Bạn vẫn hỏi về tệp này được ngay."
@@ -839,7 +856,7 @@ class RAGService:
         ten_trong_kho = self._chep_vao_kho(duong_dan, ten)
         quan_ly_kho.ghi_vao_kho(
             ten, ten_trong_kho, ma_bam, os.path.getsize(duong_dan),
-            "thu_muc_nong" if tu_he_thong else "dinh_kem", nguoi,
+            "thu_muc_nong" if tu_he_thong else nguon, nguoi,
         )
         noi_luu = THU_MUC_TEP_TRONG_KHO or os.path.basename(DATA_PATH)
         return "da_luu", (
@@ -876,6 +893,9 @@ class RAGService:
         return ket_qua
 
     def khoi_phuc_tai_lieu(self, ma: str) -> str:
+        if quan_ly_kho.la_tep_bi_tu_choi(ma):
+            # Về lại hàng chờ duyệt, chưa vào kho nên chưa có gì để lập chỉ mục.
+            return quan_ly_kho.tra_ve_cho_duyet(ma)
         ten = quan_ly_kho.khoi_phuc(ma, self._duong_dan_trong_kho)
         self.tep_cho_nap.append(ten)
         self._hen_cap_nhat_chi_muc()
@@ -884,7 +904,8 @@ class RAGService:
     def nhap_tep_tu_giao_dien(
         self, ten: str, du_lieu: bytes, nguoi: dict | None = None
     ) -> tuple[str, str]:
-        """Nhận tệp tải lên từ nút "+" trong Kho tài liệu.
+        """Nhận tệp tải lên từ nút "+" trong Kho tài liệu. Quản trị viên đưa
+        thẳng vào kho; người dùng thường gửi vào hàng chờ duyệt.
 
         Khác luu_tep_vao_kho (đi qua tệp đính kèm chat), ở đây byte đến thẳng
         từ trình duyệt nên phải ghi ra tệp tạm NGOÀI kho trước khi băm - băm
@@ -910,6 +931,14 @@ class RAGService:
             if trung is not None:
                 return "da_co", (
                     f"Kho tài liệu đã có tệp này ({os.path.basename(trung)})."
+                )
+            if not self._vao_thang_kho(nguoi):
+                # Người dùng thường: bản sao vào hàng chờ, quản trị viên duyệt
+                # xong mới vào kho. Tệp tạm vẫn bị xoá ở finally bên dưới.
+                _, la_moi = quan_ly_kho.gui_cho_duyet(tam, ten_goc, ma_bam, "kho", nguoi)
+                return "cho_duyet", (
+                    "Đã gửi quản trị viên duyệt, duyệt xong tệp sẽ vào kho."
+                    if la_moi else "Tệp này đã có người gửi và đang chờ duyệt."
                 )
             dich = self._duong_dan_trong_kho(ten_goc)
             os.makedirs(os.path.dirname(dich), exist_ok=True)
@@ -1419,7 +1448,8 @@ class RAGService:
         Cố tình KHÔNG trộn với kho tri thức chung: người dùng đính kèm tệp là để
         hỏi về tệp đó, trộn thêm văn bản khác chỉ làm câu trả lời khó kiểm chứng.
         """
-        cac_tep = [tep_dinh_kem.kho_tep.lay_san_sang(ma) for ma in tep_ids[:4]]
+        # api.py đã lọc tep_ids theo chủ tệp trước khi gọi tới đây.
+        cac_tep = [tep_dinh_kem.kho_tep.lay_san_sang(ma, kiem_chu=False) for ma in tep_ids[:4]]
         with self._luot_sinh_tep():
             started = time.perf_counter()
             retrieval_question, model_question = self._conversation_inputs(
@@ -1661,8 +1691,9 @@ class RAGService:
         doan_trich: dict | None = None,
         ten_mo_hinh: str | None = None,
     ) -> Iterator[dict]:
-        # Tệp đính kèm không cần chỉ mục: kho đang cập nhật vẫn hỏi được.
-        if self.status.state != "ready" and not (tep_ids and self.hoi_tep_duoc()):
+        # Tệp đính kèm không cần chỉ mục; câu hỏi cả kho dùng chỉ mục cũ trong
+        # bộ nhớ khi kho đang cập nhật (xem hoi_kho_duoc).
+        if not self.hoi_kho_duoc() and not (tep_ids and self.hoi_tep_duoc()):
             raise RuntimeError(self.status.message)
         ten_mo_hinh = ten_mo_hinh or self.llm_model
         doan_khoanh = doan_khoanh_thanh_bang_chung(doan_trich)
@@ -1720,7 +1751,7 @@ class RAGService:
                 yield from self._tra_tu_cache(ung_vien_cache, diem_cache)
                 return
 
-        with self._generation_lock:
+        with self._luot_sinh_tep():
             started = time.perf_counter()
             retrieval_question, model_question = self._conversation_inputs(question, history)
             yield {
@@ -1855,4 +1886,8 @@ class RAGService:
 
 service = RAGService()
 # Tệp người dùng đính kèm trong chat sẽ được chép thẳng vào kho tài liệu.
-tep_dinh_kem.dat_hook_luu_kho(service.luu_tep_vao_kho)
+tep_dinh_kem.dat_hook_luu_kho(
+    lambda duong_dan, ten, nguoi=None: service.luu_tep_vao_kho(
+        duong_dan, ten, nguoi, nguon="de_xuat", de_xuat=True
+    )
+)

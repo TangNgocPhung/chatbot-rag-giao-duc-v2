@@ -160,6 +160,8 @@ let serviceState = 'starting';
 // Máy chủ báo hỏi về tệp đính kèm được hay không. Tệp không cần chỉ mục nên
 // kho đang cập nhật (thường ngay sau khi quản trị viên duyệt tệp) vẫn hỏi được.
 let hoiTepDuoc = false;
+// Kho đang cập nhật vẫn hỏi cả kho được: máy chủ trả lời bằng chỉ mục cũ.
+let hoiKhoDuoc = false;
 // Máy chủ có tự cập nhật chỉ mục ban ngày không (VPS: không, đợi lượt ban đêm).
 let tuNapChiMuc = true;
 const lucNapChiMuc = () => (tuNapChiMuc ? 'khi máy rảnh' : 'trong lượt cập nhật ban đêm');
@@ -204,6 +206,17 @@ function laQuanTri() {
 
 function capNhatQuyenQuanTri() {
   document.body.dataset.quanTri = laQuanTri() ? '1' : '0';
+  document.body.dataset.dangNhap = nguoiDung ? '1' : '0';
+  // Khách chỉ có kho chung nên không cần thanh thẻ.
+  document.getElementById('khoTabs')?.classList.toggle('hidden', !nguoiDung && !laQuanTri());
+  if (!nguoiDung && cheDoKho === 'cua-toi') cheDoKho = 'tai-lieu';
+  // Nút "+" của kho mở cho mọi người: quản trị viên thêm thẳng vào kho chung,
+  // người khác lưu thành tài liệu riêng, khách được mời đăng nhập trước.
+  const nhan = laQuanTri() ? 'Thêm tài liệu vào kho chung'
+    : nguoiDung ? 'Thêm vào Tài liệu của tôi (chỉ bạn thấy)'
+      : 'Đăng nhập để thêm tài liệu';
+  elements.uploadLibraryButton.title = nhan;
+  elements.uploadLibraryButton.setAttribute('aria-label', nhan);
 }
 
 async function taiLichSuTaiKhoan() {
@@ -469,12 +482,15 @@ function dinhDangKichThuoc(bytes) {
 
 // Tệp đính kèm còn được chép sang kho tài liệu chung để lần sau hỏi không phải
 // tải lên lại; chỉ mục thì nạp sau nên ở đây chỉ báo tình trạng chép.
+// Tình trạng của tài liệu riêng với kho chung (xem tep_dinh_kem.py).
 function nhanLuuKho(trangThai) {
   return {
-    da_luu: 'đã thêm vào kho tài liệu',
-    da_co: 'kho tài liệu đã có',
-    cho_duyet: 'chờ quản trị viên duyệt vào kho',
-    loi: 'chưa thêm được vào kho tài liệu',
+    rieng: nguoiDung ? 'chỉ bạn thấy' : '',
+    da_luu: 'đã vào kho chung',
+    da_co: 'kho chung đã có tệp này',
+    cho_duyet: 'đang chờ duyệt vào kho chung',
+    tu_choi: 'không được duyệt vào kho chung',
+    loi: 'chưa đề xuất được vào kho chung',
   }[trangThai] || '';
 }
 
@@ -485,7 +501,7 @@ function tepSanSang() {
 // Kho sẵn sàng thì hỏi gì cũng được; kho đang cập nhật thì chỉ hỏi về tệp
 // đã đính kèm.
 function hoiDuoc() {
-  return serviceState === 'ready' || (hoiTepDuoc && tepSanSang().length > 0);
+  return serviceState === 'ready' || hoiKhoDuoc || (hoiTepDuoc && tepSanSang().length > 0);
 }
 
 function dangDocTep() {
@@ -679,7 +695,12 @@ async function themTepDinhKem(fileList) {
     try {
       const response = await fetch(`/api/tep?ten=${encodeURIComponent(file.name)}`, {
         method: 'POST',
-        headers: { 'X-RAG-Action': 'upload-file', 'Content-Type': 'application/octet-stream' },
+        // X-RAG-Client: tệp của khách gắn với trình duyệt này (tài liệu riêng).
+        headers: {
+          'X-RAG-Action': 'upload-file',
+          'Content-Type': 'application/octet-stream',
+          'X-RAG-Client': maTrinhDuyet(),
+        },
         body: file,
       });
       const payload = await response.json().catch(() => ({}));
@@ -722,10 +743,9 @@ async function theoDoiTep(tepId) {
     tepDinhKem.set(tepId, payload);
     renderAttachments();
     if (payload.trang_thai === 'san_sang') {
-      showToast({
-        da_luu: `Đã đọc xong ${payload.ten} và thêm vào kho tài liệu`,
-        cho_duyet: `Đã đọc xong ${payload.ten} · đã gửi quản trị viên duyệt vào kho chung`,
-      }[payload.luu_kho] || `Đã đọc xong ${payload.ten}`, 3000);
+      showToast(nguoiDung
+        ? `Đã đọc xong ${payload.ten} · lưu trong Kho tài liệu > Của tôi, chỉ bạn thấy`
+        : `Đã đọc xong ${payload.ten}`, 3000);
       return;
     }
     if (payload.trang_thai !== 'dang_xu_ly') return;
@@ -1838,6 +1858,7 @@ async function pollStatus() {
     const status = await response.json();
     serviceState = status.state;
     hoiTepDuoc = Boolean(status.hoi_tep_duoc);
+    hoiKhoDuoc = Boolean(status.hoi_kho_duoc);
     tuNapChiMuc = status.tu_nap_chi_muc !== false;
     currentModel = status.model || currentModel;
     capNhatNhanMoHinh();
@@ -1882,9 +1903,11 @@ async function pollStatus() {
       elements.retry.classList.add('hidden');
       elements.updateIndex.classList.remove('hidden');
     } else {
-      elements.alert.textContent = hoiTepDuoc
-        ? `${status.message} Trong lúc này vẫn hỏi được về tệp bạn đính kèm.`
-        : status.message;
+      elements.alert.textContent = hoiKhoDuoc
+        ? `${status.message} Trong lúc này vẫn hỏi được bình thường (chưa gồm tài liệu đang nạp, trả lời có thể chậm hơn).`
+        : hoiTepDuoc
+          ? `${status.message} Trong lúc này vẫn hỏi được về tệp bạn đính kèm.`
+          : status.message;
       elements.alert.className = `connection-alert${status.state === 'error' ? ' error' : ''}`;
       elements.retry.classList.toggle('hidden', status.state !== 'error');
       elements.updateIndex.classList.add('hidden');
@@ -1892,6 +1915,7 @@ async function pollStatus() {
   } catch {
     serviceState = 'error';
     hoiTepDuoc = false;
+    hoiKhoDuoc = false;
     elements.statusTitle.textContent = 'Mất kết nối';
     elements.statusMessage.textContent = 'Không kết nối được với máy chủ ứng dụng.';
     elements.miniStatus.textContent = 'Mất kết nối';
@@ -2420,8 +2444,13 @@ function renderKhoQuanTri(query) {
     const phu = document.createElement('small');
     phu.textContent = laChoDuyet
       ? [`Gửi bởi ${muc.nguoi_ten}`, dinhDangNgay(muc.tao_luc), formatFileSize(muc.kich_thuoc),
-        muc.nguon === 'dinh_kem' ? 'đính kèm trong chat' : ''].filter(Boolean).join(' · ')
-      : [`Gỡ bởi ${muc.go_boi}`, dinhDangNgay(muc.go_luc), formatFileSize(muc.kich_thuoc)].join(' · ');
+        { dinh_kem: 'đính kèm trong chat', de_xuat: 'tự đề xuất từ Tài liệu của tôi' }[muc.nguon] || '']
+        .filter(Boolean).join(' · ')
+      : (muc.loai === 'tu_choi'
+        ? [`Từ chối bởi ${muc.go_boi}`, muc.nguoi_gui ? `gửi bởi ${muc.nguoi_gui}` : '',
+          dinhDangNgay(muc.go_luc), formatFileSize(muc.kich_thuoc)]
+        : [`Gỡ bởi ${muc.go_boi}`, dinhDangNgay(muc.go_luc), formatFileSize(muc.kich_thuoc)]
+      ).filter(Boolean).join(' · ');
     info.append(ten, phu);
     const nut = document.createElement('span');
     nut.className = 'kho-hanh-dong';
@@ -2433,7 +2462,7 @@ function renderKhoQuanTri(query) {
         taoNutKho('Từ chối', 'phu', async () => {
           const dongY = await hoiXacNhan({
             tieuDe: 'Từ chối tệp này?',
-            moTa: `"${muc.ten}" sẽ không được đưa vào kho. Người gửi vẫn dùng được tệp trong cuộc trò chuyện của họ.`,
+            moTa: `"${muc.ten}" sẽ không được đưa vào kho mà chuyển vào thẻ "Thùng rác"; lỡ tay thì khôi phục để đưa về hàng chờ. Người gửi vẫn dùng được tệp trong cuộc trò chuyện của họ.`,
             nhanDongY: 'Từ chối',
           });
           if (!dongY) return;
@@ -2446,9 +2475,11 @@ function renderKhoQuanTri(query) {
         }),
       );
     } else {
-      nut.append(taoNutKho('Khôi phục', 'chinh', async () => {
+      nut.append(taoNutKho(muc.loai === 'tu_choi' ? 'Trả về chờ duyệt' : 'Khôi phục', 'chinh', async () => {
         const kq = await goiQuanTriKho(`/api/quan-ly/thung-rac/${encodeURIComponent(muc.id)}/khoi-phuc`, 'khoi-phuc');
-        await lamMoiKhoSauThaoTac(`Đã khôi phục ${kq.ten} vào kho`);
+        await lamMoiKhoSauThaoTac(kq.ve_cho_duyet
+          ? `Đã trả ${kq.ten} về hàng chờ duyệt`
+          : `Đã khôi phục ${kq.ten} vào kho`);
       }));
     }
     hang.append(icon, info, nut);
@@ -2456,7 +2487,179 @@ function renderKhoQuanTri(query) {
   }
 }
 
+// ============================================================
+// TÀI LIỆU CỦA TÔI: tệp người dùng tải lên, chỉ chính họ thấy
+// ============================================================
+let danhSachCuaToi = [];
+// Dòng tóm tắt của kho chung, để quay lại thẻ "Kho chung" thì hiện lại.
+let tomTatKhoChung = '';
+
+async function taiTaiLieuCuaToi() {
+  if (!nguoiDung) {
+    danhSachCuaToi = [];
+    return;
+  }
+  try {
+    const phanHoi = await fetch('/api/tep', { cache: 'no-store', headers: { 'X-RAG-Client': maTrinhDuyet() } });
+    danhSachCuaToi = phanHoi.ok ? ((await phanHoi.json()).tep || []) : [];
+  } catch {
+    danhSachCuaToi = [];
+  }
+  const dem = document.getElementById('khoDemCuaToi');
+  if (dem) {
+    dem.textContent = danhSachCuaToi.length ? String(danhSachCuaToi.length) : '';
+    dem.classList.toggle('hidden', !danhSachCuaToi.length);
+  }
+}
+
+const NHAN_KHO_CHUNG = {
+  rieng: 'Chỉ bạn thấy',
+  cho_duyet: 'Chờ duyệt vào kho chung',
+  da_luu: 'Đã vào kho chung',
+  da_co: 'Kho chung đã có',
+  tu_choi: 'Không được duyệt',
+  loi: 'Chưa đề xuất được',
+};
+
+function hoiVeTaiLieuRieng(tep) {
+  if (!tepDinhKem.has(tep.id) && tepDinhKem.size >= SO_TEP_TOI_DA) {
+    showToast(`Chỉ đính kèm tối đa ${SO_TEP_TOI_DA} tệp cùng lúc`);
+    return;
+  }
+  tepDinhKem.set(tep.id, tep);
+  ghiTepCuaCuoc(maCuocTroChuyenHienTai(), [...tepDinhKem.keys()].filter((ma) => !ma.startsWith('tam-')));
+  renderAttachments();
+  elements.documentDialog.close();
+  elements.input.focus();
+  showToast(`Đã gắn ${tep.ten} vào khung hỏi`);
+}
+
+async function deXuatVaoKhoChung(tep) {
+  const dongY = await hoiXacNhan(laQuanTri()
+    ? {
+      tieuDe: 'Đưa vào kho chung?',
+      moTa: `"${tep.ten}" sẽ vào kho chung: mọi người dùng đọc được và chatbot dùng nó để trả lời cho mọi người.`,
+      nhanDongY: 'Đưa vào kho chung',
+    }
+    : {
+      tieuDe: 'Đề xuất vào kho chung?',
+      moTa: `Quản trị viên sẽ xem "${tep.ten}" và thấy bạn là người đề xuất. Nếu được duyệt, mọi người dùng đọc được tệp và chatbot dùng nó để trả lời cho mọi người. Bản riêng của bạn vẫn giữ nguyên.`,
+      nhanDongY: 'Đề xuất',
+    });
+  if (!dongY) return;
+  const moi = await goiQuanTriKho(`/api/tep/${encodeURIComponent(tep.id)}/de-xuat`, 'de-xuat-kho');
+  danhSachCuaToi = danhSachCuaToi.map((muc) => (muc.id === moi.id ? moi : muc));
+  renderDocuments(elements.documentSearch.value);
+  showToast({
+    cho_duyet: `Đã gửi quản trị viên duyệt ${tep.ten}`,
+    da_luu: `Đã đưa ${tep.ten} vào kho chung`,
+    da_co: 'Kho chung đã có tệp này',
+  }[moi.luu_kho] || moi.thong_bao_kho || 'Chưa đề xuất được', 2600);
+}
+
+async function xoaTaiLieuRieng(tep) {
+  const dongY = await hoiXacNhan({
+    tieuDe: 'Xoá tài liệu riêng?',
+    moTa: `"${tep.ten}" sẽ bị xoá khỏi Tài liệu của tôi và không hỏi về nó được nữa. Bản đã được duyệt vào kho chung (nếu có) vẫn giữ nguyên.`,
+    nhanDongY: 'Xoá',
+  });
+  if (!dongY) return;
+  const phanHoi = await fetch(`/api/tep/${encodeURIComponent(tep.id)}`, {
+    method: 'DELETE', headers: { 'X-RAG-Client': maTrinhDuyet() },
+  });
+  if (!phanHoi.ok && phanHoi.status !== 404) throw new Error('Không xoá được tài liệu.');
+  danhSachCuaToi = danhSachCuaToi.filter((muc) => muc.id !== tep.id);
+  if (tepDinhKem.delete(tep.id)) renderAttachments();
+  await taiTaiLieuCuaToi();
+  renderDocuments(elements.documentSearch.value);
+  showToast(`Đã xoá ${tep.ten}`);
+}
+
+// Tệp vừa tải lên còn đang được đọc (OCR, phiên âm) thì chưa có nút Hỏi / Đề
+// xuất; hỏi lại máy chủ vài giây một lần cho tới khi đọc xong, như theoDoiTep.
+let henLamMoiCuaToi = 0;
+
+function henLamMoiKhiDangDoc() {
+  window.clearTimeout(henLamMoiCuaToi);
+  if (!danhSachCuaToi.some((tep) => tep.trang_thai === 'dang_xu_ly')) return;
+  henLamMoiCuaToi = window.setTimeout(async () => {
+    if (!elements.documentDialog.open || cheDoKho !== 'cua-toi') return;
+    await taiTaiLieuCuaToi();
+    if (elements.documentDialog.open && cheDoKho === 'cua-toi') renderDocuments(elements.documentSearch.value);
+  }, 2000);
+}
+
+function renderCuaToi(query) {
+  henLamMoiKhiDangDoc();
+  elements.documentSummary.textContent = danhSachCuaToi.length
+    ? `${danhSachCuaToi.length} tài liệu riêng · chỉ bạn thấy, kể cả quản trị viên cũng không xem được`
+    : 'Chỉ bạn thấy tài liệu ở đây, kể cả quản trị viên cũng không xem được.';
+  const tuKhoa = query.trim().toLocaleLowerCase('vi-VN');
+  const nguon = danhSachCuaToi.filter((tep) => tep.ten.toLocaleLowerCase('vi-VN').includes(tuKhoa));
+  elements.documentList.replaceChildren();
+  if (!nguon.length) {
+    const trong = document.createElement('div');
+    trong.className = 'document-empty';
+    trong.textContent = tuKhoa
+      ? 'Không tìm thấy tài liệu phù hợp.'
+      : 'Chưa có tài liệu riêng nào. Tệp bạn đính kèm trong chat hoặc thêm bằng nút + sẽ nằm ở đây - chỉ bạn thấy.';
+    elements.documentList.append(trong);
+    return;
+  }
+  for (const tep of nguon) {
+    const hang = document.createElement('div');
+    hang.className = 'document-row kho-hang';
+    const icon = document.createElement('span');
+    icon.className = 'document-type';
+    icon.textContent = (tep.ten.split('.').pop() || 'FILE').slice(0, 5);
+    const info = document.createElement('span');
+    info.className = 'document-info';
+    const ten = document.createElement('strong');
+    ten.textContent = tep.ten;
+    ten.title = tep.ten;
+    const phu = document.createElement('small');
+    const tinhTrang = tep.trang_thai === 'dang_xu_ly' ? 'Đang đọc nội dung…'
+      : tep.trang_thai === 'loi' ? (tep.thong_bao || 'Không đọc được nội dung')
+        : NHAN_KHO_CHUNG[tep.luu_kho] || '';
+    phu.textContent = [formatFileSize(tep.kich_thuoc), dinhDangNgay(tep.tao_luc), tinhTrang]
+      .filter(Boolean).join(' · ');
+    phu.title = tep.thong_bao_kho || phu.textContent;
+    info.append(ten, phu);
+    const nut = document.createElement('span');
+    nut.className = 'kho-hanh-dong';
+    // PDF / ảnh / Word / Excel / PowerPoint / HTML mở trong trình đọc của sổ tay; loại khác (video...) trình
+    // đọc chưa hiển thị được nên mở ở tab mới như tài liệu trong kho chung.
+    const docTrongSoTay = window.khongGianHoc?.docDuoc(tep.ten);
+    const moTep = () => {
+      if (docTrongSoTay) {
+        elements.documentDialog.close();
+        window.khongGianHoc.moTaiLieu({ tep: tep.id, ten: tep.ten });
+      } else {
+        window.open(tep.url || `/api/tep/${encodeURIComponent(tep.id)}/noi-dung`, '_blank', 'noopener');
+      }
+    };
+    nut.append(taoNutKho(docTrongSoTay ? 'Đọc' : 'Mở', '', async () => moTep()));
+    info.classList.add('bam-duoc');
+    info.title = docTrongSoTay ? 'Mở trong sổ tay' : 'Mở ở tab mới (sổ tay chưa đọc được loại tệp này)';
+    info.addEventListener('click', moTep);
+    if (tep.trang_thai === 'san_sang') {
+      nut.append(taoNutKho('Hỏi', '', async () => hoiVeTaiLieuRieng(tep)));
+      if (tep.luu_kho === 'rieng' || tep.luu_kho === 'loi') {
+        nut.append(taoNutKho(laQuanTri() ? 'Đưa vào kho chung' : 'Đề xuất', 'chinh', () => deXuatVaoKhoChung(tep)));
+      }
+    }
+    nut.append(taoNutKho('Xoá', 'phu', () => xoaTaiLieuRieng(tep)));
+    hang.append(icon, info, nut);
+    elements.documentList.append(hang);
+  }
+}
+
 function renderDocuments(query = '') {
+  if (cheDoKho === 'cua-toi') {
+    renderCuaToi(query);
+    return;
+  }
+  elements.documentSummary.textContent = tomTatKhoChung;
   if (cheDoKho !== 'tai-lieu') {
     renderKhoQuanTri(query);
     return;
@@ -2556,9 +2759,10 @@ async function openDocumentLibrary() {
     if (summary.pending) summaryParts.push(`${summary.pending} chờ cập nhật`);
     if (summary.duplicate) summaryParts.push(`${summary.duplicate} tệp trùng`);
     if (summary.error) summaryParts.push(`${summary.error} không đọc được`);
-    elements.documentSummary.textContent = summaryParts.join(' · ');
-    await taiDuLieuQuanTriKho();
-    renderDocuments();
+    tomTatKhoChung = summaryParts.join(' · ');
+    elements.documentSummary.textContent = tomTatKhoChung;
+    await Promise.all([taiDuLieuQuanTriKho(), taiTaiLieuCuaToi()]);
+    renderDocuments(elements.documentSearch.value);
     renderDocumentFilters();
     elements.documentSearch.focus();
   } catch (error) {
@@ -2663,6 +2867,8 @@ async function taiTepVaoKho(danhSach) {
   }
 
   let daThem = 0;
+  let daGuiDuyet = 0;
+  let daLuuRieng = 0;
   for (const tep of hopLe) {
     const trangThai = themDongPopupUpload(tep.name, 'Đang tải lên...');
     try {
@@ -2677,6 +2883,16 @@ async function taiTepVaoKho(danhSach) {
         daThem += 1;
         trangThai.textContent = '✅ Đã thêm vào kho';
         trangThai.className = 'upload-popup-state thanh-cong';
+      } else if (payload.trang_thai === 'rieng') {
+        daLuuRieng += 1;
+        trangThai.textContent = '🔒 Đã lưu vào Của tôi';
+        trangThai.className = 'upload-popup-state thanh-cong';
+        trangThai.title = payload.thong_bao || '';
+      } else if (payload.trang_thai === 'cho_duyet') {
+        daGuiDuyet += 1;
+        trangThai.textContent = '⏳ Đã gửi, chờ duyệt';
+        trangThai.className = 'upload-popup-state thanh-cong';
+        trangThai.title = payload.thong_bao || '';
       } else {
         trangThai.textContent = 'Kho đã có tệp này';
         trangThai.className = 'upload-popup-state canh-bao';
@@ -2689,6 +2905,17 @@ async function taiTepVaoKho(danhSach) {
   }
 
   if (!daThem) {
+    if (daLuuRieng) {
+      elements.uploadPopupFooter.textContent =
+        'Tài liệu nằm ở thẻ “Của tôi”, chỉ bạn thấy. Muốn chia sẻ cho mọi người thì bấm “Đề xuất” để quản trị viên duyệt vào kho chung.';
+      if (elements.documentDialog.open) {
+        await taiTaiLieuCuaToi();
+        chonCheDoKho('cua-toi');
+      }
+    } else if (daGuiDuyet) {
+      elements.uploadPopupFooter.textContent =
+        'Quản trị viên duyệt xong thì tài liệu mới vào kho và dùng được để hỏi đáp.';
+    }
     dongPopupUploadSau(10000);
     return;
   }
@@ -2766,7 +2993,14 @@ window.addEventListener('drop', (event) => {
 elements.refreshSuggestions?.addEventListener('click', taiGoiYMoDau);
 elements.libraryButton.addEventListener('click', openDocumentLibrary);
 elements.closeDocumentDialog.addEventListener('click', () => elements.documentDialog.close());
-elements.uploadLibraryButton.addEventListener('click', () => elements.libraryFileInput.click());
+elements.uploadLibraryButton.addEventListener('click', () => {
+  if (khoaQuanTri && !nguoiDung) {
+    elements.documentDialog.close();
+    document.getElementById('topDangNhap')?.click();
+    return;
+  }
+  elements.libraryFileInput.click();
+});
 elements.closeUploadPopup.addEventListener('click', anPopupUpload);
 elements.libraryFileInput.addEventListener('change', async () => {
   // Phải sao chép trước: gán value = '' sẽ xóa luôn FileList đang tham chiếu.

@@ -1,104 +1,95 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="852" viewBox="0 0 1240 852" role="img" aria-label="Kien truc he thong tong the chia nam tang: nguoi dung, giao dien ung dung, dieu phoi va giao tiep, xu ly chuyen biet gom nhom cot loi va nhom mo rong, loi AI va nen tang tri thuc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" font-family="'Segoe UI', Arial, sans-serif">
 <defs>
-  <marker id="ka" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#2a78d6"/></marker>
+  <linearGradient id="nen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef5f9"/><stop offset="1" stop-color="#dde9f0"/></linearGradient>
+  <linearGradient id="tieude" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5e4f98"/><stop offset="1" stop-color="#8a7cc0"/></linearGradient>
+  <filter id="sang" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="7"/></filter>
+  <filter id="bong" x="-10%" y="-30%" width="120%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#1d2733" flood-opacity="0.35"/></filter>
+  <linearGradient id="muiten" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8f7ff" stop-opacity="0.95"/><stop offset="1" stop-color="#9fd8f5" stop-opacity="0.95"/></linearGradient>
+
+<linearGradient id="g0" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6f8bc4"/><stop offset="1" stop-color="#4a6397"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#51667c"/><stop offset="1" stop-color="#344354"/></linearGradient>
+<linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a456c9"/><stop offset="1" stop-color="#7a2f9e"/></linearGradient>
+<linearGradient id="g3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c07b37"/><stop offset="1" stop-color="#9a5b1f"/></linearGradient>
+<linearGradient id="g5" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a5566"/><stop offset="1" stop-color="#232a35"/></linearGradient>
 </defs>
-<rect width="1240" height="852" fill="#f4f6f8"/>
-
-<g font-family="'Be Vietnam Pro','Segoe UI','Helvetica Neue',Arial,sans-serif">
-  <text x="44" y="42" font-size="11" font-weight="600" fill="#7d8a97" letter-spacing="1.6">CHATBOT RAG GIÁO DỤC · SƠ ĐỒ KIẾN TRÚC</text>
-  <text x="44" y="80" font-size="27" font-weight="600" fill="#101720">Kiến trúc hệ thống tổng thể</text>
-  <text x="44" y="106" font-size="14" fill="#4d5a68">Năm tầng chồng lên nhau: tầng dưới phục vụ tầng trên, toàn bộ mô hình và chỉ mục nằm trên máy chạy hệ thống</text>
-  <line x1="44" y1="130" x2="1196" y2="130" stroke="#dfe5ec" stroke-width="1"/>
-
-  <!-- ===== TANG 1 ===== -->
-  <rect x="230" y="170" width="780" height="76" rx="12" fill="#ffffff" stroke="#dfe5ec"/>
-  <rect x="230" y="186" width="4" height="44" rx="2" fill="#7d8a97"/>
-  <rect x="252" y="186" width="62" height="20" rx="10" fill="#eef1f5"/>
-  <text x="283" y="200" font-size="10" font-weight="600" fill="#7d8a97" letter-spacing="1" text-anchor="middle">TẦNG 1</text>
-  <text x="326" y="201" font-size="16" font-weight="600" fill="#101720">Người dùng</text>
-  <text x="252" y="228" font-size="12" fill="#4d5a68">Giáo viên · Học sinh, sinh viên · Cán bộ quản lý giáo dục · Phụ huynh — cùng một giao diện web trên máy tính hoặc điện thoại</text>
-
-  <line x1="620" y1="272" x2="620" y2="250" stroke="#2a78d6" stroke-width="1.6" marker-end="url(#ka)"/>
-
-  <!-- ===== TANG 2 ===== -->
-  <rect x="180" y="276" width="880" height="94" rx="12" fill="#ffffff" stroke="#dfe5ec"/>
-  <rect x="180" y="292" width="4" height="62" rx="2" fill="#2a78d6"/>
-  <rect x="202" y="292" width="62" height="20" rx="10" fill="#eaf2fc"/>
-  <text x="233" y="306" font-size="10" font-weight="600" fill="#2a78d6" letter-spacing="1" text-anchor="middle">TẦNG 2</text>
-  <text x="276" y="307" font-size="16" font-weight="600" fill="#101720">Giao diện ứng dụng</text>
-  <text x="202" y="334" font-size="12" fill="#4d5a68">Trang tĩnh do chính FastAPI phục vụ — HTML, CSS và JavaScript thuần, không framework, không tải thư viện từ CDN</text>
-  <text x="202" y="352" font-size="12" fill="#4d5a68">Khung hỏi đáp phát dần từng chữ · Tải tệp đính kèm · Lịch sử hội thoại · Quản lý tài liệu và đổi mô hình trả lời</text>
-
-  <line x1="620" y1="396" x2="620" y2="374" stroke="#2a78d6" stroke-width="1.6" marker-end="url(#ka)"/>
-
-  <!-- ===== TANG 3 ===== -->
-  <rect x="130" y="400" width="980" height="94" rx="12" fill="#ffffff" stroke="#dfe5ec"/>
-  <rect x="130" y="416" width="4" height="62" rx="2" fill="#2a78d6"/>
-  <rect x="152" y="416" width="62" height="20" rx="10" fill="#eaf2fc"/>
-  <text x="183" y="430" font-size="10" font-weight="600" fill="#2a78d6" letter-spacing="1" text-anchor="middle">TẦNG 3</text>
-  <text x="226" y="431" font-size="16" font-weight="600" fill="#101720">Điều phối và giao tiếp</text>
-  <text x="152" y="458" font-size="12" fill="#4d5a68">FastAPI với khoảng 25 đầu cuối · Kiểm tra dữ liệu vào bằng Pydantic · Lớp mật khẩu bảo vệ bản chạy công khai</text>
-  <text x="152" y="476" font-size="12" fill="#4d5a68">Máy trạng thái starting → loading → ready, chuyển updating khi nạp lại chỉ mục và error khi mất kết nối Ollama</text>
-
-  <line x1="620" y1="520" x2="620" y2="498" stroke="#2a78d6" stroke-width="1.6" marker-end="url(#ka)"/>
-
-  <!-- ===== TANG 4 ===== -->
-  <rect x="60" y="524" width="1120" height="176" rx="12" fill="#ffffff" stroke="#dfe5ec"/>
-  <rect x="60" y="540" width="4" height="144" rx="2" fill="#eb6834"/>
-  <rect x="82" y="540" width="62" height="20" rx="10" fill="#fdeee7"/>
-  <text x="113" y="554" font-size="10" font-weight="600" fill="#eb6834" letter-spacing="1" text-anchor="middle">TẦNG 4</text>
-  <text x="156" y="555" font-size="16" font-weight="600" fill="#101720">Xử lý chuyên biệt</text>
-  <text x="330" y="555" font-size="12" fill="#7d8a97">mỗi việc một module riêng, gọi lẫn nhau qua lớp dịch vụ chung</text>
-
-  <rect x="82" y="568" width="526" height="118" rx="10" fill="#f4f6f8" stroke="#ecf0f4"/>
-  <text x="98" y="592" font-size="10" font-weight="600" fill="#7d8a97" letter-spacing="1.2">NHÓM CỐT LÕI</text>
-  <g>
-    <rect x="98" y="604" width="115" height="52" rx="8" fill="#eaf2fc" stroke="#2a78d6"/>
-    <rect x="224" y="604" width="115" height="52" rx="8" fill="#eaf2fc" stroke="#2a78d6"/>
-    <rect x="350" y="604" width="115" height="52" rx="8" fill="#eaf2fc" stroke="#2a78d6"/>
-    <rect x="476" y="604" width="115" height="52" rx="8" fill="#eaf2fc" stroke="#2a78d6"/>
-  </g>
-  <g font-size="12" font-weight="600" fill="#2a78d6" text-anchor="middle">
-    <text x="155.5" y="626">Truy hồi lai</text>
-    <text x="155.5" y="642">FAISS + BM25</text>
-    <text x="281.5" y="626">Kiểm soát</text>
-    <text x="281.5" y="642">bằng chứng</text>
-    <text x="407.5" y="626">Sinh câu</text>
-    <text x="407.5" y="642">trả lời</text>
-    <text x="533.5" y="626">Cache</text>
-    <text x="533.5" y="642">ngữ nghĩa</text>
-  </g>
-  <text x="98" y="676" font-family="'IBM Plex Mono','Consolas','Courier New',monospace" font-size="10" fill="#7d8a97">hybrid_retrieval.py · kiem_tra_tra_loi.py · cache_ngu_nghia.py</text>
-
-  <rect x="632" y="568" width="526" height="118" rx="10" fill="#f4f6f8" stroke="#ecf0f4"/>
-  <text x="648" y="592" font-size="10" font-weight="600" fill="#7d8a97" letter-spacing="1.2">NHÓM MỞ RỘNG</text>
-  <g>
-    <rect x="648" y="604" width="115" height="52" rx="8" fill="#ffffff" stroke="#dfe5ec"/>
-    <rect x="774" y="604" width="115" height="52" rx="8" fill="#ffffff" stroke="#dfe5ec"/>
-    <rect x="900" y="604" width="115" height="52" rx="8" fill="#ffffff" stroke="#dfe5ec"/>
-    <rect x="1026" y="604" width="115" height="52" rx="8" fill="#ffffff" stroke="#dfe5ec"/>
-  </g>
-  <g font-size="12" font-weight="600" fill="#4d5a68" text-anchor="middle">
-    <text x="705.5" y="626">Hỏi trên tệp</text>
-    <text x="705.5" y="642">đính kèm</text>
-    <text x="831.5" y="626">Tính lương</text>
-    <text x="831.5" y="642">nhà giáo</text>
-    <text x="957.5" y="626">Hiệu lực</text>
-    <text x="957.5" y="642">văn bản</text>
-    <text x="1083.5" y="626">Cập nhật</text>
-    <text x="1083.5" y="642">chỉ mục</text>
-  </g>
-  <text x="648" y="676" font-family="'IBM Plex Mono','Consolas','Courier New',monospace" font-size="10" fill="#7d8a97">tep_dinh_kem.py · tinh_luong.py · hieu_luc_bo_sung.py · capnhat_tailieu_moi.py</text>
-
-  <line x1="620" y1="726" x2="620" y2="704" stroke="#2a78d6" stroke-width="1.6" marker-end="url(#ka)"/>
-
-  <!-- ===== TANG 5 ===== -->
-  <rect x="44" y="730" width="1152" height="94" rx="12" fill="#ffffff" stroke="#dfe5ec"/>
-  <rect x="44" y="746" width="4" height="62" rx="2" fill="#1baf7a"/>
-  <rect x="66" y="746" width="62" height="20" rx="10" fill="#e7f7f1"/>
-  <text x="97" y="760" font-size="10" font-weight="600" fill="#1baf7a" letter-spacing="1" text-anchor="middle">TẦNG 5</text>
-  <text x="140" y="761" font-size="16" font-weight="600" fill="#101720">Lõi AI và nền tảng tri thức</text>
-  <text x="66" y="788" font-size="12" fill="#4d5a68">bge-m3 nhúng văn bản thành vector 1.024 chiều · qwen3.5:4b sinh câu trả lời — cả hai chạy cục bộ qua Ollama trên CPU</text>
-  <text x="66" y="806" font-size="12" fill="#4d5a68">Chỉ mục FAISS + BM25 · Kho đoạn kèm siêu dữ liệu văn bản · Sổ ghi mã băm SHA-256 · Bộ nhớ đệm OCR và bản phiên âm</text>
+<rect width="1600" height="900" fill="url(#nen)"/>
+<rect x="0" y="28" width="1600" height="84" fill="url(#tieude)"/>
+<text x="60" y="84" font-size="38" fill="#ffffff">Kiến trúc hệ thống Chatbot RAG Giáo dục</text>
+<polygon points="240,730 1360,730 1440,808 160,808" fill="#2b3340" stroke="#9fdcf7" stroke-width="2"/>
+<polygon points="160,808 1440,808 1440,820 160,820" fill="#1b212a"/>
+<line x1="278" y1="794" x2="262" y2="794" stroke="#7fd0f2" stroke-width="3" opacity="0.8"/>
+<line x1="248" y1="794" x2="232" y2="794" stroke="#7fd0f2" stroke-width="3" opacity="0.8"/>
+<line x1="218" y1="794" x2="202" y2="794" stroke="#7fd0f2" stroke-width="3" opacity="0.8"/>
+<line x1="1322" y1="794" x2="1338" y2="794" stroke="#7fd0f2" stroke-width="3" opacity="0.8"/>
+<line x1="1352" y1="794" x2="1368" y2="794" stroke="#7fd0f2" stroke-width="3" opacity="0.8"/>
+<line x1="1382" y1="794" x2="1398" y2="794" stroke="#7fd0f2" stroke-width="3" opacity="0.8"/>
+<rect x="274" y="666" width="1052" height="114" rx="14" fill="#bfeaff" opacity="0.55" filter="url(#sang)"/>
+<g filter="url(#bong)">
+<polygon points="306,670 1294,670 1320,690 280,690" fill="#6b7788" stroke="#dff4ff" stroke-width="1.5"/>
+<rect x="280" y="690" width="1040" height="84" fill="url(#g5)" stroke="#bfe6fa" stroke-width="1.5"/>
 </g>
+<line x1="280" y1="690" x2="1320" y2="690" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2"/>
+<text x="800" y="726" font-size="23" font-weight="700" fill="#ffffff" text-anchor="middle">Tầng 5: Lõi AI cục bộ &amp; Nền tảng tri thức</text>
+<text x="800" y="755" font-size="16" fill="#e4ecf5" text-anchor="middle">(qwen3.5:4b qua Ollama | bge-m3 embedding | Chỉ mục FAISS + BM25 | OCR &amp; đồng bộ Google Drive)</text>
+<rect x="324" y="428" width="952" height="210" rx="14" fill="#bfeaff" opacity="0.55" filter="url(#sang)"/>
+<g filter="url(#bong)">
+<polygon points="356,432 1244,432 1270,452 330,452" fill="#e7b27a" stroke="#dff4ff" stroke-width="1.5"/>
+<rect x="330" y="452" width="940" height="180" fill="url(#g3)" stroke="#bfe6fa" stroke-width="1.5"/>
+</g>
+<line x1="330" y1="452" x2="1270" y2="452" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2"/>
+<rect x="344" y="326" width="912" height="100" rx="14" fill="#bfeaff" opacity="0.55" filter="url(#sang)"/>
+<g filter="url(#bong)">
+<polygon points="376,330 1224,330 1250,350 350,350" fill="#c88be6" stroke="#dff4ff" stroke-width="1.5"/>
+<rect x="350" y="350" width="900" height="70" fill="url(#g2)" stroke="#bfe6fa" stroke-width="1.5"/>
+</g>
+<line x1="350" y1="350" x2="1250" y2="350" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2"/>
+<text x="800" y="381" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">Tầng 3: Điều phối &amp; API</text>
+<text x="800" y="406" font-size="16" fill="#eef2f8" text-anchor="middle">(FastAPI | Bảo vệ truy cập | Định tuyến công cụ | Cache ngữ nghĩa)</text>
+<rect x="364" y="226" width="872" height="100" rx="14" fill="#bfeaff" opacity="0.55" filter="url(#sang)"/>
+<g filter="url(#bong)">
+<polygon points="396,230 1204,230 1230,250 370,250" fill="#6f8296" stroke="#dff4ff" stroke-width="1.5"/>
+<rect x="370" y="250" width="860" height="70" fill="url(#g1)" stroke="#bfe6fa" stroke-width="1.5"/>
+</g>
+<line x1="370" y1="250" x2="1230" y2="250" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2"/>
+<text x="800" y="281" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">Tầng 2: Giao diện ứng dụng</text>
+<text x="800" y="306" font-size="16" fill="#eef2f8" text-anchor="middle">(Khung hỏi đáp | Tệp đính kèm | Lọc phạm vi | Lịch sử hội thoại)</text>
+<rect x="384" y="126" width="832" height="100" rx="14" fill="#bfeaff" opacity="0.55" filter="url(#sang)"/>
+<g filter="url(#bong)">
+<polygon points="416,130 1184,130 1210,150 390,150" fill="#8ea6d6" stroke="#dff4ff" stroke-width="1.5"/>
+<rect x="390" y="150" width="820" height="70" fill="url(#g0)" stroke="#bfe6fa" stroke-width="1.5"/>
+</g>
+<line x1="390" y1="150" x2="1210" y2="150" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2"/>
+<text x="800" y="181" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">Tầng 1: Người dùng</text>
+<text x="800" y="206" font-size="16" fill="#eef2f8" text-anchor="middle">(Giáo viên | Cán bộ quản lý | Chuyên viên giáo dục)</text>
+<text x="800" y="484" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">Tầng 4: Xử lý RAG &amp; công cụ chuyên biệt</text>
+<rect x="348" y="500" width="500" height="118" rx="8" fill="#7a4414" fill-opacity="0.35" stroke="#ffd59c" stroke-width="1.6"/>
+<text x="598.0" y="524" font-size="17" font-weight="700" fill="#fff4e3" text-anchor="middle">Nhóm truy xuất – sinh câu trả lời</text>
+<rect x="366.0" y="538" width="148" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
+<text x="440.0" y="558.5" font-size="14.5" font-weight="600" fill="#4a2a0c" text-anchor="middle">Dựng truy vấn</text>
+<rect x="524.0" y="538" width="148" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
+<text x="598.0" y="558.5" font-size="14.5" font-weight="600" fill="#4a2a0c" text-anchor="middle">Truy xuất lai</text>
+<rect x="682.0" y="538" width="148" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
+<text x="756.0" y="558.5" font-size="14.5" font-weight="600" fill="#4a2a0c" text-anchor="middle">Chặn lạc đề</text>
+<rect x="445.0" y="576" width="148" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
+<text x="519.0" y="596.5" font-size="14.5" font-weight="600" fill="#4a2a0c" text-anchor="middle">Sinh trả lời</text>
+<rect x="603.0" y="576" width="148" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
+<text x="677.0" y="596.5" font-size="14.5" font-weight="600" fill="#4a2a0c" text-anchor="middle">Hậu kiểm nguồn</text>
+<rect x="866" y="500" width="386" height="118" rx="8" fill="#7a4414" fill-opacity="0.35" stroke="#ffd59c" stroke-width="1.6"/>
+<text x="1059.0" y="524" font-size="17" font-weight="700" fill="#fff4e3" text-anchor="middle">Nhóm công cụ tính (Python)</text>
+<rect x="878.0" y="538" width="176" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
+<text x="966.0" y="558.5" font-size="14.5" font-weight="600" fill="#4a2a0c" text-anchor="middle">Tính lương</text>
+<rect x="1064.0" y="538" width="176" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
+<text x="1152.0" y="558.5" font-size="14.5" font-weight="600" fill="#4a2a0c" text-anchor="middle">Định mức tiết dạy</text>
+<rect x="971.0" y="576" width="176" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
+<text x="1059.0" y="596.5" font-size="14.5" font-weight="600" fill="#4a2a0c" text-anchor="middle">Tính toán</text>
+<path d="M451.0,196 h18 v258 h9 l-18.0,18 l-18.0,-18 h9 z" fill="url(#muiten)" stroke="#5fb6de" stroke-width="1.2" opacity="0.9"/>
+<path d="M1131.0,470 h18 v-258 h9 l-18.0,-18 l-18.0,18 h9 z" fill="url(#muiten)" stroke="#5fb6de" stroke-width="1.2" opacity="0.9"/>
+<path d="M790,218 h20 l-10,12 z" fill="#dff4ff" stroke="#5fb6de"/>
+<path d="M790,318 h20 l-10,12 z" fill="#dff4ff" stroke="#5fb6de"/>
+<path d="M788,428 h24 l-12,-12 z" fill="#dff4ff" stroke="#5fb6de"/>
+<path d="M793.0,668 h14 v-16 h9 l-16.0,-18 l-16.0,18 h9 z" fill="url(#muiten)" stroke="#5fb6de" stroke-width="1.2" opacity="0.9"/>
+<text x="480" y="291" font-size="15" font-style="italic" fill="#cfefff">câu hỏi</text>
+<text x="1120" y="291" font-size="15" font-style="italic" fill="#cfefff" text-anchor="end">câu trả lời</text>
+<rect x="0" y="846" width="1600" height="34" fill="#8577b3" opacity="0.85"/>
+<text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">Chatbot RAG Giáo dục</text>
 </svg>

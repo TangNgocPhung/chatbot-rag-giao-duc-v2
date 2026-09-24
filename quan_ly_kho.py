@@ -11,6 +11,8 @@ Giờ:
     nhưng bản sao gửi vào kho nằm ở hàng chờ cho tới khi quản trị viên duyệt.
   - Quản trị viên gỡ tài liệu khỏi kho -> tệp chuyển vào thùng rác của kho,
     khôi phục được; chỉ mục bỏ nội dung của tệp ở lần cập nhật kế tiếp.
+  - Quản trị viên từ chối tệp chờ duyệt -> tệp cũng vào thùng rác; khôi phục
+    thì nó về lại hàng chờ duyệt (không vào thẳng kho).
 
 Sổ ghi (ai gửi, lúc nào, ai duyệt) nằm trong SQLite riêng, tách khỏi sổ ghi
 chép chỉ mục vốn do trình cập nhật chỉ mục ghi đè toàn bộ mỗi lần chạy.
@@ -81,6 +83,11 @@ def _connect() -> sqlite3.Connection:
             );
             """
         )
+        # Tệp bị từ chối cũng vào thùng rác: tai_len_id trỏ về dòng hàng chờ
+        # của nó (NULL = tài liệu gỡ khỏi kho). Sổ cũ chưa có cột thì thêm vào.
+        cot = {d[1] for d in _ket_noi.execute("PRAGMA table_info(thung_rac)")}
+        if "tai_len_id" not in cot:
+            _ket_noi.execute("ALTER TABLE thung_rac ADD COLUMN tai_len_id TEXT")
         _ket_noi.commit()
     return _ket_noi
 
@@ -152,6 +159,18 @@ def gui_cho_duyet(duong_dan_nguon: str, ten: str, ma_bam: str,
 # ------------------------------------------------------------
 # TRA CỨU
 # ------------------------------------------------------------
+def trang_thai_theo_ma_bam(ma_bam: str) -> str | None:
+    """Tình trạng mới nhất của một nội dung trong kho chung (cho_duyet /
+    trong_kho / tu_choi), để "Tài liệu của tôi" báo đề xuất đã tới đâu."""
+    if not ma_bam:
+        return None
+    dong = _connect().execute(
+        "SELECT trang_thai FROM tai_len WHERE ma_bam = ? ORDER BY COALESCE(xu_ly_luc, tao_luc) DESC LIMIT 1",
+        (ma_bam,),
+    ).fetchone()
+    return dong["trang_thai"] if dong else None
+
+
 def _cong_khai(dong: sqlite3.Row) -> dict:
     ban = dict(dong)
     ban.pop("duong_dan_cho", None)
@@ -227,21 +246,28 @@ def duyet(ma: str, nguoi_duyet: dict, dua_vao_kho) -> str:
 
 
 def tu_choi(ma: str, nguoi_duyet: dict) -> None:
-    _, duong_dan = lay_ban_cho(ma)
+    """Bản chờ chuyển vào thùng rác của kho chứ không xoá hẳn: lỡ bấm nhầm
+    thì "Khôi phục" đưa nó về hàng chờ duyệt."""
+    ban, duong_dan = lay_ban_cho(ma)
+    ten_nguoi_duyet = nguoi_duyet.get("ten") or nguoi_duyet.get("email")
+    ma_rac = uuid.uuid4().hex
+    os.makedirs(THU_MUC_THUNG_RAC, exist_ok=True)
+    dich = os.path.join(THU_MUC_THUNG_RAC, ma_rac + os.path.splitext(ban["ten"])[1].lower())
+    shutil.move(duong_dan, dich)
+    bay_gio = time.time()
     with _khoa:
         conn = _connect()
         conn.execute(
             "UPDATE tai_len SET trang_thai = 'tu_choi', duong_dan_cho = NULL,"
             " xu_ly_luc = ?, xu_ly_boi = ? WHERE id = ?",
-            (time.time(), nguoi_duyet.get("ten") or nguoi_duyet.get("email"), ma),
+            (bay_gio, ten_nguoi_duyet, ma),
+        )
+        conn.execute(
+            "INSERT INTO thung_rac (id, ten, duong_dan_rac, kich_thuoc, go_luc, go_boi, tai_len_id)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (ma_rac, ban["ten"], dich, ban["kich_thuoc"], bay_gio, ten_nguoi_duyet, ma),
         )
         conn.commit()
-    # Bản chờ chỉ là bản sao gửi vào kho; tệp đính kèm của người gửi vẫn còn
-    # trong cuộc trò chuyện của họ, nên xoá bản này không mất gì.
-    try:
-        os.remove(duong_dan)
-    except OSError:
-        pass
 
 
 # ------------------------------------------------------------
@@ -266,10 +292,54 @@ def go_khoi_kho(duong_dan: str, nguoi_go: dict) -> dict:
 
 
 def danh_sach_thung_rac() -> list[dict]:
-    return [
-        {k: d[k] for k in ("id", "ten", "kich_thuoc", "go_luc", "go_boi")}
-        for d in _connect().execute("SELECT * FROM thung_rac ORDER BY go_luc DESC")
-    ]
+    """loai: "go" (gỡ khỏi kho) hoặc "tu_choi" (bị từ chối lúc duyệt, kèm người gửi)."""
+    ket_qua = []
+    for d in _connect().execute(
+        "SELECT r.*, t.nguoi_ten AS nguoi_gui FROM thung_rac r"
+        "  LEFT JOIN tai_len t ON t.id = r.tai_len_id ORDER BY r.go_luc DESC"
+    ):
+        muc = {k: d[k] for k in ("id", "ten", "kich_thuoc", "go_luc", "go_boi")}
+        muc["loai"] = "tu_choi" if d["tai_len_id"] else "go"
+        if d["tai_len_id"]:
+            muc["nguoi_gui"] = d["nguoi_gui"]
+        ket_qua.append(muc)
+    return ket_qua
+
+
+def la_tep_bi_tu_choi(ma: str) -> bool:
+    dong = _connect().execute("SELECT tai_len_id FROM thung_rac WHERE id = ?", (ma,)).fetchone()
+    return bool(dong and dong["tai_len_id"])
+
+
+def tra_ve_cho_duyet(ma: str) -> str:
+    """Khôi phục một tệp bị từ chối: đưa về hàng chờ để quản trị viên xét lại."""
+    conn = _connect()
+    dong = conn.execute("SELECT * FROM thung_rac WHERE id = ?", (ma,)).fetchone()
+    if dong is None or not dong["tai_len_id"]:
+        raise LoiQuanLyKho("Không tìm thấy tệp bị từ chối trong thùng rác.", 404)
+    if not os.path.isfile(dong["duong_dan_rac"]):
+        raise LoiQuanLyKho("Tệp trong thùng rác không còn trên đĩa.", 410)
+    ban = conn.execute("SELECT * FROM tai_len WHERE id = ?", (dong["tai_len_id"],)).fetchone()
+    with _khoa:
+        # Trong lúc nằm thùng rác có người gửi lại đúng nội dung này thì hàng
+        # chờ đã có nó rồi - chỉ dọn bản trong thùng rác, không xếp hàng lần hai.
+        da_cho = ban is not None and conn.execute(
+            "SELECT 1 FROM tai_len WHERE ma_bam = ? AND trang_thai = 'cho_duyet'", (ban["ma_bam"],)
+        ).fetchone()
+        if ban is None or da_cho:
+            os.remove(dong["duong_dan_rac"])
+        else:
+            os.makedirs(THU_MUC_CHO_DUYET, exist_ok=True)
+            dich = os.path.join(THU_MUC_CHO_DUYET, ban["id"] + os.path.splitext(ban["ten"])[1].lower())
+            shutil.move(dong["duong_dan_rac"], dich)
+            conn.execute(
+                "UPDATE tai_len SET trang_thai = 'cho_duyet', duong_dan_cho = ?,"
+                " xu_ly_luc = NULL, xu_ly_boi = NULL WHERE id = ?",
+                (dich, ban["id"]),
+            )
+        conn.execute("DELETE FROM thung_rac WHERE id = ?", (ma,))
+        conn.commit()
+    return dong["ten"]
 
 
 def khoi_phuc(ma: str, duong_dan_dich) -> str:
@@ -277,6 +347,9 @@ def khoi_phuc(ma: str, duong_dan_dich) -> str:
     dong = _connect().execute("SELECT * FROM thung_rac WHERE id = ?", (ma,)).fetchone()
     if dong is None:
         raise LoiQuanLyKho("Không tìm thấy tệp trong thùng rác.", 404)
+    if dong["tai_len_id"]:
+        # Tệp bị từ chối chưa từng được duyệt: không được vào thẳng kho.
+        return tra_ve_cho_duyet(ma)
     if not os.path.isfile(dong["duong_dan_rac"]):
         raise LoiQuanLyKho("Tệp trong thùng rác không còn trên đĩa.", 410)
     dich = duong_dan_dich(dong["ten"])

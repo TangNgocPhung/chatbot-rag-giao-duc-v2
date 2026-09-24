@@ -58,3 +58,4 @@ nhat_ky_lap_chi_muc/
 # Ban sao luu tu dong truoc khi gop kho (du lieu tho, khong theo doi)
 *.truoc-khi-gop-*
 sao_luu_tam_dung_*/
+ban_pdf_tam/

@@ -86,8 +86,8 @@ Mật khẩu băm bằng scrypt, phiên đăng nhập nằm trong cookie HttpOnl
 ### Quản lý kho tài liệu
 
 - Quản trị viên tải tệp lên (nút `+` trong Kho tài liệu hoặc đính kèm) thì tệp vào thẳng kho, có ghi tên người đưa vào.
-- Người dùng khác đính kèm tệp vẫn hỏi đáp được ngay trong cuộc trò chuyện của họ, nhưng bản gửi vào kho nằm trong hàng chờ cho tới khi quản trị viên duyệt.
-- Tài liệu bị gỡ khỏi kho được chuyển vào thùng rác và khôi phục được; chỉ mục bỏ nội dung của tệp ở lần cập nhật kế tiếp.
+- Người dùng đã đăng nhập bấm nút `+` hoặc đính kèm tệp trong chat thì tệp vào hàng chờ cho tới khi quản trị viên duyệt; tệp đính kèm vẫn hỏi đáp được ngay trong cuộc trò chuyện của họ. Khách phải đăng nhập mới gửi được tệp vào kho.
+- Tệp bị từ chối và tài liệu bị gỡ khỏi kho đều chuyển vào thùng rác. Khôi phục tài liệu đã gỡ thì nó về lại kho (chỉ mục cập nhật ở lần kế tiếp); khôi phục tệp bị từ chối thì nó về lại hàng chờ duyệt.
 
 ### Sổ tay của cuộc trò chuyện
 
