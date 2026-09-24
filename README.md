@@ -220,9 +220,17 @@ Kiểm thử tự động nằm trong thư mục `tests`:
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-## Cấu hình Google Drive
+## Cấu hình Google Drive và khóa bí mật
 
-Sao chép `khoa_api.mau.bat` thành `khoa_api.bat`, sau đó điền khóa API của riêng bạn. `start_ui.bat` tự nạp tệp này nếu có. `khoa_api.bat` đã được loại khỏi Git để tránh công khai khóa.
+Sao chép `khoa_api.mau.bat` thành `khoa_api.bat` rồi điền khóa của riêng bạn: `RAG_DRIVE_API_KEY` cho Google Drive và, nếu muốn bật xác minh email, `RAG_SMTP_TAI_KHOAN` / `RAG_SMTP_MAT_KHAU` (xem [Tài khoản và quyền quản trị](#tài-khoản-và-quyền-quản-trị)). `start_ui.bat` tự nạp tệp này nếu có. `khoa_api.bat` đã được loại khỏi Git để tránh công khai khóa.
+
+Máy chủ tự đồng bộ thư mục Drive dùng chung mỗi 15 phút (`RAG_DRIVE_AUTO_SYNC_PHUT`, `0` để tắt; đổi thư mục bằng `RAG_DRIVE_FOLDER_ID`), tải tệp mới hoặc đã sửa về kho rồi cập nhật chỉ mục:
+
+- **Có `RAG_DRIVE_API_KEY`**: liệt kê cả cây thư mục qua Drive API, so mã băm để chỉ tải phần thay đổi; Google Docs, Sheets, Slides được xuất sang `.docx`, `.xlsx`, `.pptx`.
+- **Không có khóa**: tải theo danh sách cố định trong `drive_manifest.json` qua liên kết chia sẻ công khai, nên tệp mới thêm trên Drive chỉ được nhận sau khi xuất lại danh sách này.
+- Tệp bị xóa trên Drive được chuyển khỏi kho vào `tep_go_khoi_drive/` chứ không xóa hẳn. Một lượt đồng bộ định gỡ nhiều hơn 20 tệp (`RAG_DRIVE_GO_TOI_DA`) hoặc 10% số tệp đã đồng bộ, tùy số nào lớn hơn, thì dừng lại, không gỡ tệp nào, vì nhiều khả năng danh sách Drive bị thiếu chứ không phải bị xóa thật.
+
+Chạy tay: `.\.venv\Scripts\python.exe drive_sync.py` (thêm `--thu` để chỉ xem trước).
 
 ## Biến cấu hình cho các tính năng mới
 
@@ -253,6 +261,6 @@ Sao chép `mat_khau.mau.bat` thành `mat_khau.bat`, đặt tài khoản và mậ
 
 ## Dữ liệu không nằm trong repository
 
-Repository chỉ chứa mã nguồn. Tài liệu gốc, chỉ mục FAISS và các bản sao lưu của nó, cache OCR, bản phiên âm, lịch sử chat, cơ sở dữ liệu tài khoản và hàng chờ duyệt (`*.db`), khóa API, mật khẩu và cấu hình riêng của máy không được commit vì có thể chứa dữ liệu riêng tư hoặc tệp dung lượng lớn.
+Repository chỉ chứa mã nguồn. Những thứ sau không được commit vì có thể chứa dữ liệu riêng tư hoặc tệp dung lượng lớn: tài liệu gốc, chỉ mục FAISS và các bản sao lưu của nó, cache OCR (`ocr_cache/`), bản phiên âm, lịch sử chat, cơ sở dữ liệu tài khoản, sổ tay và hàng chờ duyệt (`*.db`), tệp đính kèm và tài liệu riêng của người dùng (`tep_dinh_kem/`), tệp chờ duyệt và thùng rác của kho (`kho_cho_duyet/`, `thung_rac_kho/`), tệp gỡ khỏi Drive (`tep_go_khoi_drive/`), bản PDF chuyển từ Word/HTML (`ban_pdf_tam/`), khóa API, mật khẩu và cấu hình riêng của máy.
 
 Xem thêm [hướng dẫn chạy giao diện](HUONG_DAN_CHAY_GIAO_DIEN.md) (bảng biến môi trường, API) và [tài liệu bàn giao](HUONG_DAN_BAN_GIAO_UI.md).
