@@ -70,6 +70,22 @@ class ChatRequest(BaseModel):
             raise ValueError("Câu hỏi quá ngắn.")
         return value
 
+    @field_validator("history", mode="before")
+    @classmethod
+    def bo_luot_rong(cls, value):
+        # Bấm dừng trước khi có chữ nào thì trình duyệt lưu một câu trả lời
+        # rỗng vào lịch sử. Gửi kèm lượt rỗng đó từng làm cả câu hỏi kế tiếp bị
+        # từ chối 422 ("[object Object]" trên giao diện). Lượt rỗng không mang
+        # ngữ cảnh gì nên bỏ đi chứ không bắt người hỏi mở cuộc trò chuyện mới.
+        if not isinstance(value, list):
+            return value
+        return [
+            luot for luot in value
+            if not (isinstance(luot, dict)
+                    and isinstance(luot.get("content"), str)
+                    and not luot["content"].strip())
+        ]
+
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]

@@ -1630,6 +1630,18 @@ function renderCompletedActions(ui, content, elapsed, tuCache = null) {
   }
 }
 
+// "detail" của FastAPI là chuỗi với lỗi tự ném, nhưng là mảng đối tượng với
+// lỗi kiểm tra dữ liệu (422). Đưa thẳng mảng vào new Error thì người dùng chỉ
+// thấy "[object Object]".
+function thongDiepLoi(detail) {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && detail.length) {
+    const dau = detail[0];
+    return typeof dau === 'string' ? dau : `Yêu cầu không hợp lệ: ${dau?.msg || 'dữ liệu gửi lên sai dạng'}.`;
+  }
+  return '';
+}
+
 function renderError(ui, message) {
   ui.thinking.classList.add('hidden');
   ui.answer.className = 'error-box';
@@ -1700,8 +1712,11 @@ async function submitQuestion(question, tuyChon = {}) {
   let hieuLuc = [];
   let goiY = [];
   let tuCache = null;
+  // Bỏ lượt rỗng: câu bị dừng trước khi có chữ nào được lưu với nội dung rỗng,
+  // mà máy chủ không nhận tin nhắn rỗng trong lịch sử.
   const history = (currentChat?.messages || [])
-    .filter((item) => item.role === 'user' || item.role === 'assistant')
+    .filter((item) => (item.role === 'user' || item.role === 'assistant')
+      && typeof item.content === 'string' && item.content.trim())
     .slice(-6)
     .map((item) => ({ role: item.role, content: item.content.slice(0, 4000) }));
   // Chốt mã hội thoại TRƯỚC khi gửi, rồi dùng lại đúng mã đó cho bản ghi
@@ -1740,7 +1755,7 @@ async function submitQuestion(question, tuyChon = {}) {
     });
     if (!response.ok) {
       const detail = await response.json().catch(() => ({}));
-      throw new Error(detail.detail || `Máy chủ trả về lỗi ${response.status}.`);
+      throw new Error(thongDiepLoi(detail.detail) || `Máy chủ trả về lỗi ${response.status}.`);
     }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
