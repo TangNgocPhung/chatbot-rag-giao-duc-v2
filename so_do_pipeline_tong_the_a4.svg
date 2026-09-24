@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1400" width="1000" height="1400" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="nen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef5f9"/>
+      <stop offset="1" stop-color="#dde9f0"/>
+    </linearGradient>
+    <filter id="bong" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#40526a" flood-opacity="0.25"/>
+    </filter>
+    <marker id="mui" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6d7f96"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="1400" fill="url(#nen)"/>
+
+  <!-- Kho tri thức (nạp trước, không nằm trong luồng hỏi đáp) -->
+  <rect x="30" y="20" width="940" height="312" rx="14" fill="#e6e1f3" stroke="#9c8cc6" stroke-width="2" filter="url(#bong)"/>
+  <text x="500" y="52" font-size="21" fill="#23303e" text-anchor="middle"><tspan font-weight="700" fill="#3b2f6b">Kho tri thức</tspan><tspan fill="#4a4270" font-size="16"> · nạp trước, cập nhật tăng dần</tspan></text>
+  <rect x="48" y="70" width="276" height="104" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
+  <text x="186" y="96" font-size="16.5" fill="#23303e" text-anchor="middle" font-weight="600">Nguồn nạp</text>
+  <text x="186" y="120" font-size="15.5" fill="#23303e" text-anchor="middle">Google Drive (tự đồng bộ)</text>
+  <text x="186" y="140" font-size="15.5" fill="#23303e" text-anchor="middle">thư mục kho · quản trị viên tải lên</text>
+  <text x="186" y="160" font-size="15.5" fill="#23303e" text-anchor="middle">tài liệu riêng được duyệt</text>
+  <rect x="362" y="70" width="276" height="104" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
+  <text x="500" y="96" font-size="16.5" fill="#23303e" text-anchor="middle" font-weight="600">Đọc văn bản, slide, bảng tính</text>
+  <text x="500" y="120" font-size="15.5" fill="#23303e" text-anchor="middle">PDF · DOCX · DOC · TXT</text>
+  <text x="500" y="140" font-size="15.5" fill="#23303e" text-anchor="middle">HTML · EPUB · PPTX</text>
+  <text x="500" y="160" font-size="15.5" fill="#23303e" text-anchor="middle">XLSX · XLS · CSV</text>
+  <rect x="676" y="70" width="276" height="104" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
+  <text x="814" y="96" font-size="16.5" fill="#23303e" text-anchor="middle" font-weight="600">Ảnh, PDF scan, video, âm thanh</text>
+  <text x="814" y="120" font-size="15.5" fill="#23303e" text-anchor="middle">OCR Tesseract</text>
+  <text x="814" y="140" font-size="15.5" fill="#23303e" text-anchor="middle">phiên âm tự động</text>
+  <text x="814" y="160" font-size="15.5" fill="#23303e" text-anchor="middle">phụ đề SRT, VTT</text>
+  <rect x="676" y="210" width="276" height="104" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
+  <text x="814" y="236" font-size="16.5" fill="#23303e" text-anchor="middle" font-weight="600">Cắt đoạn</text>
+  <text x="814" y="260" font-size="15.5" fill="#23303e" text-anchor="middle">1.200 ký tự · chồng lấn 150</text>
+  <text x="814" y="280" font-size="15.5" fill="#23303e" text-anchor="middle">văn bản pháp quy tách</text>
+  <text x="814" y="300" font-size="15.5" fill="#23303e" text-anchor="middle">theo từng Điều</text>
+  <rect x="362" y="210" width="276" height="104" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
+  <text x="500" y="236" font-size="16.5" fill="#23303e" text-anchor="middle" font-weight="600">Phân loại &amp; hồ sơ văn bản</text>
+  <text x="500" y="260" font-size="15.5" fill="#23303e" text-anchor="middle">môn, cấp học, lớp, loại tài liệu</text>
+  <text x="500" y="280" font-size="15.5" fill="#23303e" text-anchor="middle">số hiệu, hiệu lực,</text>
+  <text x="500" y="300" font-size="15.5" fill="#23303e" text-anchor="middle">thay thế, sửa đổi</text>
+  <rect x="48" y="210" width="276" height="104" rx="9" fill="#dcefe6" stroke="#86bfa0" stroke-width="1.5"/>
+  <text x="186" y="236" font-size="16.5" fill="#23303e" text-anchor="middle" font-weight="600">Lập chỉ mục</text>
+  <text x="186" y="260" font-size="15.5" fill="#23303e" text-anchor="middle">FAISS (bge-m3) + BM25</text>
+  <text x="186" y="280" font-size="15.5" fill="#23303e" text-anchor="middle">cập nhật khi kho có</text>
+  <text x="186" y="300" font-size="15.5" fill="#23303e" text-anchor="middle">tệp mới hoặc đổi</text>
+  <polyline points="324,122 360,122" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <polyline points="638,122 674,122" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <polyline points="814,174 814,208" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <polyline points="676,262 640,262" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <polyline points="362,262 326,262" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+
+  <!-- Luồng hỏi đáp -->
+  <rect x="52" y="356" width="580" height="84" rx="10" fill="#c9dcec" stroke="#7f9fc2" stroke-width="2" filter="url(#bong)"/>
+  <text x="342" y="386" font-size="19.5" fill="#1f3550" text-anchor="middle" font-weight="700">1. Nhận câu hỏi &amp; rẽ nhánh sớm</text>
+  <text x="342" y="411" font-size="16.5" fill="#2b3a4a" text-anchor="middle">Tệp đính kèm · 3 công cụ tính theo thông tư</text>
+  <text x="342" y="431" font-size="16.5" fill="#2b3a4a" text-anchor="middle">+ máy tính số học (Python) · cache ≥ 0,96</text>
+  <polyline points="342,440 342,462" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <rect x="52" y="464" width="580" height="84" rx="10" fill="#c9dcec" stroke="#7f9fc2" stroke-width="2" filter="url(#bong)"/>
+  <text x="342" y="494" font-size="19.5" fill="#1f3550" text-anchor="middle" font-weight="700">2. Ghép ngữ cảnh hội thoại</text>
+  <text x="342" y="519" font-size="16.5" fill="#2b3a4a" text-anchor="middle">Câu hỏi nối tiếp được ghép với câu hỏi trước</text>
+  <text x="342" y="539" font-size="16.5" fill="#2b3a4a" text-anchor="middle">mô hình nhận 6 lượt gần nhất</text>
+  <polyline points="342,548 342,570" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <rect x="52" y="572" width="580" height="84" rx="10" fill="#c1e3d6" stroke="#79b99d" stroke-width="2" filter="url(#bong)"/>
+  <text x="342" y="602" font-size="19.5" fill="#1f3550" text-anchor="middle" font-weight="700">3. Truy hồi lai (hybrid)</text>
+  <text x="342" y="627" font-size="16.5" fill="#2b3a4a" text-anchor="middle">FAISS top-15 + BM25 top-15 → RRF → xếp hạng lại</text>
+  <text x="342" y="647" font-size="16.5" fill="#2b3a4a" text-anchor="middle">→ 4 đoạn · áp bộ lọc phạm vi</text>
+  <polyline points="342,656 342,678" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <rect x="52" y="680" width="580" height="84" rx="10" fill="#c9dcec" stroke="#7f9fc2" stroke-width="2" filter="url(#bong)"/>
+  <text x="342" y="710" font-size="19.5" fill="#1f3550" text-anchor="middle" font-weight="700">4. Chặn câu hỏi lạc đề</text>
+  <text x="342" y="735" font-size="16.5" fill="#2b3a4a" text-anchor="middle">Độ phủ từ khóa · trọng số IDF và khoảng cách vector</text>
+  <text x="342" y="755" font-size="16.5" fill="#2b3a4a" text-anchor="middle">so với từ vựng của kho</text>
+  <polyline points="342,764 342,786" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <rect x="52" y="788" width="580" height="84" rx="10" fill="#c9dcec" stroke="#7f9fc2" stroke-width="2" filter="url(#bong)"/>
+  <text x="342" y="818" font-size="19.5" fill="#1f3550" text-anchor="middle" font-weight="700">5. Gắn cảnh báo hiệu lực văn bản</text>
+  <text x="342" y="843" font-size="16.5" fill="#2b3a4a" text-anchor="middle">Nguồn bị thay thế, sửa đổi, chưa có hiệu lực</text>
+  <text x="342" y="863" font-size="16.5" fill="#2b3a4a" text-anchor="middle">hoặc còn là dự thảo</text>
+  <polyline points="342,872 342,894" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <rect x="52" y="896" width="580" height="84" rx="10" fill="#c9dcec" stroke="#7f9fc2" stroke-width="2" filter="url(#bong)"/>
+  <text x="342" y="926" font-size="19.5" fill="#1f3550" text-anchor="middle" font-weight="700">6. Sinh câu trả lời</text>
+  <text x="342" y="951" font-size="16.5" fill="#2b3a4a" text-anchor="middle">LLM cục bộ qua Ollama (mặc định qwen3.5:4b)</text>
+  <text x="342" y="971" font-size="16.5" fill="#2b3a4a" text-anchor="middle">chỉ dựa trên đoạn trích · kèm [1][2]</text>
+  <polyline points="342,980 342,1002" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <rect x="52" y="1004" width="580" height="84" rx="10" fill="#b5d9a4" stroke="#7eb46b" stroke-width="2" filter="url(#bong)"/>
+  <text x="342" y="1034" font-size="19.5" fill="#1f3550" text-anchor="middle" font-weight="700">7. Hậu kiểm</text>
+  <text x="342" y="1059" font-size="16.5" fill="#2b3a4a" text-anchor="middle">Đối chiếu từng trích dẫn [n] và từng con số</text>
+  <text x="342" y="1079" font-size="16.5" fill="#2b3a4a" text-anchor="middle">với các đoạn trích</text>
+
+  <!-- Nhánh rẽ -->
+  <rect x="684" y="356" width="240" height="84" rx="10" fill="#ebe6f6" stroke="#a597cf" stroke-width="2" filter="url(#bong)"/>
+  <text x="804" y="383" font-size="17.5" fill="#3b2f6b" text-anchor="middle" font-weight="700">Trả lời ngay</text>
+  <text x="804" y="406" font-size="15" fill="#23303e" text-anchor="middle">Phép tính kèm công thức</text>
+  <text x="804" y="425" font-size="15" fill="#23303e" text-anchor="middle">hoặc câu trả lời đã cache</text>
+  <polyline points="632,398 682,398" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <text x="658" y="390" font-size="14" fill="#52627a" text-anchor="middle" font-style="italic">khớp</text>
+  <rect x="684" y="572" width="240" height="84" rx="10" fill="#ebe6f6" stroke="#a597cf" stroke-width="2" filter="url(#bong)"/>
+  <text x="804" y="599" font-size="17.5" fill="#3b2f6b" text-anchor="middle" font-weight="700">Trả lại từ cache</text>
+  <text x="804" y="622" font-size="15" fill="#23303e" text-anchor="middle">Cache giống 0,88–0,96</text>
+  <text x="804" y="641" font-size="15" fill="#23303e" text-anchor="middle">và trùng đúng bộ đoạn trích</text>
+  <polyline points="632,614 682,614" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <text x="658" y="606" font-size="14" fill="#52627a" text-anchor="middle" font-style="italic">trùng</text>
+  <rect x="684" y="680" width="240" height="84" rx="10" fill="#f5dfe4" stroke="#d48c9b" stroke-width="2" filter="url(#bong)"/>
+  <text x="804" y="716" font-size="17.5" fill="#8a2f45" text-anchor="middle" font-weight="700">Từ chối có lý do</text>
+  <text x="804" y="740" font-size="15" fill="#23303e" text-anchor="middle">Kèm 3 gợi ý câu hỏi khác</text>
+  <polyline points="632,722 682,722" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <text x="658" y="714" font-size="14" fill="#52627a" text-anchor="middle" font-style="italic">lạc đề</text>
+  <rect x="684" y="1004" width="240" height="84" rx="10" fill="#f6e7c9" stroke="#d2ad62" stroke-width="2" filter="url(#bong)"/>
+  <text x="804" y="1031" font-size="15.5" fill="#23303e" text-anchor="middle"><tspan font-weight="700">Đạt:</tspan> ghi vào cache</text>
+  <text x="804" y="1055" font-size="15.5" fill="#23303e" text-anchor="middle"><tspan font-weight="700">Sai lệch:</tspan> gắn cảnh báo,</text>
+  <text x="804" y="1075" font-size="15.5" fill="#23303e" text-anchor="middle">không ghi vào cache</text>
+  <polyline points="632,1046 682,1046" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <rect x="684" y="464" width="240" height="84" rx="10" fill="#fbfcfe" stroke="#8494a8" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <text x="804" y="491" font-size="17.5" fill="#2b3a4a" text-anchor="middle" font-weight="700">Trang web (URL)</text>
+  <text x="804" y="514" font-size="15" fill="#23303e" text-anchor="middle">link dán trong câu hỏi</text>
+  <text x="804" y="533" font-size="15" fill="#23303e" text-anchor="middle">tải ngay, không lưu vào kho</text>
+  <polyline points="720,548 720,560 592,560 592,570" fill="none" stroke="#6d7f96" stroke-width="2.2" stroke-dasharray="6 4" marker-end="url(#mui)"/>
+  <polyline points="48,262 16,262 16,614" fill="none" stroke="#6d7f96" stroke-width="2.2"/>
+  <polyline points="16,614 50,614" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <text x="0" y="0" font-size="14" fill="#52627a" font-style="italic" text-anchor="middle" transform="translate(32,484) rotate(-90)">chỉ mục FAISS + BM25</text>
+
+  <!-- Gom mọi nhánh về người dùng -->
+  <line x1="924" y1="398" x2="950" y2="398" stroke="#6d7f96" stroke-width="2.2"/>
+  <circle cx="950" cy="398" r="3.5" fill="#6d7f96"/>
+  <line x1="924" y1="614" x2="950" y2="614" stroke="#6d7f96" stroke-width="2.2"/>
+  <circle cx="950" cy="614" r="3.5" fill="#6d7f96"/>
+  <line x1="924" y1="722" x2="950" y2="722" stroke="#6d7f96" stroke-width="2.2"/>
+  <circle cx="950" cy="722" r="3.5" fill="#6d7f96"/>
+  <line x1="924" y1="1046" x2="950" y2="1046" stroke="#6d7f96" stroke-width="2.2"/>
+  <circle cx="950" cy="1046" r="3.5" fill="#6d7f96"/>
+  <polyline points="950,398 950,1110" fill="none" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+  <rect x="30" y="1112" width="940" height="60" rx="12" fill="#f5dfe4" stroke="#d48c9b" stroke-width="2" filter="url(#bong)"/>
+  <text x="500" y="1150" font-size="16.5" fill="#23303e" text-anchor="middle"><tspan font-weight="700" fill="#8a2f45" font-size="20">Người dùng</tspan><tspan fill="#2b3a4a">   nhận câu trả lời · nguồn trích · cảnh báo · gợi ý hỏi tiếp</tspan></text>
+
+  <!-- Phân hệ hỗ trợ -->
+  <rect x="30" y="1196" width="940" height="184" rx="14" fill="#f6ecd6" stroke="#d2ad62" stroke-width="2" filter="url(#bong)"/>
+  <text x="500" y="1224" font-size="19.5" fill="#6b4d12" text-anchor="middle" font-weight="700">Phân hệ hỗ trợ</text>
+  <rect x="48" y="1240" width="276" height="58" rx="8" fill="#fffaf0" stroke="#e0c78f" stroke-width="1.5"/>
+  <text x="186" y="1264" font-size="16" fill="#23303e" text-anchor="middle" font-weight="600">Đồng bộ Google Drive</text>
+  <text x="186" y="1285" font-size="15" fill="#4f5b66" text-anchor="middle">tự động theo chu kỳ</text>
+  <rect x="362" y="1240" width="276" height="58" rx="8" fill="#fffaf0" stroke="#e0c78f" stroke-width="1.5"/>
+  <text x="500" y="1264" font-size="16" fill="#23303e" text-anchor="middle" font-weight="600">Quét thư mục kho</text>
+  <text x="500" y="1285" font-size="15" fill="#4f5b66" text-anchor="middle">tự cập nhật chỉ mục</text>
+  <rect x="676" y="1240" width="276" height="58" rx="8" fill="#fffaf0" stroke="#e0c78f" stroke-width="1.5"/>
+  <text x="814" y="1264" font-size="16" fill="#23303e" text-anchor="middle" font-weight="600">Lọc phạm vi</text>
+  <text x="814" y="1285" font-size="15" fill="#4f5b66" text-anchor="middle">người dùng tự chọn</text>
+  <rect x="48" y="1308" width="276" height="58" rx="8" fill="#fffaf0" stroke="#e0c78f" stroke-width="1.5"/>
+  <text x="186" y="1332" font-size="16" fill="#23303e" text-anchor="middle" font-weight="600">Gợi ý câu hỏi</text>
+  <text x="186" y="1353" font-size="15" fill="#4f5b66" text-anchor="middle">mở đầu và hỏi tiếp</text>
+  <rect x="362" y="1308" width="276" height="58" rx="8" fill="#fffaf0" stroke="#e0c78f" stroke-width="1.5"/>
+  <text x="500" y="1332" font-size="16" fill="#23303e" text-anchor="middle" font-weight="600">Lịch sử hội thoại</text>
+  <text x="500" y="1353" font-size="15" fill="#4f5b66" text-anchor="middle">lưu và mở lại</text>
+  <rect x="676" y="1308" width="276" height="58" rx="8" fill="#fffaf0" stroke="#e0c78f" stroke-width="1.5"/>
+  <text x="814" y="1332" font-size="16" fill="#23303e" text-anchor="middle" font-weight="600">Đổi mô hình</text>
+  <text x="814" y="1353" font-size="15" fill="#4f5b66" text-anchor="middle">chọn model trên Ollama</text>
+</svg>
