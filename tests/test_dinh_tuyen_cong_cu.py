@@ -46,6 +46,12 @@ class DinhTuyenTests(unittest.TestCase):
         self.assertEqual(su_kien[-1]["cong_cu"], "dinh_muc_tiet_day")
         self.assertFalse(su_kien[-1]["tinh_luong"])
 
+    def test_cau_dinh_muc_pho_thong_di_sang_cong_cu_thong_tu_05(self):
+        """Câu thật 24/9/2026 - trước đó ra "không tìm thấy", rồi "19 tiết"."""
+        su_kien = self.su_kien("tiết dạy của GV THPT cấp 3")
+        self.assertEqual(su_kien[-1]["cong_cu"], "dinh_muc_tiet_day_pho_thong")
+        self.assertIn("17 tiết/tuần", su_kien[1]["content"])
+
     def test_cau_tinh_diem_di_sang_danh_gia_hoc_sinh(self):
         su_kien = self.su_kien(
             "điểm thường xuyên 8, 9, giữa kì 7, cuối kì 8 thì ĐTB bao nhiêu"

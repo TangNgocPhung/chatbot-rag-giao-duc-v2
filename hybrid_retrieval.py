@@ -66,6 +66,8 @@ TU_DONG_NGHIA = {
     "gdtx": ["giáo", "dục", "thường", "xuyên"],
     "gdnn": ["giáo", "dục", "nghề", "nghiệp"],
     "gdmn": ["giáo", "dục", "mầm", "non"],
+    "thpt": ["trung", "học", "phổ", "thông"],
+    "thcs": ["trung", "học", "cơ", "sở"],
     "bgddt": ["bộ", "giáo", "dục", "đào", "tạo"],
     "hs": ["học", "sinh"],
     "gv": ["giáo", "viên"],
@@ -79,10 +81,45 @@ TU_DONG_NGHIA = {
     "nd": ["nghị", "định"],
     "cv": ["công", "văn"],
 }
+CAP_HOC = {
+    1: ["tiểu", "học"],
+    2: ["trung", "học", "cơ", "sở", "thcs"],
+    3: ["trung", "học", "phổ", "thông", "thpt"],
+}
 # Chiều ngược lại: hỏi "thời khóa biểu" thì cũng tìm được file đặt tên "TKB".
 CUM_THANH_VIET_TAT = {
     tuple(cum): viet_tat for viet_tat, cum in TU_DONG_NGHIA.items() if len(cum) > 1
 }
+
+
+# Viết tắt đủ chắc nghĩa để thay thẳng vào câu trước khi nhúng vector. Không
+# lấy cả TU_DONG_NGHIA: "tt", "cv", "nd", "ai" vừa là viết tắt vừa là chữ thường.
+VIET_TAT_CHAC_NGHIA = ("gv", "hs", "thpt", "thcs", "gdpt", "gdtx", "gdnn", "gdmn",
+                       "sgk", "tkb", "ppct", "khbd", "cntt")
+_MAU_VIET_TAT = re.compile(r"\b(" + "|".join(VIET_TAT_CHAC_NGHIA) + r")\b", re.IGNORECASE)
+_MAU_CAP_HOC = re.compile(r"\bcấp\s+(1|2|3|I{1,3})\b", re.IGNORECASE)
+
+
+def viet_day_du(cau_hoi: str) -> str:
+    """Câu hỏi cho nhánh vector: "tiết dạy của GV THPT cấp 3" -> "tiết dạy của
+    giáo viên trung học phổ thông".
+
+    BM25 đã có mo_rong_truy_van, nhưng vector nhúng nguyên câu. Viết tắt kéo
+    vector về phía sách giáo viên - nơi "GV", "HS" dày đặc trên mọi trang - còn
+    "cấp 3" kéo về "Bài 3", "Lesson 3", kể cả khi đã ghi kèm tên cấp học. Đo
+    trên kho VPS 24/9/2026: Thông tư 05/2025 về định mức tiết dạy không lọt top
+    15 với câu gốc, lên hạng 2 với câu đã viết đầy đủ. Không đoạn nào lọt từ
+    nhánh vector thì bộ chặn lạc đề từ chối cả câu.
+    """
+    cau = _MAU_VIET_TAT.sub(lambda m: " ".join(TU_DONG_NGHIA[m.group(1).lower()]), cau_hoi)
+
+    def doi_cap(m):
+        so = m.group(1)
+        cap = len(so) if so.lower().startswith("i") else int(so)
+        ten = " ".join(t for t in CAP_HOC[cap] if t not in ("thcs", "thpt"))
+        return "" if ten in cau.lower() else ten
+
+    return re.sub(r"\s{2,}", " ", _MAU_CAP_HOC.sub(doi_cap, cau)).strip()
 
 
 def mo_rong_truy_van(tokens: list[str], cau_hoi_goc: str = "") -> list[str]:
@@ -93,6 +130,12 @@ def mo_rong_truy_van(tokens: list[str], cau_hoi_goc: str = "") -> list[str]:
     for cum, viet_tat in CUM_THANH_VIET_TAT.items():
         if all(tu in tokens for tu in cum) and viet_tat not in mo_rong:
             mo_rong.append(viet_tat)
+    # "cấp 3" là cách nói thường ngày của trung học phổ thông, văn bản không bao
+    # giờ viết vậy; còn chữ số "3" bị loại vì quá ngắn nên BM25 chỉ thấy "cấp".
+    for so in re.findall(r"\bcấp\s+(1|2|3|i{1,3})\b", cau_hoi_goc.lower()):
+        mo_rong.extend(
+            tu for tu in CAP_HOC[len(so) if so.startswith("i") else int(so)] if tu not in mo_rong
+        )
     # "AI" viết hoa là công nghệ, còn "ai" viết thường là từ để hỏi - từ để hỏi
     # nằm trong TU_DUNG nên đã bị loại trước khi tới đây. Chỉ bung nghĩa công
     # nghệ khi người dùng thực sự viết hoa, nhờ vậy "ai được miễn học phí" không
@@ -418,7 +461,7 @@ def truy_hoi_hybrid(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA
         # nên phải nới rổ ứng viên ra trước khi lọc.
         so_ung_vien *= HE_SO_MO_RONG_KHI_LOC
 
-    dense_co_diem = vector_store.similarity_search_with_score(cau_hoi, k=so_ung_vien)
+    dense_co_diem = vector_store.similarity_search_with_score(viet_day_du(cau_hoi), k=so_ung_vien)
     ket_qua_dense = []
     for doc, distance in dense_co_diem:
         if bo_loc is not None and not bo_loc(doc):

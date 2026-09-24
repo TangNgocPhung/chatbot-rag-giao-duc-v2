@@ -12,6 +12,7 @@ hồi rồi mới trả về, nên không dựng lại được cảnh bên nh�
 """
 
 import asyncio
+import threading
 import time
 import unittest
 from unittest.mock import patch
@@ -115,6 +116,52 @@ class DungTraLoiTests(unittest.TestCase):
                 except StopAsyncIteration:
                     break
         self.assertIn("Xong", noi_dung)
+
+
+class ChuoiNapPromptLau:
+    """Giả Ollama đang nạp prompt: chưa có token nào trong nhiều phút."""
+
+    def __init__(self):
+        self.bi_huy = threading.Event()
+
+    def astream(self, _dau_vao):
+        async def phat():
+            try:
+                await asyncio.sleep(300)
+                yield "muộn"
+            except asyncio.CancelledError:
+                self.bi_huy.set()  # bản thật: httpx đóng kết nối tới Ollama
+                raise
+        return phat()
+
+
+class DungTruocTokenDauTests(unittest.TestCase):
+    """Lỗi 24/9: qwen3.5:9b nạp prompt 2 phút 27 giây, bấm dừng giữa lúc đó thì
+    máy chủ vẫn báo "Đang xử lý một câu hỏi" tới khi câu trả lời sinh xong, vì
+    cờ dừng chỉ được xem khi có token để phát."""
+
+    def setUp(self):
+        service.huy_sinh.clear()
+        self.addCleanup(service.huy_sinh.clear)
+
+    def test_dung_luc_chua_co_token_thi_thoat_ngay_va_cat_ket_noi(self):
+        chuoi = ChuoiNapPromptLau()
+        threading.Timer(0.3, service.huy_sinh.set).start()
+        bat_dau = time.monotonic()
+        self.assertEqual(list(service._phat_token(chuoi, {})), [])
+        self.assertLess(time.monotonic() - bat_dau, 3.0)
+        self.assertTrue(chuoi.bi_huy.is_set(), "yêu cầu tới Ollama chưa bị huỷ")
+
+    def test_khong_dung_thi_phat_du_token(self):
+        class ChuoiThuong:
+            def astream(self, _dau_vao):
+                async def phat():
+                    for t in ("Một", " hai", " ba"):
+                        await asyncio.sleep(0)
+                        yield t
+                return phat()
+
+        self.assertEqual(list(service._phat_token(ChuoiThuong(), {})), ["Một", " hai", " ba"])
 
 
 if __name__ == "__main__":

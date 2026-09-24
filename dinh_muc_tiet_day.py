@@ -14,10 +14,10 @@ con số không có nguyên văn trong đoạn trích, và model 3B trên CPU th
 đáng tin ở số học nhiều bước.
 
 PHẠM VI HẸP ĐÚNG BẰNG PHẠM VI CỦA VĂN BẢN. Thông tư 04/2026 chỉ điều chỉnh
-giáo viên cơ sở giáo dục thường xuyên (Điều 1). Kho hiện KHÔNG có văn bản nào
-quy định định mức tiết dạy cho giáo viên phổ thông hay mầm non, nên câu hỏi về
-các cấp học đó bị trả None để đi tiếp đường RAG - đem con số 17 tiết của giáo
-dục thường xuyên trả lời cho giáo viên THPT là bịa, dù có trích dẫn kèm.
+giáo viên cơ sở giáo dục thường xuyên (Điều 1). Câu hỏi về giáo viên phổ thông
+bị trả None để sang dinh_muc_tiet_day_pho_thong.py (Thông tư 05/2025) - đem con
+số 17 tiết của giáo dục thường xuyên trả lời cho giáo viên THPT là lấy nhầm
+văn bản, dù hai con số tình cờ bằng nhau. Mầm non thì kho chưa có văn bản.
 
     python dinh_muc_tiet_day.py "giáo viên GDTX chủ nhiệm một lớp dạy bao nhiêu tiết"
 """

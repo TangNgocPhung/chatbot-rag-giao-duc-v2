@@ -100,7 +100,9 @@ class PdfLoader:
         du_van_ban = sum(len(d.page_content.strip()) for d in tai_lieu) >= (
             ocr_pdf.KY_TU_TOI_THIEU_MOI_TRANG * max(1, len(tai_lieu))
         )
-        if du_van_ban:
+        if du_van_ban and not ocr_pdf.lop_chu_mat_dau(
+            "\n".join(d.page_content for d in tai_lieu)
+        ):
             return self._danh_so_trang(tai_lieu)
 
         cac_trang = ocr_pdf.doc_cache(self.duong_dan)

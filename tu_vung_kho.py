@@ -28,7 +28,7 @@ import math
 import os
 from collections import Counter
 
-from hybrid_retrieval import tach_tu_tieng_viet
+from hybrid_retrieval import tach_tu_tieng_viet, viet_day_du
 
 # Chỉ dùng dạng CÓ DẤU để chấm, không dùng biến thể bỏ dấu như BM25. Lý do:
 # "phở" bỏ dấu thành "pho", trùng luôn với "phổ" trong "phổ thông" - đúng cái
@@ -52,7 +52,11 @@ class TuVungKho:
         return math.log((self.so_chunk + 1) / (self.tan_suat.get(tu, 0) + 1))
 
     def tu_cau_hoi(self, cau_hoi: str) -> list[str]:
-        return [t for t in TACH_TU(cau_hoi) if len(t) >= DO_DAI_TU_TOI_THIEU]
+        # Đo trên câu đã bung viết tắt: văn bản luật viết "giáo viên trung học
+        # phổ thông" chứ không viết "GV THPT cấp 3", nên để nguyên thì chính
+        # những từ hiếm nhất (IDF cao nhất) lại vắng mặt và câu đúng chủ đề bị
+        # chặn oan (do_phu_idf=0.51 với câu thật 24/9/2026).
+        return [t for t in TACH_TU(viet_day_du(cau_hoi)) if len(t) >= DO_DAI_TU_TOI_THIEU]
 
     def ty_le_tu_la(self, cau_hoi: str) -> float:
         """Phần sức nặng chủ đề nằm ở những từ kho chưa từng có (0..1)."""

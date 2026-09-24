@@ -24,6 +24,16 @@ DOAN = {
 }
 
 
+def chuoi_gia(*token):
+    """Chuỗi LLM giả: bản thật được đọc qua astream để dừng được giữa chừng."""
+    async def phat(*_):
+        for t in token:
+            yield t
+    chuoi = MagicMock()
+    chuoi.astream.side_effect = phat
+    return chuoi
+
+
 class BangChungTests(unittest.TestCase):
     def test_doan_nguon_trong_kho(self):
         doc = doan_khoanh_thanh_bang_chung(DOAN)
@@ -47,12 +57,10 @@ class TraLoiDoanKhoanhTests(unittest.TestCase):
         self.service = RAGService()
         self.service.status.state = "ready"
         self.service.format_docs = lambda docs: "\n".join(d.page_content for d in docs)
-        self.service.rag_chain = MagicMock()
-        self.service.rag_chain.stream.return_value = iter(["Tôi không tìm thấy."])
+        self.service.rag_chain = chuoi_gia("Tôi không tìm thấy.")
         # Prompt tra cứu cấm kiến thức ngoài nên hay đáp "không tìm thấy" cho
         # yêu cầu giải thích; hỏi về đoạn khoanh phải đi prompt giải thích.
-        self.service.chain_giai_thich = MagicMock()
-        self.service.chain_giai_thich.stream.return_value = iter(["Đoạn này nêu căn cứ [1]."])
+        self.service.chain_giai_thich = chuoi_gia("Đoạn này nêu căn cứ [1].")
         self.lac_de = Document(page_content="Quy chế tuyển sinh.", metadata={"source_file": "khac.pdf"})
 
     def test_doan_khoanh_la_bang_chung_so_mot_va_khong_bi_chan(self):
@@ -64,8 +72,8 @@ class TraLoiDoanKhoanhTests(unittest.TestCase):
         nguon = next(s for s in su_kien if s["type"] == "sources")["sources"]
         self.assertEqual(nguon[0]["name"], "159-ndcp.signed.pdf")
         self.assertEqual(nguon[1]["name"], "khac.pdf")
-        self.service.rag_chain.stream.assert_not_called()
-        ngu_canh = self.service.chain_giai_thich.stream.call_args[0][0]["context"]
+        self.service.rag_chain.astream.assert_not_called()
+        ngu_canh = self.service.chain_giai_thich.astream.call_args[0][0]["context"]
         self.assertTrue(ngu_canh.startswith(DOAN["van_ban"]))
         self.assertNotIn("cong_cu", su_kien[-1])
 
@@ -73,7 +81,7 @@ class TraLoiDoanKhoanhTests(unittest.TestCase):
         with patch.object(self.service, "_retrieve", return_value=[]):
             su_kien = list(self.service._sinh_cau_tra_loi("43/2019", doan_trich=DOAN))
         self.assertNotIn("cong_cu", su_kien[-1])
-        self.assertTrue(self.service.chain_giai_thich.stream.called)
+        self.assertTrue(self.service.chain_giai_thich.astream.called)
 
 
 class ApiDoanKhoanhTests(unittest.TestCase):

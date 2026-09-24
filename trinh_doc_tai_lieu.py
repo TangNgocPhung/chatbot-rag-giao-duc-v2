@@ -508,8 +508,12 @@ def _van_ban_cac_trang(duong_dan: str) -> list[str]:
                 trang.close()
         finally:
             tai_lieu.close()
-    # PDF scan: lớp chữ gần như trống, chữ thật nằm trong bản OCR lúc lập chỉ mục.
-    if sum(len(t.strip()) for t in cac_trang) < ocr_pdf.KY_TU_TOI_THIEU_MOI_TRANG * max(1, len(cac_trang)):
+    # PDF scan: lớp chữ gần như trống (hoặc mất dấu), chữ thật nằm trong bản
+    # OCR lúc lập chỉ mục.
+    if (
+        sum(len(t.strip()) for t in cac_trang) < ocr_pdf.KY_TU_TOI_THIEU_MOI_TRANG * max(1, len(cac_trang))
+        or ocr_pdf.lop_chu_mat_dau(" ".join(cac_trang))
+    ):
         cache = ocr_pdf.doc_cache(duong_dan)
         if not cache or len(cache) != len(cac_trang):
             # Chưa OCR thì đừng nhớ: tệp được OCR sau đó (lượt cập nhật ban
@@ -644,8 +648,9 @@ def _tu_cua_trang(duong_dan: str, so_trang: int, cho_phep_ocr: bool = True) -> l
                 _kiem_trang(so_trang, len(tai_lieu))
                 trang = tai_lieu[so_trang - 1]
                 cac_tu = _tu_lop_chu_pdf(trang)
-                # Trang scan: lớp chữ trống (hoặc vài chữ rác của máy scan).
-                if len(cac_tu) < 10:
+                # Trang scan: lớp chữ trống, vài chữ rác của máy scan, hoặc
+                # chữ tiếng Việt mất dấu không khớp được với bản OCR đã lập chỉ mục.
+                if len(cac_tu) < 10 or ocr_pdf.lop_chu_mat_dau(" ".join(t[0] for t in cac_tu)):
                     cac_tu = []
                     tep_nho = _tep_nho_ocr(duong_dan, so_trang)
                     if os.path.exists(tep_nho):

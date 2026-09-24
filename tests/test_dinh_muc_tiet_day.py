@@ -178,9 +178,9 @@ class NhanDienTests(unittest.TestCase):
 
 
 class PhamViTests(unittest.TestCase):
-    """Thông tư 04/2026 chỉ điều chỉnh giáo dục thường xuyên. Kho chưa có văn
-    bản nào quy định định mức tiết dạy cho các cấp học khác, nên đem con số 17
-    tiết trả lời cho giáo viên THPT là bịa, dù có trích dẫn kèm."""
+    """Thông tư 04/2026 chỉ điều chỉnh giáo dục thường xuyên. Giáo viên phổ
+    thông thuộc Thông tư 05/2025 và công cụ dinh_muc_tiet_day_pho_thong; đem con
+    số 17 tiết của văn bản này trả lời cho giáo viên THPT là lấy nhầm căn cứ."""
 
     def khong_nhan(self, cau_hoi):
         self.assertIsNone(dm.tra_loi(cau_hoi), f"nhận nhầm: {cau_hoi}")

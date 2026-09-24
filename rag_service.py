@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
 import json
 import os
 import re
@@ -27,6 +29,7 @@ import quan_ly_kho
 import tai_khoan
 import danh_gia_hoc_sinh
 import dinh_muc_tiet_day
+import dinh_muc_tiet_day_pho_thong
 import tep_dinh_kem
 import tinh_luong
 import tinh_toan
@@ -69,6 +72,24 @@ from web_loader import (
 DUONG_DAN_CAI_DAT = os.path.abspath(os.getenv(
     "RAG_CAI_DAT", os.path.join(os.path.dirname(os.path.abspath(__file__)), "cai_dat.json")
 ))
+
+
+# Một vòng sự kiện dùng suốt đời tiến trình cho mọi lượt astream tới Ollama.
+# Không tạo vòng mới cho mỗi câu hỏi: client httpx bất đồng bộ của ChatOllama
+# giữ kết nối keep-alive gắn với vòng đã mở ra nó, sang vòng khác là hỏng.
+_vong_llm: asyncio.AbstractEventLoop | None = None
+_khoa_vong_llm = threading.Lock()
+
+
+def _vong_su_kien_llm() -> asyncio.AbstractEventLoop:
+    global _vong_llm
+    with _khoa_vong_llm:
+        if _vong_llm is None:
+            _vong_llm = asyncio.new_event_loop()
+            threading.Thread(
+                target=_vong_llm.run_forever, name="llm-astream", daemon=True
+            ).start()
+        return _vong_llm
 
 
 # Tệp người dùng đính kèm trong chat được chép về đây để thành tài liệu lâu dài.
@@ -1506,13 +1527,13 @@ class RAGService:
             }
 
             if tom_tat:
-                dong_token = self._cac_chuoi(ten_mo_hinh)[2].stream({
+                dong_token = self._phat_token(self._cac_chuoi(ten_mo_hinh)[2], {
                     "ten_tep": ", ".join(tep.ten for tep in cac_tep),
                     "context": gop_ngu_canh(documents),
                     "question": model_question,
                 })
             else:
-                dong_token = self._chain_tra_loi(doan_khoanh, ten_mo_hinh).stream({
+                dong_token = self._phat_token(self._chain_tra_loi(doan_khoanh, ten_mo_hinh), {
                     "context": self.format_docs(documents),
                     "question": model_question,
                 })
@@ -1521,6 +1542,8 @@ class RAGService:
                 if token:
                     cau_tra_loi += token
                     yield {"type": "token", "content": token}
+            if self.huy_sinh.is_set():
+                return
 
             kiem_tra = kiem_tra_tra_loi.kiem_tra(cau_tra_loi, documents)
             if tom_tat:
@@ -1657,6 +1680,59 @@ class RAGService:
         self.huy_sinh.set()
         return True
 
+    def _phat_token(self, chuoi, dau_vao: dict) -> Iterator[str]:
+        """Phát token của chuỗi LLM, dừng được cả khi mô hình chưa ra chữ nào.
+
+        Cờ huy_sinh chỉ được xem mỗi lần có sự kiện để phát. Với .stream() thường,
+        khoảng chờ token đầu tiên là một lần đọc socket chặn cứng: qwen3.5:9b trên
+        CPU của VPS nạp prompt mất hơn hai phút, bấm dừng trong lúc đó thì máy chủ
+        vẫn báo "đang xử lý" tới khi câu trả lời xong. Ở đây chuỗi chạy bằng
+        astream trên vòng sự kiện nền; huỷ tác vụ đó là đóng kết nối HTTP tới
+        Ollama, và Ollama bỏ luôn yêu cầu thay vì nạp prompt cho không ai đọc.
+        """
+        vong = _vong_su_kien_llm()
+        dong = chuoi.astream(dau_vao)
+        het = object()
+        dang_doi: list[asyncio.Task] = []
+
+        async def lay_tiep():
+            dang_doi[:] = [asyncio.current_task()]
+            try:
+                return await dong.__anext__()
+            except StopAsyncIteration:
+                return het
+
+        async def dong_lai():
+            # Huỷ lượt đọc còn treo rồi đợi nó thoát hẳn - lúc đó kết nối tới
+            # Ollama đã đóng - trước khi trả khoá sinh cho câu hỏi kế tiếp.
+            for tac_vu in dang_doi:
+                if not tac_vu.done():
+                    tac_vu.cancel()
+                    try:
+                        await tac_vu
+                    except BaseException:
+                        pass
+            await dong.aclose()
+
+        try:
+            while True:
+                tuong_lai = asyncio.run_coroutine_threadsafe(lay_tiep(), vong)
+                while True:
+                    try:
+                        token = tuong_lai.result(timeout=0.25)
+                        break
+                    except concurrent.futures.TimeoutError:
+                        if self.huy_sinh.is_set():
+                            return
+                if token is het:
+                    return
+                yield token
+        finally:
+            try:
+                asyncio.run_coroutine_threadsafe(dong_lai(), vong).result(timeout=10)
+            except Exception as exc:
+                print(f"⚠️  Không đóng gọn được luồng token: {exc}")
+
     def stream_answer(
         self,
         question: str,
@@ -1723,6 +1799,7 @@ class RAGService:
         for ten_cong_cu, cong_cu in () if hoi_doan_khoanh else (
             ("tinh_luong", tinh_luong),
             ("dinh_muc_tiet_day", dinh_muc_tiet_day),
+            ("dinh_muc_tiet_day_pho_thong", dinh_muc_tiet_day_pho_thong),
             ("danh_gia_hoc_sinh", danh_gia_hoc_sinh),
             ("tinh_toan", tinh_toan),
         ):
@@ -1841,12 +1918,15 @@ class RAGService:
             }
             context = self.format_docs(documents)
             cau_tra_loi = ""
-            for token in self._chain_tra_loi(doan_khoanh, ten_mo_hinh).stream(
-                {"context": context, "question": model_question}
+            for token in self._phat_token(
+                self._chain_tra_loi(doan_khoanh, ten_mo_hinh),
+                {"context": context, "question": model_question},
             ):
                 if token:
                     cau_tra_loi += token
                     yield {"type": "token", "content": token}
+            if self.huy_sinh.is_set():
+                return
 
             # Hậu kiểm bằng đối chiếu chuỗi: rẻ, không gọi thêm mô hình, và bắt
             # đúng hai lỗi nguy hiểm nhất (trích dẫn sai số, số liệu tự bịa).

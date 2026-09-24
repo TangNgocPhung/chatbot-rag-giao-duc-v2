@@ -124,8 +124,36 @@ def doc_cache(duong_dan_pdf: str) -> list[str] | None:
         return None
 
 
+_CHU_CO_DAU = set(
+    "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ"
+)
+# Hư từ tiếng Việt viết không dấu. Để phân biệt với văn bản tiếng Anh thật -
+# thứ cũng không có dấu nhưng không cần OCR lại.
+_HU_TU_KHONG_DAU = set(
+    "cua cac duoc nhung viec nguoi hoc giao truong dinh nam thong theo nay "
+    "voi doi trong va la co khong mot".split()
+)
+
+
+def lop_chu_mat_dau(van_ban: str) -> bool:
+    """Lớp chữ là tiếng Việt nhưng mất hết dấu - do phần mềm máy scan tự OCR
+    bằng bộ nhận dạng tiếng Anh ("giao vien truing trung hoc pho thong la
+    17 ti6t"). Đủ chữ nên trước đây được tin dùng, nhưng câu hỏi có dấu không
+    khớp được: Thông tư 05/2025 về định mức tiết dạy nằm trong kho mà hỏi
+    "tiết dạy của GV THPT" vẫn ra "không tìm thấy". 12/1.012 tệp dính (24/9/2026).
+    """
+    chu = [c for c in van_ban.lower() if c.isalpha()]
+    if len(chu) < 300:
+        return False  # quá ít chữ để kết luận
+    if sum(c in _CHU_CO_DAU for c in chu) / len(chu) >= 0.03:
+        return False  # văn bản tiếng Việt thường có ~15-25% chữ mang dấu
+    tu = re.findall(r"[a-z]+", van_ban.lower())
+    return bool(tu) and sum(t in _HU_TU_KHONG_DAU for t in tu) / len(tu) > 0.08
+
+
 def thieu_lop_van_ban(duong_dan_pdf: str) -> bool:
-    """PDF scan: tổng văn bản trích được quá ít so với số trang."""
+    """PDF scan: tổng văn bản trích được quá ít so với số trang, hoặc lớp chữ
+    có đủ nhưng là tiếng Việt mất dấu."""
     try:
         import pypdf
 
@@ -135,8 +163,11 @@ def thieu_lop_van_ban(duong_dan_pdf: str) -> bool:
             return False
         # Chỉ cần kiểm tra vài trang đầu là đủ kết luận, không phải mở cả file.
         mau = reader.pages[: min(3, so_trang)]
-        tong = sum(len((trang.extract_text() or "").strip()) for trang in mau)
-        return tong < KY_TU_TOI_THIEU_MOI_TRANG * len(mau)
+        van_ban = "\n".join((trang.extract_text() or "").strip() for trang in mau)
+        return (
+            len(van_ban) < KY_TU_TOI_THIEU_MOI_TRANG * len(mau)
+            or lop_chu_mat_dau(van_ban)
+        )
     except Exception:
         return False
 
