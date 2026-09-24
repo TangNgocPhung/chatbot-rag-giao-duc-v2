@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import tempfile
 import threading
 import time
+import unicodedata
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Iterator
@@ -28,6 +30,7 @@ import dinh_muc_tiet_day
 import tep_dinh_kem
 import tinh_luong
 import tinh_toan
+import trinh_doc_tai_lieu
 import tu_vung_kho
 import van_ban_meta
 from capnhat_tailieu_moi import main as cap_nhat_chi_muc_tren_dia
@@ -111,6 +114,47 @@ def doan_khoanh_thanh_bang_chung(doan_trich: dict | None):
         metadata["tep_dinh_kem"] = tep
         metadata["source_url"] = f"/api/tep/{quote(str(tep))}/noi-dung"
     return Document(page_content=str(doan_trich["van_ban"]).strip(), metadata=metadata)
+
+
+_TU_HOI = re.compile(r"\w+", re.UNICODE)
+_TU_HOI_BO_QUA = {
+    "là", "gì", "nào", "của", "và", "có", "các", "những", "được", "trong", "cho",
+    "về", "với", "theo", "này", "không", "thì", "bao", "nhiêu", "như", "thế",
+    "hãy", "cho", "biết", "tôi", "em", "ai", "đâu", "sao", "nêu", "một", "để",
+}
+_TACH_CAU = re.compile(r"(?<=[.;!?])\s+|\n\s*\n|\n(?=\s*(?:[a-zđ]\)|\d+\.\s|[-–•+]\s))")
+DO_DAI_DOAN_DINH_VI = 3000
+
+
+def cau_trong_tam(noi_dung: str, cau_hoi: str) -> str:
+    """Câu trong đoạn bằng chứng sát câu hỏi nhất, để tô đậm riêng trên trang gốc.
+
+    Cả chunk dài chừng một nửa trang; tô vàng cả khối thì người đọc vẫn phải
+    đọc hết mới thấy câu nào trả lời. Chấm điểm bằng cặp chữ liền nhau của câu
+    hỏi (tiếng Việt một chữ một âm tiết, "nhà giáo" mới có nghĩa), rồi đến chữ lẻ.
+    """
+    def tach(van_ban: str) -> list[str]:
+        return _TU_HOI.findall(unicodedata.normalize("NFC", van_ban).lower())
+
+    tu_hoi = tach(cau_hoi or "")
+    don = {t for t in tu_hoi if t not in _TU_HOI_BO_QUA and len(t) > 1}
+    cap = set(zip(tu_hoi, tu_hoi[1:]))
+    if not don:
+        return ""
+    cac_cau = [c.strip() for c in _TACH_CAU.split(noi_dung or "") if c and c.strip()]
+    tot, diem_tot = -1, 0
+    for i, cau in enumerate(cac_cau):
+        tu = tach(cau)
+        diem = 2 * len(cap & set(zip(tu, tu[1:]))) + len(don & set(tu))
+        if diem > diem_tot:
+            tot, diem_tot = i, diem
+    if tot < 0 or diem_tot < 3:
+        return ""
+    cau = cac_cau[tot]
+    # "a) ..." hay "Điều 5." đứng riêng quá ngắn: tô kèm câu ngay sau.
+    if len(cau) < 80 and tot + 1 < len(cac_cau):
+        cau = f"{cau} {cac_cau[tot + 1]}"
+    return " ".join(cau.split())[:500]
 
 
 def ban_ghi_lech_tep(record: dict, size: int, modified_ns: int) -> bool:
@@ -1113,7 +1157,10 @@ class RAGService:
         )
 
     @staticmethod
-    def _sources(documents, ho_so: dict | None = None, tinh_trang: dict | None = None) -> list[dict]:
+    def _sources(
+        documents, ho_so: dict | None = None, tinh_trang: dict | None = None,
+        cau_hoi: str = "",
+    ) -> list[dict]:
         sources = []
         for evidence_number, doc in enumerate(documents, 1):
             source_name = doc.metadata.get("source_file", "Không rõ nguồn")
@@ -1161,6 +1208,11 @@ class RAGService:
                 "kind": doc.metadata.get("loai_tai_lieu", "van_ban"),
                 "time_start": time_start,
             }
+            if cuc_bo and trinh_doc_tai_lieu.doc_duoc(source_name):
+                # Giao diện gửi lại hai trường này cho /api/doc/dinh-vi để tô
+                # đúng các dòng được trích trên trang gốc (xem dinh_vi_doan).
+                source["doan"] = " ".join(doc.page_content.split())[:DO_DAI_DOAN_DINH_VI]
+                source["trong_tam"] = cau_trong_tam(doc.page_content, cau_hoi)
             sources.append(source)
         return sources
 
@@ -1405,7 +1457,7 @@ class RAGService:
                 return
 
             cac_nguon = self._sources(
-                documents, self.ho_so_van_ban, self.tinh_trang_hieu_luc
+                documents, self.ho_so_van_ban, self.tinh_trang_hieu_luc, retrieval_question
             )
             for nguon in cac_nguon:
                 # Nguồn nằm trên máy chủ này chứ không phải trang web ngoài, dù
@@ -1724,7 +1776,7 @@ class RAGService:
                 return
 
             cac_nguon = self._sources(
-                documents, self.ho_so_van_ban, self.tinh_trang_hieu_luc
+                documents, self.ho_so_van_ban, self.tinh_trang_hieu_luc, retrieval_question
             )
             yield {"type": "sources", "sources": cac_nguon}
 

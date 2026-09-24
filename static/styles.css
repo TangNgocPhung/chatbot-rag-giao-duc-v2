@@ -408,6 +408,19 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .answer-warning svg { flex: 0 0 auto; width: 15px; height: 15px; margin-top: 1px; color: var(--gold); }
 
 .source-chip:target { border-color: var(--blue-line); background: var(--blue-soft-2); box-shadow: 0 0 0 3px var(--ring); }
+/* Ảnh trang gốc được trích: dải cuộn ngang, không đẩy khung chat rộng ra. */
+.source-pages { display: flex; gap: 10px; margin-top: 4px; padding-bottom: 4px; overflow-x: auto; }
+.source-page { display: flex; flex: 0 0 auto; flex-direction: column; gap: 6px; width: 150px; padding: 6px; color: var(--ink-soft); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; font-size: 11px; font-weight: 650; text-decoration: none; }
+.source-page-hinh { position: relative; overflow: hidden; aspect-ratio: 1 / 1.414; background: #fff; border: 1px solid var(--line); border-radius: 6px; }
+.source-page-khung { position: relative; transition: transform .35s ease; }
+.source-page-khung img { display: block; width: 100%; height: auto; }
+/* Đoạn được trích trên trang gốc: tô vàng cả đoạn, viền đỏ câu sát câu hỏi.
+   Trang giấy luôn trắng nên màu cố định, không đổi theo chế độ tối. */
+.doc-danh-dau { position: absolute; inset: 0; pointer-events: none; }
+.doc-danh-dau i { position: absolute; border-radius: 2px; background: rgba(255, 212, 59, .34); mix-blend-mode: multiply; }
+.doc-danh-dau i.chinh { background: rgba(255, 184, 28, .30); box-shadow: 0 0 0 1.5px rgba(214, 69, 52, .9); }
+.source-page:hover { border-color: var(--line-strong); background: var(--blue-soft-2); }
+@media (max-width: 470px) { .source-page { width: 118px; } }
 .error-box { padding: 11px 13px; color: var(--danger-ink); background: var(--danger-soft); border: 1px solid var(--danger-line); border-radius: 10px; font-size: 13px; line-height: 1.5; }
 
 .composer-area { position: relative; padding: 10px max(24px, calc((100% - 820px) / 2)) 18px; background: linear-gradient(to bottom, var(--wash-strong), var(--surface) 28%); }

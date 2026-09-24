@@ -832,6 +832,28 @@ def chu_trong_vung_khoanh(vung: VungKhoanh):
         raise HTTPException(status_code=422, detail=f"Không đọc được vùng này: {exc}") from exc
 
 
+class DoanCanDinhVi(BaseModel):
+    tep: str | None = Field(default=None, max_length=64)
+    nguon: str | None = Field(default=None, max_length=260)
+    doan: str = Field(min_length=1, max_length=6000)
+    trong_tam: str = Field(default="", max_length=1000)
+    trang: int | None = Field(default=None, ge=1, le=100000)
+
+
+@app.post("/api/doc/dinh-vi")
+def dinh_vi_doan_trich(yeu_cau: DoanCanDinhVi):
+    """Trang và các dòng chứa đoạn bằng chứng, để tô sáng đúng chỗ được trích."""
+    duong_dan = _tai_lieu_can_doc(yeu_cau.tep, yeu_cau.nguon)
+    try:
+        return trinh_doc_tai_lieu.dinh_vi_doan(
+            duong_dan, yeu_cau.doan, yeu_cau.trong_tam, yeu_cau.trang
+        )
+    except trinh_doc_tai_lieu.LoiDocTaiLieu as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Không định vị được đoạn trích: {exc}") from exc
+
+
 # ============================================================
 # QUẢN TRỊ KHO TÀI LIỆU: duyệt tệp gửi lên, gỡ / khôi phục tài liệu
 # ============================================================

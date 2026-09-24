@@ -995,6 +995,7 @@ function renderSources(container, sourceList) {
   title.textContent = `Bằng chứng đã dùng · ${sourceList.length}`;
   container.append(title);
   const messageId = container.closest('.message')?.dataset.messageId || 'answer';
+  const cacNhan = [];
   sourceList.forEach((source, index) => {
     const isMedia = !source.external
       && (source.kind === 'video' || source.kind === 'am_thanh');
@@ -1017,7 +1018,7 @@ function renderSources(container, sourceList) {
         chip.addEventListener('click', (event) => {
           if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
           event.preventDefault();
-          window.khongGianHoc.moTaiLieu({ ...taiLieu, trang: Number(source.page) || 1 });
+          moNguonTrongTrinhDoc(source, taiLieu);
         });
       }
     } else if (isMedia) {
@@ -1034,12 +1035,8 @@ function renderSources(container, sourceList) {
     }
     chip.innerHTML = kindIcons[source.kind] || kindIcons.van_ban;
     const text = document.createElement('span');
-    const viTri = source.page ? `Trang ${source.page}` : '';
-    const detail = [source.chapter, source.article, viTri, source.context].filter(Boolean).join(' · ');
-    const evidence = source.evidence || index + 1;
-    text.textContent = detail
-      ? `[${evidence}] ${source.name} — ${detail}`
-      : `[${evidence}] ${source.name}`;
+    text.textContent = nhanNguon(source, source.page, index);
+    cacNhan.push(text);
     chip.append(text);
     if (source.validity && source.validity.code !== 'khong_ro') {
       const nhan = document.createElement('em');
@@ -1072,6 +1069,213 @@ function renderSources(container, sourceList) {
     }
     container.append(chip);
   });
+  renderTrangGoc(container, sourceList, cacNhan);
+}
+
+function nhanNguon(source, trang, index) {
+  const viTri = trang ? `Trang ${trang}` : '';
+  const detail = [source.chapter, source.article, viTri, source.context].filter(Boolean).join(' · ');
+  const evidence = source.evidence || index + 1;
+  return detail ? `[${evidence}] ${source.name} — ${detail}` : `[${evidence}] ${source.name}`;
+}
+
+// Dò lại đoạn bằng chứng trên trang gốc (xem dinh_vi_doan ở máy chủ): ra số
+// trang thật - nhiều chunk cũ không lưu trang - và các dòng cần tô sáng.
+// Trang scan phải OCR lấy toạ độ chữ nên lần đầu mất vài giây; nhớ lời hứa
+// để chip, ảnh trang và trình đọc dùng chung một lần gọi.
+const daDinhVi = new Map();
+
+function dinhViNguon(source, taiLieu) {
+  const doan = source.doan || source.excerpt || '';
+  if (!doan) return Promise.resolve(null);
+  const khoa = [taiLieu.tep || taiLieu.nguon, source.page || '', source.trong_tam || '', doan].join('\n');
+  if (!daDinhVi.has(khoa)) {
+    if (daDinhVi.size > 300) daDinhVi.clear();
+    const than = { doan, trong_tam: source.trong_tam || '', trang: Number(source.page) || null };
+    if (taiLieu.tep) than.tep = taiLieu.tep;
+    else than.nguon = taiLieu.nguon;
+    const hen = fetch('/api/doc/dinh-vi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(than),
+    })
+      .then((phanHoi) => (phanHoi.ok ? phanHoi.json() : null))
+      .catch(() => null)
+      .then((ketQua) => {
+        if (!ketQua) daDinhVi.delete(khoa);
+        return ketQua;
+      });
+    daDinhVi.set(khoa, hen);
+  }
+  return daDinhVi.get(khoa);
+}
+
+async function moNguonTrongTrinhDoc(source, taiLieu, daBiet = null) {
+  const hen = daBiet ? Promise.resolve(daBiet) : dinhViNguon(source, taiLieu);
+  const choMot = new Promise((xong) => window.setTimeout(() => xong(undefined), 300));
+  let ketQua = await Promise.race([hen, choMot]);
+  if (ketQua === undefined) {
+    // Còn đang OCR trang scan: mở ngay trang đã biết, tô sáng khi có kết quả.
+    window.khongGianHoc.moTaiLieu({ ...taiLieu, trang: Number(source.page) || 1 });
+    ketQua = await hen;
+    if (!ketQua?.trang) return;
+    window.khongGianHoc.moTaiLieu(
+      { ...taiLieu, trang: ketQua.trang, danhDau: ketQua.danh_dau },
+      { chuyenTab: false },
+    );
+    return;
+  }
+  window.khongGianHoc.moTaiLieu({
+    ...taiLieu,
+    trang: ketQua?.trang || Number(source.page) || 1,
+    danhDau: ketQua?.danh_dau,
+  });
+}
+
+// Vẽ các dòng được trích lên một trang (ảnh nhỏ trong câu trả lời hoặc trang
+// trong trình đọc). Toạ độ 0..1 nên chỉ cần phần trăm, trang co giãn thế nào
+// cũng khớp.
+function veDanhDau(lop, muc) {
+  for (const [loai, cacHop] of [['vung', muc?.vung], ['chinh', muc?.chinh]]) {
+    for (const [x0, y0, x1, y1] of cacHop || []) {
+      const hop = document.createElement('i');
+      hop.className = loai;
+      hop.style.left = `${x0 * 100}%`;
+      hop.style.top = `${y0 * 100}%`;
+      hop.style.width = `${(x1 - x0) * 100}%`;
+      hop.style.height = `${(y1 - y0) * 100}%`;
+      lop.append(hop);
+    }
+  }
+}
+
+function giuaDanhDau(muc) {
+  const cacHop = muc?.chinh?.length ? muc.chinh : muc?.vung;
+  if (!cacHop?.length) return null;
+  const tren = Math.min(...cacHop.map((h) => h[1]));
+  const duoi = Math.max(...cacHop.map((h) => h[3]));
+  return (tren + duoi) / 2;
+}
+
+// Ảnh đúng trang được trích (PDF/ảnh trong kho) để đối chiếu bằng mắt: bảng
+// biểu, chữ ký, con dấu mà phần chữ trích ra không thể hiện được. Các dòng
+// được trích tô vàng, câu sát câu hỏi nhất viền đỏ, khung ảnh cuộn sẵn tới đó.
+const SO_TRANG_GOC_TOI_DA = 4;
+const TI_LE_KHUNG_TRANG = 1.414; // khớp aspect-ratio của .source-page-hinh
+
+function renderTrangGoc(container, sourceList, cacNhan = []) {
+  const ungVien = [];
+  sourceList.forEach((source, index) => {
+    if (source.external) return;
+    const taiLieu = window.khongGianHoc?.tuDuongDan(source.url, source.name);
+    if (taiLieu) ungVien.push({ source, taiLieu, index, evidence: source.evidence || index + 1 });
+  });
+  if (!ungVien.length) return;
+
+  const dai = document.createElement('div');
+  dai.className = 'source-pages';
+  container.append(dai);
+  // Mở lại cuộc trò chuyện dài thì có hàng chục câu trả lời: chỉ dò vị trí
+  // (có khi phải OCR) khi dải ảnh sắp cuộn tới.
+  const quanSat = new IntersectionObserver((cacMuc) => {
+    if (!cacMuc.some((muc) => muc.isIntersecting)) return;
+    quanSat.disconnect();
+    dungTheTrang(dai, ungVien, cacNhan);
+  }, { rootMargin: '600px 0px' });
+  quanSat.observe(dai);
+}
+
+async function dungTheTrang(dai, ungVien, cacNhan) {
+  const cacHen = ungVien.map(({ source, taiLieu }) => dinhViNguon(source, taiLieu));
+  const theoTrang = new Map();
+  for (const [thuTu, { source, taiLieu, index, evidence }] of ungVien.entries()) {
+    const ketQua = await cacHen[thuTu];
+    if (!dai.isConnected) return;
+    // PDF không dò được mà cũng không rõ trang thì bỏ: ảnh trang 1 thường chỉ
+    // là trang bìa. Ảnh chụp chỉ có một trang.
+    const laPdf = /\.pdf$/i.test(taiLieu.ten || '');
+    const trang = ketQua?.trang || Number(source.page) || (laPdf ? 0 : 1);
+    if (!trang) continue;
+    if (ketQua?.trang && ketQua.trang !== Number(source.page) && cacNhan[index]) {
+      cacNhan[index].textContent = nhanNguon(source, trang, index);
+    }
+    const khoa = `${taiLieu.tep || taiLieu.nguon}#${trang}`;
+    let the = theoTrang.get(khoa);
+    if (!the) {
+      if (theoTrang.size >= SO_TRANG_GOC_TOI_DA) continue;
+      the = taoTheTrang(dai, source, taiLieu, trang);
+      theoTrang.set(khoa, the);
+    }
+    the.them(evidence, ketQua?.danh_dau);
+  }
+  if (!dai.children.length) dai.remove();
+}
+
+function taoTheTrang(dai, source, taiLieu, trang) {
+  const danhDau = {}; // gộp của mọi bằng chứng cùng trang, để trình đọc tô y hệt
+  const cacSo = [];
+  const the = document.createElement('a');
+  the.className = 'source-page';
+  the.href = source.url;
+  the.target = '_blank';
+  the.rel = 'noopener noreferrer';
+  the.title = `Mở ${source.name} - trang ${trang}, đúng đoạn được trích`;
+  the.addEventListener('click', (event) => {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+    event.preventDefault();
+    moNguonTrongTrinhDoc(source, taiLieu, { trang, danh_dau: danhDau });
+  });
+  const hinh = document.createElement('div');
+  hinh.className = 'source-page-hinh';
+  const khung = document.createElement('div');
+  khung.className = 'source-page-khung';
+  const anh = document.createElement('img');
+  anh.loading = 'lazy';
+  anh.decoding = 'async';
+  anh.alt = `Trang ${trang} của ${source.name}`;
+  const thamSo = new URLSearchParams(taiLieu.tep ? { tep: taiLieu.tep } : { nguon: taiLieu.nguon });
+  thamSo.set('so', trang);
+  thamSo.set('rong', 400);
+  anh.src = `/api/doc/trang?${thamSo}`;
+  const lop = document.createElement('div');
+  lop.className = 'doc-danh-dau';
+  khung.append(anh, lop);
+  hinh.append(khung);
+  const nhan = document.createElement('span');
+  the.append(hinh, nhan);
+  dai.append(the);
+
+  // Khung chỉ cao bằng khổ A4; trang dài hơn (hoặc đoạn trích nằm cuối
+  // trang) thì dịch ảnh lên cho đoạn được tô nằm giữa khung.
+  const canGiua = () => {
+    const giua = giuaDanhDau(danhDau[trang]);
+    if (giua == null || !anh.naturalWidth) return;
+    const hienThay = TI_LE_KHUNG_TRANG / (anh.naturalHeight / anh.naturalWidth);
+    if (hienThay >= 1) return;
+    const dich = Math.min(1 - hienThay, Math.max(0, giua - hienThay / 2));
+    khung.style.transform = `translateY(${-dich * 100}%)`;
+  };
+  anh.addEventListener('load', canGiua);
+  // Tệp hỏng/đã bị xoá khỏi kho: bỏ ô đó thay vì để khung ảnh vỡ.
+  anh.addEventListener('error', () => {
+    the.remove();
+    if (!dai.children.length) dai.remove();
+  });
+
+  return {
+    them(evidence, moi) {
+      cacSo.push(evidence);
+      nhan.textContent = `${cacSo.map((so) => `[${so}]`).join('')} Trang ${trang}`;
+      for (const [so, muc] of Object.entries(moi || {})) {
+        const cu = danhDau[so] || (danhDau[so] = { vung: [], chinh: [] });
+        cu.vung.push(...(muc.vung || []));
+        cu.chinh.push(...(muc.chinh || []));
+      }
+      lop.replaceChildren();
+      veDanhDau(lop, danhDau[trang]);
+      canGiua();
+    },
+  };
 }
 
 function renderHieuLuc(container, cacCanhBao) {

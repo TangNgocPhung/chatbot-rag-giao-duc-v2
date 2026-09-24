@@ -16,11 +16,15 @@ hệt cách kho tài liệu được OCR lúc lập chỉ mục.
 from __future__ import annotations
 
 import ctypes
+import difflib
 import io
+import json
 import os
 import re
+import subprocess
 import tempfile
 import threading
+import unicodedata
 from collections import OrderedDict
 
 DUOI_PDF = {".pdf"}
@@ -264,3 +268,369 @@ def chu_trong_vung(duong_dan: str, so_trang: int, vung: tuple[float, float, floa
 
     van_ban = _lam_gon(_ocr_anh(anh))
     return {"van_ban": van_ban[:KY_TU_TOI_DA], "cach": "ocr" if van_ban else "trong"}
+
+
+# ------------------------------------------------------------
+# ĐỊNH VỊ ĐOẠN TRÍCH TRÊN TRANG
+# ------------------------------------------------------------
+# Số trang thôi chưa đủ: một trang văn bản hành chính có vài chục dòng, người
+# đọc vẫn phải dò xem câu được trích nằm đâu. Ở đây dò lại chính đoạn văn bản
+# đã đưa cho mô hình trên trang gốc và trả về các hình chữ nhật (toạ độ 0..1,
+# gốc trên-trái, đúng hệ toạ độ của ảnh trang) để giao diện tô sáng.
+#
+# Nhiều chunk được lập chỉ mục trước khi có metadata "so_trang", nên trang
+# cũng được dò lại bằng chữ: lớp chữ PDF, hoặc bản OCR đã lưu cache cho PDF scan.
+# Hộp của từng chữ trên trang scan thì phải OCR lại riêng trang đó (Tesseract
+# xuất TSV có toạ độ) - chỉ làm khi cần và lưu cache ra đĩa.
+_TU = re.compile(r"\w+", re.UNICODE)
+KHOP_TOI_THIEU = 3          # ít hơn chừng này chữ khớp thì coi là không thấy
+SO_TAI_LIEU_NHO = 8
+SO_TRANG_NHO = 48
+_khoa_nho = threading.Lock()
+_chu_theo_trang: OrderedDict = OrderedDict()   # (đường dẫn, mốc) -> [văn bản từng trang]
+_tu_theo_trang: OrderedDict = OrderedDict()    # (đường dẫn, mốc, trang) -> [chữ có hộp]
+_hash_tep: dict = {}
+# Mỗi lần OCR một trang 300 DPI tốn vài giây CPU; bốn nguồn cùng lúc thì chạy
+# lần lượt từng đôi một thay vì dồn cả bốn tiến trình Tesseract lên máy.
+_luot_ocr = threading.Semaphore(2)
+
+
+def _chuan_tu(van_ban: str) -> list[str]:
+    return _TU.findall(unicodedata.normalize("NFC", van_ban or "").lower())
+
+
+def _nho(bo_nho: OrderedDict, khoa, gia_tri, toi_da: int):
+    with _khoa_nho:
+        bo_nho[khoa] = gia_tri
+        bo_nho.move_to_end(khoa)
+        while len(bo_nho) > toi_da:
+            bo_nho.popitem(last=False)
+    return gia_tri
+
+
+def _lay_nho(bo_nho: OrderedDict, khoa):
+    with _khoa_nho:
+        if khoa in bo_nho:
+            bo_nho.move_to_end(khoa)
+            return bo_nho[khoa]
+    return None
+
+
+def _moc(duong_dan: str) -> tuple[int, int]:
+    try:
+        tt = os.stat(duong_dan)
+    except OSError as exc:
+        raise LoiDocTaiLieu("Tệp không còn trên máy chủ.") from exc
+    return tt.st_mtime_ns, tt.st_size
+
+
+def _hash_cua(duong_dan: str) -> str:
+    """Hash nội dung tệp (khoá cache OCR); băm tệp vài chục MB mỗi lần hỏi thì chậm."""
+    khoa = (duong_dan, _moc(duong_dan))
+    if khoa not in _hash_tep:
+        from chunking_utils import tinh_hash_file
+
+        _hash_tep[khoa] = tinh_hash_file(duong_dan)[:16]
+    return _hash_tep[khoa]
+
+
+def _van_ban_cac_trang(duong_dan: str) -> list[str]:
+    """Chữ của từng trang để dò xem đoạn trích nằm trang nào."""
+    khoa = (duong_dan, _moc(duong_dan))
+    da_co = _lay_nho(_chu_theo_trang, khoa)
+    if da_co is not None:
+        return da_co
+    import ocr_pdf
+
+    if not _la_pdf(duong_dan):
+        cache = ocr_pdf.doc_cache(duong_dan)
+        return _nho(_chu_theo_trang, khoa, [cache[0] if cache else ""], SO_TAI_LIEU_NHO)
+
+    import pypdfium2
+
+    cac_trang = []
+    with _khoa_pdfium:
+        tai_lieu = pypdfium2.PdfDocument(duong_dan)
+        try:
+            for chi_so in range(len(tai_lieu)):
+                trang = tai_lieu[chi_so]
+                lop_chu = trang.get_textpage()
+                cac_trang.append(lop_chu.get_text_range())
+                lop_chu.close()
+                trang.close()
+        finally:
+            tai_lieu.close()
+    # PDF scan: lớp chữ gần như trống, chữ thật nằm trong bản OCR lúc lập chỉ mục.
+    if sum(len(t.strip()) for t in cac_trang) < ocr_pdf.KY_TU_TOI_THIEU_MOI_TRANG * max(1, len(cac_trang)):
+        cache = ocr_pdf.doc_cache(duong_dan)
+        if cache and len(cache) == len(cac_trang):
+            cac_trang = cache
+    return _nho(_chu_theo_trang, khoa, cac_trang, SO_TAI_LIEU_NHO)
+
+
+def _tu_lop_chu_pdf(trang) -> list[tuple]:
+    """Chữ kèm hộp (0..1 trên trang đang nhìn) từ lớp văn bản của PDF."""
+    import pypdfium2.raw as pdfium_c
+
+    rong, cao = trang.get_size()
+    thiet_bi_x, thiet_bi_y = 10000, max(1, round(10000 * cao / rong))
+
+    def doi(x: float, y: float) -> tuple[float, float]:
+        dx, dy = ctypes.c_int(), ctypes.c_int()
+        pdfium_c.FPDF_PageToDevice(
+            trang.raw, 0, 0, thiet_bi_x, thiet_bi_y, 0, x, y,
+            ctypes.byref(dx), ctypes.byref(dy),
+        )
+        return dx.value / thiet_bi_x, dy.value / thiet_bi_y
+
+    lop_chu = trang.get_textpage()
+    cac_tu, chu, hop, dong = [], [], None, None
+
+    def chot():
+        nonlocal chu, hop
+        if chu and hop:
+            cac_tu.extend((tu, *hop) for tu in _chuan_tu("".join(chu))[:1])
+        chu, hop = [], None
+
+    try:
+        for i in range(lop_chu.count_chars()):
+            ma = pdfium_c.FPDFText_GetUnicode(lop_chu.raw, i)
+            ky_tu = chr(ma) if 0 < ma < 0x110000 else " "
+            if not (ky_tu.isalnum() or unicodedata.category(ky_tu).startswith("M")):
+                chot()
+                continue
+            trai, duoi, phai, tren = lop_chu.get_charbox(i)
+            # Hai ký tự liền nhau không có dấu cách mà khác dòng: tách từ. So
+            # trong hệ toạ độ gốc của trang - trên trang xoay 90° thì theo ảnh
+            # đang nhìn, mỗi ký tự của cùng một dòng lại nằm cao thấp khác nhau.
+            if hop and dong and (duoi > dong[1] or tren < dong[0]):
+                chot()
+            dong = (duoi, tren)
+            (x0, y0), (x1, y1) = doi(trai, tren), doi(phai, duoi)
+            x0, x1 = sorted((x0, x1))
+            y0, y1 = sorted((y0, y1))
+            chu.append(ky_tu)
+            hop = (x0, y0, x1, y1) if hop is None else (
+                min(hop[0], x0), min(hop[1], y0), max(hop[2], x1), max(hop[3], y1))
+        chot()
+    finally:
+        lop_chu.close()
+    return cac_tu
+
+
+def _tu_ocr(anh) -> list[tuple]:
+    """OCR ra từng chữ kèm hộp (Tesseract TSV), toạ độ 0..1 theo ảnh."""
+    import ocr_pdf
+
+    tesseract = ocr_pdf.tim_tesseract()
+    if tesseract is None or not ocr_pdf.san_sang()[0]:
+        return []
+    rong, cao = anh.size
+    tep = tempfile.NamedTemporaryFile(prefix="rag-dinh-vi-", suffix=".png", delete=False)
+    tep.close()
+    try:
+        anh.save(tep.name)
+        with _luot_ocr:
+            ket_qua = subprocess.run(
+                [
+                    tesseract, tep.name, "stdout",
+                    "--tessdata-dir", ocr_pdf.THU_MUC_TESSDATA,
+                    "-l", ocr_pdf.NGON_NGU, "--psm", "3", "--oem", "1",
+                    # Không dùng tên cấu hình "tsv": thư mục tessdata riêng của
+                    # dự án không có configs/, Tesseract lặng lẽ xuất chữ trơn.
+                    "-c", "tessedit_create_tsv=1",
+                ],
+                capture_output=True, timeout=300,
+            )
+    finally:
+        try:
+            os.remove(tep.name)
+        except OSError:
+            pass
+    if ket_qua.returncode != 0:
+        return []
+    cac_tu = []
+    for dong in ket_qua.stdout.decode("utf-8", errors="replace").splitlines()[1:]:
+        cot = dong.split("\t")
+        if len(cot) < 12 or cot[0] != "5" or not cot[11].strip():
+            continue
+        trai, tren, w, h = (int(c) for c in cot[6:10])
+        for tu in _chuan_tu(cot[11])[:1]:
+            cac_tu.append((tu, trai / rong, tren / cao, (trai + w) / rong, (tren + h) / cao))
+    return cac_tu
+
+
+def _tep_nho_ocr(duong_dan: str, so_trang: int) -> str:
+    import ocr_pdf
+
+    os.makedirs(ocr_pdf.THU_MUC_CACHE, exist_ok=True)
+    return os.path.join(
+        ocr_pdf.THU_MUC_CACHE,
+        f"{_hash_cua(duong_dan)}--{ocr_pdf.NGON_NGU}--hop-{so_trang}.json",
+    )
+
+
+def _tu_cua_trang(duong_dan: str, so_trang: int) -> list[tuple]:
+    """Các chữ trên trang theo thứ tự đọc: [(chữ, x0, y0, x1, y1)]."""
+    khoa = (duong_dan, _moc(duong_dan), so_trang)
+    da_co = _lay_nho(_tu_theo_trang, khoa)
+    if da_co is not None:
+        return da_co
+
+    import ocr_pdf
+
+    cac_tu, anh, tep_nho = [], None, None
+    if _la_pdf(duong_dan):
+        import pypdfium2
+
+        with _khoa_pdfium:
+            tai_lieu = pypdfium2.PdfDocument(duong_dan)
+            try:
+                _kiem_trang(so_trang, len(tai_lieu))
+                trang = tai_lieu[so_trang - 1]
+                cac_tu = _tu_lop_chu_pdf(trang)
+                # Trang scan: lớp chữ trống (hoặc vài chữ rác của máy scan).
+                if len(cac_tu) < 10:
+                    cac_tu = []
+                    tep_nho = _tep_nho_ocr(duong_dan, so_trang)
+                    if not os.path.exists(tep_nho):
+                        anh = trang.render(scale=ocr_pdf.DPI / 72).to_pil()
+                trang.close()
+            finally:
+                tai_lieu.close()
+    else:
+        _kiem_trang(so_trang, 1)
+        tep_nho = _tep_nho_ocr(duong_dan, so_trang)
+        if not os.path.exists(tep_nho):
+            anh = _mo_anh(duong_dan)
+
+    if anh is not None:
+        cac_tu = _tu_ocr(anh)
+        if cac_tu:
+            try:
+                with open(tep_nho, "w", encoding="utf-8") as f:
+                    json.dump([[t, *(round(v, 5) for v in h)] for t, *h in cac_tu], f, ensure_ascii=False)
+            except OSError:
+                pass
+    elif tep_nho is not None:
+        try:
+            with open(tep_nho, encoding="utf-8") as f:
+                cac_tu = [tuple(tu) for tu in json.load(f)]
+        except (OSError, ValueError):
+            cac_tu = []
+    return _nho(_tu_theo_trang, khoa, cac_tu, SO_TRANG_NHO)
+
+
+def _cum_khop(tu_trang: list[str], tu_doan: list[str]) -> tuple[int, int, int] | None:
+    """(đầu, cuối, số chữ khớp) của cụm chữ trên trang giống đoạn trích nhất.
+
+    Chữ OCR lệch vài ký tự, lớp chữ PDF tách/ghép từ khác bộ đọc lúc lập chỉ
+    mục, nên không tìm nguyên chuỗi mà gióng hai dãy chữ (difflib) rồi lấy cụm
+    các khối khớp nằm sát nhau - khối khớp lẻ loi ở chỗ khác thì bỏ.
+    """
+    if not tu_trang or not tu_doan:
+        return None
+    khop = difflib.SequenceMatcher(None, tu_trang, tu_doan, autojunk=False)
+    toi_thieu = 1 if len(tu_doan) <= 4 else 2
+    khoi = [k for k in khop.get_matching_blocks() if k.size >= toi_thieu]
+    if not khoi:
+        return None
+    cac_cum, cum = [], [khoi[0]]
+    for truoc, sau in zip(khoi, khoi[1:]):
+        # Khoảng hở trên trang lớn hơn hẳn khoảng hở trong đoạn trích: đã sang chỗ khác.
+        if (sau.a - truoc.a - truoc.size) > (sau.b - truoc.b - truoc.size) + 12:
+            cac_cum.append(cum)
+            cum = []
+        cum.append(sau)
+    cac_cum.append(cum)
+    tot = max(cac_cum, key=lambda c: sum(k.size for k in c))
+    so_khop = sum(k.size for k in tot)
+    if so_khop < min(KHOP_TOI_THIEU, len(tu_doan)):
+        return None
+    return tot[0].a, tot[-1].a + tot[-1].size, so_khop
+
+
+def _hop_theo_dong(cac_tu: list[tuple]) -> list[list[float]]:
+    """Gộp hộp các chữ liền nhau thành một hình chữ nhật cho mỗi dòng."""
+    # Trang xoay 90°: dòng chữ chạy dọc trên ảnh. Nhận ra nhờ hình dạng chữ
+    # (cao hơn rộng) rồi đổi trục, gộp như dòng ngang, xong đổi lại.
+    dai = [(x1 - x0) < (y1 - y0) for t, x0, y0, x1, y1 in cac_tu if len(t) >= 3]
+    doc = bool(dai) and sum(dai) * 2 > len(dai)
+    cac_hop: list[list[float]] = []
+    for _, x0, y0, x1, y1 in cac_tu:
+        if doc:
+            x0, y0, x1, y1 = y0, x0, y1, x1
+        if cac_hop:
+            hop = cac_hop[-1]
+            # Cùng dòng và sát nhau: chữ ở cột bên kia của bảng hai cột, dù
+            # cùng độ cao, vẫn là một hình chữ nhật riêng.
+            if hop[1] <= (y0 + y1) / 2 <= hop[3] and x0 <= hop[2] + 0.08 and x1 >= hop[0] - 0.08:
+                hop[0], hop[1] = min(hop[0], x0), min(hop[1], y0)
+                hop[2], hop[3] = max(hop[2], x1), max(hop[3], y1)
+                continue
+        cac_hop.append([x0, y0, x1, y1])
+    if doc:
+        cac_hop = [[b, a, d, c] for a, b, c, d in cac_hop]
+    le = 0.004
+    return [
+        [round(max(0.0, a - le), 4), round(max(0.0, b - le), 4),
+         round(min(1.0, c + le), 4), round(min(1.0, d + le), 4)]
+        for a, b, c, d in cac_hop
+    ]
+
+
+def _shingle(tu: list[str], n: int = 3) -> set:
+    return {tuple(tu[i:i + n]) for i in range(max(1, len(tu) - n + 1))} if tu else set()
+
+
+def dinh_vi_doan(
+    duong_dan: str, doan: str, trong_tam: str = "", trang_goi_y: int | None = None
+) -> dict:
+    """Trang chứa đoạn trích và các hình chữ nhật cần tô sáng trên đó.
+
+    Trả về {"trang": n | None, "danh_dau": {n: {"vung": [...], "chinh": [...]}}}.
+    "vung" phủ cả đoạn đã đưa cho mô hình, "chinh" là câu trọng tâm trong đó
+    (câu sát câu hỏi nhất) để mắt người đọc rơi đúng chỗ.
+    """
+    if not doc_duoc(duong_dan):
+        raise LoiDocTaiLieu("Chỉ định vị được trong tệp PDF và ảnh.")
+    tu_doan, tu_tam = _chuan_tu(doan), _chuan_tu(trong_tam)
+    cac_trang = _van_ban_cac_trang(duong_dan)
+    trang_goi_y = trang_goi_y if trang_goi_y and 1 <= trang_goi_y <= len(cac_trang) else None
+    if not tu_doan:
+        return {"trang": trang_goi_y, "danh_dau": {}}
+
+    mau_doan, mau_tam = _shingle(tu_doan), _shingle(tu_tam)
+    diem = []
+    for so, van_ban in enumerate(cac_trang, 1):
+        mau_trang = _shingle(_chuan_tu(van_ban))
+        diem.append((len(mau_doan & mau_trang), len(mau_tam & mau_trang), so))
+    if not diem or max(d[0] for d in diem) == 0:
+        # Không có chữ để dò (PDF scan chưa OCR...): giữ trang theo metadata.
+        return {"trang": trang_goi_y, "danh_dau": {}}
+
+    # Trang chính: trang có câu trọng tâm, không thì trang khớp nhiều nhất;
+    # metadata trang chỉ phân xử khi hai trang ngang điểm.
+    co_tam = max(d[1] for d in diem) > 0
+    so_chinh = max(diem, key=lambda d: (d[1] if co_tam else 0, d[0], d[2] == trang_goi_y))[2]
+    # Đoạn trích vắt sang trang kề bên thì tô cả phần nằm ở trang đó.
+    cac_so = [so_chinh] + [
+        d[2] for d in diem
+        if abs(d[2] - so_chinh) == 1 and d[0] >= max(2, 0.2 * len(mau_doan))
+    ]
+
+    danh_dau = {}
+    for so in cac_so:
+        cac_tu = _tu_cua_trang(duong_dan, so)
+        tu_trang = [t[0] for t in cac_tu]
+        cum = _cum_khop(tu_trang, tu_doan)
+        if not cum:
+            continue
+        dau, cuoi, _ = cum
+        muc = {"vung": _hop_theo_dong(cac_tu[dau:cuoi]), "chinh": []}
+        if tu_tam:
+            cum_tam = _cum_khop(tu_trang[dau:cuoi], tu_tam)
+            if cum_tam and cum_tam[2] >= min(len(tu_tam), max(KHOP_TOI_THIEU, len(tu_tam) // 3)):
+                muc["chinh"] = _hop_theo_dong(cac_tu[dau + cum_tam[0]:dau + cum_tam[1]])
+        danh_dau[so] = muc
+    return {"trang": so_chinh, "danh_dau": danh_dau}

@@ -1127,14 +1127,52 @@
     ws.docTrong.classList.remove('hidden');
   }
 
+  // Đoạn bằng chứng đang tô trong trình đọc ({ số trang: { vung, chinh } },
+  // xem dinh_vi_doan). Chỉ để chỉ chỗ, không lưu vào sổ như nét người dùng vẽ.
+  function datDanhDau(danhDau) {
+    if (!docDangMo) return;
+    docDangMo.danhDau = danhDau || null;
+    for (const [viTri, trang] of docDangMo.trang.entries()) {
+      trang.el.querySelector('.doc-danh-dau')?.remove();
+      const muc = danhDau?.[viTri + 1];
+      if (!muc?.vung?.length && !muc?.chinh?.length) continue;
+      const lop = document.createElement('div');
+      lop.className = 'doc-danh-dau';
+      veDanhDau(lop, muc);
+      trang.el.insertBefore(lop, trang.canvas);
+    }
+  }
+
+  function denDanhDau(soTrang, muot) {
+    const giua = giuaDanhDau(docDangMo?.danhDau?.[soTrang]);
+    if (giua == null) {
+      denTrang(soTrang, muot);
+      return;
+    }
+    const el = docDangMo.trang[soTrang - 1]?.el;
+    if (!el) return;
+    ws.trangList.scrollTo({
+      top: Math.max(0, el.offsetTop + giua * el.offsetHeight - ws.trangList.clientHeight * 0.35),
+      behavior: muot ? 'smooth' : 'auto',
+    });
+    ws.soTrang.value = String(soTrang);
+  }
+
+  let lanMo = 0;
+
   async function moTaiLieu(thongTin, { chuyenTab = true } = {}) {
     if (!so) return;
     if (chuyenTab) moSoTay('tai-lieu');
     const khoa = khoaTaiLieu(thongTin);
     if (docDangMo?.khoa === khoa) {
-      if (thongTin.trang) denTrang(thongTin.trang);
+      lanMo += 1;
+      if ('danhDau' in thongTin) datDanhDau(thongTin.danhDau);
+      if (thongTin.trang) denDanhDau(thongTin.trang, true);
       return;
     }
+    // Bấm nguồn khác khi tài liệu trước còn đang tải: lần mở cũ bỏ dở, không
+    // được dựng đè lên (và xoá mất đoạn tô sáng của) lần mở mới.
+    const lan = ++lanMo;
     const phien = phienNap;
     dongTaiLieuHienTai();
     ws.docTrong.classList.add('hidden');
@@ -1154,7 +1192,7 @@
         thongTinTrang = await layThongTin(thamSo);
       }
     } catch (loi) {
-      if (phien !== phienNap) return;
+      if (phien !== phienNap || lan !== lanMo) return;
       ws.trangList.replaceChildren();
       const baoLoi = document.createElement('div');
       baoLoi.className = 'doc-dang-tai loi';
@@ -1162,7 +1200,7 @@
       ws.trangList.append(baoLoi);
       return;
     }
-    if (phien !== phienNap || !so) return;
+    if (phien !== phienNap || lan !== lanMo || !so) return;
 
     const muc = so.taiLieu[khoa] || (so.taiLieu[khoa] = { ten: thongTin.ten, net: {} });
     if (thongTin.tep) muc.tep = thongTin.tep;
@@ -1183,8 +1221,9 @@
     };
     hoanTacDoc.length = 0;
     dungCacTrang();
+    datDanhDau(thongTin.danhDau);
     capNhatDanhSachDaMo();
-    denTrang(thongTin.trang || muc.trang || 1, false);
+    denDanhDau(thongTin.trang || muc.trang || 1, false);
   }
 
   function dungCacTrang() {
