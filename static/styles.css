@@ -986,13 +986,6 @@ body:not([data-dang-nhap="1"]) .chi-dang-nhap { display: none !important; }
 /* ============================================================
    DỊCH ĐA NGÔN NGỮ
    ============================================================ */
-.topbar .nut-dich + .nut-so-tay { margin-left: 0; }
-@media (max-width: 1100px) and (min-width: 801px) {
-  .app-shell.co-so-tay .nut-dich span { display: none; }
-}
-@media (max-width: 800px) {
-  .nut-dich span { display: none; }
-}
 
 .dich-dialog { width: min(1040px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 26px 80px rgba(15, 34, 64, .24); }
 .dich-dialog[open] { display: flex; flex-direction: column; }
