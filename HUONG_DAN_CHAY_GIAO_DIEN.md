@@ -282,7 +282,7 @@ Sổ lưu trong IndexedDB của trình duyệt, khóa theo mã cuộc trò chuy�
 
 ## Dịch đa ngôn ngữ
 
-Nút **Dịch** trên thanh trên cùng mở khung dịch hai cột như Google Translate, hỗ trợ 133 ngôn ngữ:
+Khung dịch hai cột như Google Translate, hỗ trợ 133 ngôn ngữ, mở từ nút **Dịch** dưới câu trả lời hoặc khi bôi đen một đoạn (thanh trên cùng không còn nút Dịch riêng):
 
 - Mỗi chiều hiện **Phát hiện ngôn ngữ** (bên nguồn) và ba ngôn ngữ dùng gần đây. Nút mũi tên cuối hàng mở bảng đủ 133 ngôn ngữ, tìm được theo tên tiếng Việt, tên bản địa hoặc mã (`phap`, `français`, `fr`), gõ không dấu cũng được, `Enter` chọn kết quả đầu, `Esc` đóng bảng.
 - Nút đổi chiều, đọc to (giọng có sẵn của hệ điều hành), sao chép và ghi bản dịch vào sổ tay. `Ctrl + Enter` dịch ngay.

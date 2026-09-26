@@ -13,7 +13,6 @@
   const d = {
     hop: $id('dichDialog'),
     dong: $id('dichDong'),
-    nutMo: $id('dichButton'),
     nguon: $id('dichNguon'),
     dich: $id('dichDich'),
     doi: $id('dichDoi'),
@@ -444,7 +443,6 @@
   d.ngheVao.addEventListener('click', () => docTo(d.vao.value, nguon === 'tu_dong' ? nguonPhatHien : nguon));
   d.ngheRa.addEventListener('click', () => docTo(d.ra.textContent, dichSang));
 
-  d.nutMo.addEventListener('click', () => moKhungDich());
   d.dong.addEventListener('click', () => d.hop.close());
   d.hop.addEventListener('click', (event) => {
     if (event.target === d.hop) d.hop.close();

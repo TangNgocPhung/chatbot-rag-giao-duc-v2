@@ -139,7 +139,7 @@ Sổ tay tải về được dạng Word (ghi chú, ảnh vùng khoanh và bản
 
 ### Dịch đa ngôn ngữ
 
-Nút **Dịch** mở khung dịch hai cột như Google Translate cho 133 ngôn ngữ: mỗi chiều hiện ba ngôn ngữ dùng gần đây, nút mũi tên mở bảng tìm theo tên tiếng Việt, tên bản địa hoặc mã (`Pháp`, `français`, `fr`). Có thể đọc to văn bản, sao chép, ghi bản dịch vào sổ tay, dịch câu trả lời ngay dưới câu trả lời và dịch đoạn vừa bôi đen.
+Khung dịch hai cột (mở từ nút **Dịch** dưới câu trả lời hoặc khi bôi đen một đoạn) như Google Translate cho 133 ngôn ngữ: mỗi chiều hiện ba ngôn ngữ dùng gần đây, nút mũi tên mở bảng tìm theo tên tiếng Việt, tên bản địa hoặc mã (`Pháp`, `français`, `fr`). Có thể đọc to văn bản, sao chép, ghi bản dịch vào sổ tay, dịch câu trả lời ngay dưới câu trả lời và dịch đoạn vừa bôi đen.
 
 - Có `RAG_GOOGLE_TRANSLATE_KEY` thì dịch bằng Google Cloud Translation (văn bản được gửi sang Google, giao diện có ghi chú).
 - Không có key thì dịch bằng mô hình nhỏ trên máy (mặc định `qwen2.5:3b-instruct`), đi qua tiếng Anh làm trung gian với các cặp không có tiếng Anh. Chất lượng chỉ để tham khảo; với ngôn ngữ mô hình chưa thạo (ngoài khoảng 19 ngôn ngữ phổ biến), giao diện báo trước bản dịch có thể sai nhiều.

@@ -6,7 +6,7 @@
   <meta name="description" content="Chatbot RAG hỗ trợ tra cứu và hỏi đáp từ kho tri thức giáo dục.">
   <title>Chatbot RAG Giáo dục</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=1.9.4">
+  <link rel="stylesheet" href="./styles.css?v=1.9.8">
   <script>
     /* Đặt nền đúng ngay từ lần vẽ đầu: app.js dùng defer nên nếu đợi nó thì
        người dùng chế độ tối sẽ thấy một nháy màu trắng khi mở trang. */
@@ -140,10 +140,6 @@
           <span>Trợ lý giáo dục</span>
           <small><span class="mini-dot" id="miniDot"></span><span id="miniStatus">Đang kết nối</span></small>
         </div>
-        <button class="nut-so-tay nut-dich" id="dichButton" type="button" aria-haspopup="dialog" title="Dịch hơn 130 ngôn ngữ">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h8M8 3v2M10 5c-.5 3.5-2.8 6.5-6 8M6 9c1.2 2 3 3.6 5 4.5"/><path d="m13 21 4-9 4 9M14.5 18h5"/></svg>
-          <span>Dịch</span>
-        </button>
         <button class="nut-so-tay" id="soTayButton" type="button" aria-controls="workspace" aria-expanded="false" title="Sổ tay của cuộc trò chuyện: ghi chú, bảng vẽ, đọc tài liệu (Ctrl + /)">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6V3Z"/><path d="M6 3v18M3 7h3M3 12h3M3 17h3M10 8h6M10 12h4"/></svg>
           <span>Sổ tay</span>
@@ -649,7 +645,7 @@
   <script src="./so-tay.js?v=1.9.7" defer></script>
   <script src="./tai-khoan.js?v=1.9.7" defer></script>
   <script src="./quan-ly-tai-khoan.js?v=1.9.7" defer></script>
-  <script src="./dich.js?v=1.9.7" defer></script>
+  <script src="./dich.js?v=1.9.8" defer></script>
   <script src="./giong-noi.js?v=1.9.7" defer></script>
 </body>
 </html>
