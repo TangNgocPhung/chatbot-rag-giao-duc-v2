@@ -497,7 +497,7 @@
         body: anh,
       });
       const noiDung = await phanHoi.json().catch(() => ({}));
-      if (!phanHoi.ok) throw new Error(noiDung.detail || `Máy chủ trả về lỗi ${phanHoi.status}.`);
+      if (!phanHoi.ok) throw new Error(loiMayChu(noiDung, `Máy chủ trả về lỗi ${phanHoi.status}.`));
       await capNhatNguoiDung(noiDung.nguoi_dung);
       showToast('Đã đổi ảnh đại diện');
     } catch (error) {
@@ -509,7 +509,7 @@
     try {
       const phanHoi = await fetch('/api/tai-khoan/anh-dai-dien', { method: 'DELETE' });
       const noiDung = await phanHoi.json().catch(() => ({}));
-      if (!phanHoi.ok) throw new Error(noiDung.detail || `Máy chủ trả về lỗi ${phanHoi.status}.`);
+      if (!phanHoi.ok) throw new Error(loiMayChu(noiDung, `Máy chủ trả về lỗi ${phanHoi.status}.`));
       await capNhatNguoiDung(noiDung.nguoi_dung);
       showToast('Đã gỡ ảnh đại diện');
     } catch (error) {

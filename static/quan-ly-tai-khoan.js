@@ -43,7 +43,7 @@
       cache: 'no-store',
     });
     const noiDung = await phanHoi.json().catch(() => ({}));
-    if (!phanHoi.ok) throw new Error(noiDung.detail || `Máy chủ trả về lỗi ${phanHoi.status}.`);
+    if (!phanHoi.ok) throw new Error(loiMayChu(noiDung, `Máy chủ trả về lỗi ${phanHoi.status}.`));
     return noiDung;
   }
 

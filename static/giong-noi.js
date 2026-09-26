@@ -107,7 +107,7 @@
       });
       const ketQua = await phanHoi.json().catch(() => ({}));
       if (!phanHoi.ok) {
-        throw new Error(typeof ketQua.detail === 'string' ? ketQua.detail : 'Không nhận được giọng nói.');
+        throw new Error(loiMayChu(ketQua, 'Không nhận được giọng nói.'));
       }
       chenChu(ketQua.van_ban);
       const baoNgonNgu = `Đã nhận ra ${String(ketQua.ten_ngon_ngu || ketQua.ngon_ngu).replace(/^Tiếng/, 'tiếng')}`;
