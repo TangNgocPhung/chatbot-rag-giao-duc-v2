@@ -352,6 +352,15 @@ ssh -i ~/.ssh/ovh_vps root@<IP_VPS> /usr/local/bin/capnhat_chi_muc_dem.sh
    trước khi khởi động lại; và nếu dịch vụ chết ngay sau khi khởi động thì báo
    lỗi kèm log thay vì in dấu chấm 10 phút. Khẩn cấp thật sự mới bỏ qua:
    `BO_KIEM_TRA=1`.
+12. **"Kho tài liệu đã thay đổi" không bao giờ tắt, bấm cập nhật cũng vậy.**
+   Cảnh báo này so *kho chung* (`data_giao_duc/`) với sổ ghi chép, không liên
+   quan tới thẻ "Của tôi". Tệp mở được nhưng không ra chữ (PDF scan chưa OCR
+   được, video không lời) chỉ được ghi vào sổ ở bước embedding — mà lượt chạy
+   nào *toàn* tệp rỗng thì dừng sớm trước bước đó. Tệp mới kiểu này vì thế
+   không bao giờ vào sổ; tệp "Cần OCR" cũ bị Drive tải lại thì giữ mãi dấu thời
+   gian cũ. `capnhat_tailieu_moi.py` nay ghi "no_text" ngay sau bước đọc. Muốn
+   biết tệp nào đang giữ cảnh báo: mở Kho tài liệu, gõ `chờ cập nhật` vào ô
+   tìm; dòng tóm tắt cũng đếm tệp đã rời kho mà chỉ mục chưa gỡ.
 
 ---
 

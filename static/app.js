@@ -2683,9 +2683,26 @@ function renderDocuments(query = '') {
     renderKhoQuanTri(query);
     return;
   }
+  const statusLabels = {
+    processed: 'Đã lập chỉ mục',
+    no_text: 'Cần OCR',
+    duplicate: 'Tệp trùng',
+    error: 'Không đọc được',
+    pending: 'Chờ cập nhật',
+  };
+  // Video không đọc được là do không có lời thoại, không phải thiếu OCR.
+  const nhanTrangThai = (tai_lieu) => (
+    tai_lieu.status === 'no_text' && (tai_lieu.kind === 'video' || tai_lieu.kind === 'am_thanh')
+      ? 'Không có lời thoại'
+      : (statusLabels[tai_lieu.status] || tai_lieu.status)
+  );
   const normalizedQuery = query.trim().toLocaleLowerCase('vi-VN');
+  // Tìm được theo cả nhãn trạng thái: gõ "chờ cập nhật" là ra đúng những tệp
+  // khiến giao diện báo kho đã thay đổi, thay vì dò giữa hơn nghìn dòng. Bỏ
+  // nhãn "Đã lập chỉ mục" - gần như mọi tệp đều mang nó, gõ "chỉ mục" sẽ ra cả kho.
   const documents = documentsCache.filter((document) =>
-    `${document.name} ${document.folder}`.toLocaleLowerCase('vi-VN').includes(normalizedQuery)
+    `${document.name} ${document.folder} ${document.status === 'processed' ? '' : nhanTrangThai(document)}`
+      .toLocaleLowerCase('vi-VN').includes(normalizedQuery)
     && (documentKindFilter === 'tat_ca' || (document.kind || 'van_ban') === documentKindFilter)
   );
   elements.documentList.replaceChildren();
@@ -2697,19 +2714,6 @@ function renderDocuments(query = '') {
     return;
   }
 
-  const statusLabels = {
-    processed: 'Đã lập chỉ mục',
-    no_text: 'Cần OCR',
-    duplicate: 'Tệp trùng',
-    error: 'Không đọc được',
-    pending: 'Chờ cập nhật',
-  };
-  // Video không đọc được là do không có lời thoại, không phải thiếu OCR.
-  const nhanKhongCoChu = (tai_lieu) => (
-    tai_lieu.kind === 'video' || tai_lieu.kind === 'am_thanh'
-      ? 'Không có lời thoại'
-      : statusLabels.no_text
-  );
   for (const document of documents) {
     const item = window.document.createElement(document.url ? 'a' : 'div');
     item.className = 'document-row';
@@ -2745,9 +2749,7 @@ function renderDocuments(query = '') {
     info.append(name, meta);
     const status = window.document.createElement('span');
     status.className = `document-status ${document.status}`;
-    status.textContent = document.status === 'no_text'
-      ? nhanKhongCoChu(document)
-      : (statusLabels[document.status] || document.status);
+    status.textContent = nhanTrangThai(document);
     item.append(icon, info, status);
     if (laQuanTri() && document.url) {
       item.classList.add('co-go');
@@ -2776,6 +2778,10 @@ async function openDocumentLibrary() {
     ];
     if (summary.no_text) summaryParts.push(`${summary.no_text} cần OCR`);
     if (summary.pending) summaryParts.push(`${summary.pending} chờ cập nhật`);
+    // Tệp đã rời kho (gỡ, Drive xoá) nhưng chỉ mục còn giữ: không có dòng nào
+    // trong danh sách, nên thiếu con số này thì cảnh báo "kho đã thay đổi"
+    // hiện ra mà không thấy tệp nào chờ cả.
+    if (summary.removed) summaryParts.push(`${summary.removed} đã rời kho, chờ gỡ khỏi chỉ mục`);
     if (summary.duplicate) summaryParts.push(`${summary.duplicate} tệp trùng`);
     if (summary.error) summaryParts.push(`${summary.error} không đọc được`);
     tomTatKhoChung = summaryParts.join(' · ');

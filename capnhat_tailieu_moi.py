@@ -307,6 +307,22 @@ def main(bao_tien_do=None):
                 "modified_ns": os.stat(duong_dan).st_mtime_ns,
             }
 
+    # Tệp mở được nhưng không ra chữ nào (PDF scan chưa OCR được, video không
+    # lời thoại) phải vào sổ ngay tại đây, không đợi bước 6: khi mọi tệp của
+    # lượt chạy đều rỗng thì hàm dừng sớm ngay bên dưới và bước 6 không chạy.
+    # Trước đây tệp mới kiểu này vì thế không bao giờ có trong sổ, còn tệp
+    # "no_text" cũ (lần nào cũng được thử lại) giữ mãi size/mtime cũ - giao diện
+    # báo "Kho tài liệu đã thay đổi" vĩnh viễn, bấm cập nhật bao nhiêu cũng vậy.
+    for duong_dan, chunks in chunks_theo_file.items():
+        if not chunks:
+            so_ghi_chep[duong_dan] = {
+                "hash": hash_hien_tai[duong_dan],
+                "chunk_ids": [],
+                "status": "no_text",
+                "size": os.path.getsize(duong_dan),
+                "modified_ns": os.stat(duong_dan).st_mtime_ns,
+            }
+
     tong_chunks = sum(len(c) for c in chunks_theo_file.values())
     if tong_chunks == 0 and not file_bi_xoa:
         print("Không tách được chunk nào từ file mới/sửa đổi, và không có file bị xóa. Dừng lại.")

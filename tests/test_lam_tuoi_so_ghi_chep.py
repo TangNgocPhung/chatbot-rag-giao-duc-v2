@@ -107,5 +107,95 @@ class LamTuoiSoGhiChepTests(unittest.TestCase):
         self.assertEqual(os.stat(self.so_ghi_chep).st_mtime_ns, mtime_so_truoc)
 
 
+class TepKhongRaChuTests(unittest.TestCase):
+    """Tệp mở được nhưng không ra chữ nào vẫn phải vào sổ, kể cả khi cả lượt
+    chạy không có tệp nào ra chữ.
+
+    Trước đây chỉ bước embedding ghi "no_text", mà lượt toàn tệp rỗng thì dừng
+    sớm trước bước đó. Tệp mới kiểu này không bao giờ vào sổ, đêm nào cũng là
+    "tệp mới", giao diện báo "Kho tài liệu đã thay đổi" mãi dù đã bấm cập nhật.
+    """
+
+    def setUp(self):
+        self.thu_muc = tempfile.TemporaryDirectory()
+        self.addCleanup(self.thu_muc.cleanup)
+        self.kho = os.path.join(self.thu_muc.name, "data_giao_duc")
+        os.makedirs(self.kho)
+        self.index = os.path.join(self.thu_muc.name, "faiss_index")
+        os.makedirs(self.index)
+        self.so_ghi_chep = os.path.join(self.thu_muc.name, "so_ghi_chep.json")
+
+        self.tep_cu = self._tao_tep("scan-cu.pdf", b"%PDF scan cu")
+        self.tep_moi = self._tao_tep("scan-moi.pdf", b"%PDF scan moi")
+
+        for vi_tri in (
+            mock.patch.multiple(
+                "capnhat_tailieu_moi",
+                DATA_PATH=self.kho,
+                DUONG_DAN_LUU_INDEX=self.index,
+                DUONG_DAN_SO_GHI_CHEP=self.so_ghi_chep,
+            ),
+            # Không cần Ollama: không đoạn nào được nhúng.
+            mock.patch("capnhat_tailieu_moi.OllamaEmbeddings"),
+            mock.patch("capnhat_tailieu_moi.FAISS"),
+            # PDF scan chưa OCR được: loader trả về rỗng, không báo lỗi.
+            mock.patch("capnhat_tailieu_moi.doc_va_chunk_file", return_value=[]),
+        ):
+            vi_tri.start()
+            self.addCleanup(vi_tri.stop)
+
+    def _tao_tep(self, ten: str, noi_dung: bytes) -> str:
+        duong_dan = os.path.join(self.kho, ten)
+        with open(duong_dan, "wb") as tep:
+            tep.write(noi_dung)
+        return duong_dan
+
+    def _ban_ghi_no_text(self, duong_dan: str, modified_ns: int | None = None) -> dict:
+        thong_tin = os.stat(duong_dan)
+        return {
+            "hash": tinh_hash_file(duong_dan),
+            "chunk_ids": [],
+            "status": "no_text",
+            "size": thong_tin.st_size,
+            "modified_ns": thong_tin.st_mtime_ns if modified_ns is None else modified_ns,
+        }
+
+    def _ghi_so(self, so: dict) -> None:
+        with open(self.so_ghi_chep, "w", encoding="utf-8") as tep:
+            json.dump(so, tep, ensure_ascii=False)
+
+    def _doc_so(self) -> dict:
+        with open(self.so_ghi_chep, encoding="utf-8") as tep:
+            return json.load(tep)
+
+    def test_tep_moi_khong_ra_chu_duoc_ghi_vao_so(self):
+        self._ghi_so({self.tep_cu: self._ban_ghi_no_text(self.tep_cu)})
+
+        capnhat_tailieu_moi.main()
+
+        so = self._doc_so()
+        self.assertEqual(set(so), {self.tep_cu, self.tep_moi})
+        self.assertEqual(so[self.tep_moi]["status"], "no_text")
+        self.assertEqual(so[self.tep_moi]["hash"], tinh_hash_file(self.tep_moi))
+        thong_tin = os.stat(self.tep_moi)
+        self.assertFalse(rag_service.ban_ghi_lech_tep(
+            so[self.tep_moi], thong_tin.st_size, thong_tin.st_mtime_ns
+        ))
+
+    def test_tep_no_text_cu_duoc_lam_tuoi_dau_thoi_gian(self):
+        # Drive tải lại tệp cùng nội dung: mtime lệch xa, hash y nguyên.
+        os.remove(self.tep_moi)
+        thong_tin = os.stat(self.tep_cu)
+        self._ghi_so({self.tep_cu: self._ban_ghi_no_text(
+            self.tep_cu, modified_ns=thong_tin.st_mtime_ns - 3600 * 1_000_000_000
+        )})
+
+        capnhat_tailieu_moi.main()
+
+        ban_ghi = self._doc_so()[self.tep_cu]
+        self.assertEqual(ban_ghi["status"], "no_text")
+        self.assertEqual(ban_ghi["modified_ns"], thong_tin.st_mtime_ns)
+
+
 if __name__ == "__main__":
     unittest.main()
