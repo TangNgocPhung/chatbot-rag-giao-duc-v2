@@ -341,6 +341,17 @@ ssh -i ~/.ssh/ovh_vps root@<IP_VPS> /usr/local/bin/capnhat_chi_muc_dem.sh
    việc gì để làm, không bao giờ ghi lại sổ. Hai kịch bản đẩy nay dùng
    `tar --format=posix`, `document_inventory` bỏ qua lệch dưới 2 giây, và
    `capnhat_tailieu_moi.py` làm tươi dấu thời gian cho tệp không đổi nội dung.
+11. **Deploy giữa lúc git đang merge dở.** `02_day_ma_nguon.sh` nén nguyên thư
+   mục trên máy dev, nên `api.py` còn dấu `>>>>>>> 2f3e131…` cũng lên VPS nguyên
+   xi: uvicorn chết ngay lúc import (`SyntaxError: invalid decimal literal`),
+   systemd khởi động lại 1245 lần, Caddy trả 502 cho mọi người (26/09/2026).
+   Gốc rễ: `origin` ở máy dev trỏ nhầm repo cũ `chatbot-rag-giao-duc` thay vì
+   `-v2` (`git remote -v` để xem). Kịch bản nay **dừng trước khi đụng vào VPS**
+   nếu git đang merge/rebase dở, còn tệp xung đột hay dấu `<<<<<<<`/`>>>>>>>`,
+   hoặc tệp `.py`/`static/*.js` lỗi cú pháp; kiểm lại bằng chính Python của VPS
+   trước khi khởi động lại; và nếu dịch vụ chết ngay sau khi khởi động thì báo
+   lỗi kèm log thay vì in dấu chấm 10 phút. Khẩn cấp thật sự mới bỏ qua:
+   `BO_KIEM_TRA=1`.
 
 ---
 
