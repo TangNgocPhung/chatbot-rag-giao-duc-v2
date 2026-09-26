@@ -132,7 +132,7 @@
         body: JSON.stringify(ban),
       });
       if (!phanHoi.ok) {
-        const loi = new Error((await phanHoi.json().catch(() => ({}))).detail || 'Không lưu được sổ tay lên máy chủ');
+        const loi = new Error(loiMayChu(await phanHoi.json().catch(() => ({})), 'Không lưu được sổ tay lên máy chủ'));
         if (phanHoi.status === 413) loi.name = 'QuotaExceededError';
         throw loi;
       }
@@ -1113,7 +1113,7 @@
     const phanHoi = await fetch(`/api/doc/thong-tin?${thamSo}`);
     const noiDung = await phanHoi.json().catch(() => ({}));
     if (!phanHoi.ok) {
-      const loi = new Error(noiDung.detail || `Máy chủ trả về lỗi ${phanHoi.status}.`);
+      const loi = new Error(loiMayChu(noiDung, `Máy chủ trả về lỗi ${phanHoi.status}.`));
       loi.status = phanHoi.status;
       throw loi;
     }
@@ -1567,7 +1567,7 @@
     })
       .then(async (phanHoi) => {
         const noiDung = await phanHoi.json().catch(() => ({}));
-        if (!phanHoi.ok) throw new Error(noiDung.detail || 'Không đọc được chữ trong vùng này.');
+        if (!phanHoi.ok) throw new Error(loiMayChu(noiDung, 'Không đọc được chữ trong vùng này.'));
         return noiDung;
       })
       .then((noiDung) => {
@@ -1757,7 +1757,7 @@
       });
       if (!phanHoi.ok) {
         const noiDung = await phanHoi.json().catch(() => ({}));
-        throw new Error(noiDung.detail || `Máy chủ trả về lỗi ${phanHoi.status}.`);
+        throw new Error(loiMayChu(noiDung, `Máy chủ trả về lỗi ${phanHoi.status}.`));
       }
       const goc = (doc.ten || 'tai-lieu').replace(/\.[^.]+$/, '');
       taiXuong(await phanHoi.blob(), coNet ? `${goc} (đã đánh dấu).pdf` : `${goc}.pdf`);

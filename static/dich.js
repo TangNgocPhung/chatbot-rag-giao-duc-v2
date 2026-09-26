@@ -121,7 +121,7 @@
     });
     if (!phanHoi.ok) {
       const loi = await phanHoi.json().catch(() => ({}));
-      throw new Error(typeof loi.detail === 'string' ? loi.detail : 'Không dịch được văn bản này.');
+      throw new Error(loiMayChu(loi, 'Không dịch được văn bản này.'));
     }
     const docDong = phanHoi.body.getReader();
     const giaiMa = new TextDecoder();
