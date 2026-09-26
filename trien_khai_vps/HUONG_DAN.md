@@ -53,6 +53,12 @@ host chết im, cả hai site cùng hỏng.
 | Đĩa | ảnh Docker + đồ thị 2,6 GB + CSDL | tài liệu 4,9 GB + model ~4 GB | ~25 / 200 GB |
 | CPU | truy vấn ngắn | ăn hết nhân mỗi câu trả lời | 8 vCPU |
 
+`01_cai_dat_vps.sh` còn cài ClamAV (`clamd`) để quét tệp người dùng tải lên,
+tốn thêm khoảng 1–1,5 GB RAM (ước lượng, chưa đo trên máy này; kiểm tra bằng
+`systemctl status clamav-daemon`). Máy thiếu RAM thì chạy với `CAI_CLAMAV=0`
+và đặt `RAG_QUET_VIRUS=tat` trong `/etc/chatbot-rag.env`; khi đó chỉ còn hai
+lớp chặn macro và kiểm tra định dạng.
+
 Số RAM của Nearby lấy từ `deploy/RUNBOOK.md` — đo bằng `docker stats` trên máy
 dev. CPU là chỗ duy nhất hai bên chen nhau: `ollama.service` được đặt
 `CPUWeight=50` nên lúc tranh chấp thì Nearby được ưu tiên, còn lúc máy rảnh

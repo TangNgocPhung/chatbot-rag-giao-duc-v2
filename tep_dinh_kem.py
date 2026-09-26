@@ -38,6 +38,7 @@ from langchain_core.documents import Document
 from chunking_utils import chunk_theo_cau_truc, load_file_an_toan_neu_can
 from document_loaders import DINH_DANG_HO_TRO, suy_loai_tai_lieu
 from hybrid_retrieval import mo_rong_truy_van, tach_tu_mo_rong
+from kiem_tra_tep import TepKhongAnToan, kiem_tra_tai_len
 
 THU_MUC_TEP = os.path.abspath(os.getenv(
     "RAG_THU_MUC_TEP_DINH_KEM",
@@ -161,6 +162,11 @@ class KhoTepDinhKem:
                 f"Tệp nặng {len(du_lieu) / 1048576:.1f} MB, vượt giới hạn "
                 f"{GIOI_HAN_BYTE // 1048576} MB."
             )
+        # Macro, sai định dạng, zip bomb, ClamAV - trước khi tệp chạm tới đĩa.
+        try:
+            kiem_tra_tai_len(ten, du_lieu)
+        except TepKhongAnToan as exc:
+            raise LoiTepDinhKem(str(exc)) from exc
 
         os.makedirs(THU_MUC_TEP, exist_ok=True)
         ma = uuid.uuid4().hex

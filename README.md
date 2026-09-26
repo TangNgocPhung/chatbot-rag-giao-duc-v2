@@ -248,6 +248,19 @@ Chạy tay: `.\.venv\Scripts\python.exe drive_sync.py` (thêm `--thu` để ch�
 | `RAG_MO_HINH_DICH` | `qwen2.5:3b-instruct` | Mô hình dịch trên máy (không có thì dùng mô hình trả lời) |
 | `RAG_WHISPER_MODEL` | `small` | Mô hình faster-whisper cho phiên âm và nhận giọng nói |
 | `RAG_WHISPER_BEAM_GIONG_NOI` | `5` | Beam size khi nhận giọng nói |
+| `RAG_QUET_VIRUS` | `tu_dong` | Quét tệp tải lên bằng ClamAV: `tu_dong` quét nếu máy có `clamdscan`, `bat_buoc` từ chối tệp khi không quét được, `tat` bỏ quét |
+| `RAG_LENH_CLAMDSCAN` | trống | Đường dẫn tới `clamdscan` khi không nằm trong `PATH` |
+| `RAG_GIOI_HAN_GIAI_NEN_MB` | `500` | Tổng dung lượng giải nén tối đa của tệp `.docx`/`.xlsx`/`.pptx`/`.epub` (chống zip bomb) |
+
+### Kiểm tra an toàn tệp tải lên
+
+Mọi tệp người dùng tải lên (đính kèm chat, nút "+" trong Kho tài liệu) đi qua `kiem_tra_tep.py` trước khi được lưu. Tệp còn được kiểm tra lại lúc vào kho chung: khi quản trị viên duyệt, hoặc khi quản trị viên đưa thẳng tài liệu riêng của mình vào kho.
+
+1. **Chặn macro:** không nhận `.xlsm`. Từ chối `.docx`/`.xlsx`/`.pptx` có `vbaProject.bin` hoặc tự tải mẫu, đối tượng từ máy chủ ngoài khi mở (template injection). Từ chối `.doc`/`.xls` có dự án VBA.
+2. **Nội dung phải khớp đuôi:** kiểm tra magic bytes, từ chối mọi tệp thực thi (PE, ELF, Mach-O) và chặn zip bomb.
+3. **ClamAV:** gửi byte của tệp cho `clamd` qua `clamdscan`. Khi đã bật quét mà `clamd` lỗi thì tệp bị từ chối (fail-closed).
+
+Không lớp nào bắt được mọi mã độc: ClamAV chỉ nhận ra mẫu đã biết. Thử nhanh bằng tệp EICAR (chuỗi kiểm thử vô hại mà mọi trình diệt virus đều báo là virus).
 
 ## Chạy công khai
 

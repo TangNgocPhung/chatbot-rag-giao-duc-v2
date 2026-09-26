@@ -794,7 +794,10 @@ async def tai_len_tep(
         )
     du_lieu = await request.body()
     try:
-        tep = kho_tep.them(ten, du_lieu, nguoi=nguoi_dung_hien_tai(request), chu=_chu_tep(request))
+        # Luồng riêng: quét virus mất vài giây, không được chặn vòng sự kiện.
+        tep = await run_in_threadpool(
+            kho_tep.them, ten, du_lieu, nguoi=nguoi_dung_hien_tai(request), chu=_chu_tep(request)
+        )
     except LoiTepDinhKem as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return tep.cong_khai()
@@ -824,7 +827,7 @@ async def tai_tep_vao_kho(
     du_lieu = await request.body()
     if not _la_quan_tri(request):
         try:
-            tep = kho_tep.them(ten, du_lieu, nguoi=nguoi, chu=_chu_tep(request))
+            tep = await run_in_threadpool(kho_tep.them, ten, du_lieu, nguoi=nguoi, chu=_chu_tep(request))
         except LoiTepDinhKem as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return {
@@ -832,7 +835,9 @@ async def tai_tep_vao_kho(
             "thong_bao": "Đã lưu vào Tài liệu của tôi - chỉ bạn thấy.",
             "tep": tep.cong_khai(),
         }
-    trang_thai, thong_bao = service.nhap_tep_tu_giao_dien(ten, du_lieu, nguoi=nguoi)
+    trang_thai, thong_bao = await run_in_threadpool(
+        service.nhap_tep_tu_giao_dien, ten, du_lieu, nguoi=nguoi
+    )
     if trang_thai in {"loi", "khong_ho_tro"}:
         raise HTTPException(status_code=400, detail=thong_bao)
     return {"trang_thai": trang_thai, "thong_bao": thong_bao}

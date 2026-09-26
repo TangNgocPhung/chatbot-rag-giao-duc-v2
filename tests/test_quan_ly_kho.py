@@ -214,3 +214,45 @@ class ApiQuanLyKhoTests(KhoTamTests):
             "/api/quan-ly/kho/go", json={"ten": "khong-co.pdf"}, headers={"X-RAG-Action": "go-tai-lieu"}
         )
         self.assertEqual(phan_hoi.status_code, 404)
+
+
+class KiemTraAnToanKhiVaoKhoTests(ApiQuanLyKhoTests):
+    """Mọi cửa vào kho chung đều qua kiem_tra_tep - kể cả tệp đã chờ duyệt từ trước."""
+
+    def test_quan_tri_tai_tep_gia_pdf_vao_kho_bi_tu_choi(self):
+        phan_hoi = self._gui_vao_kho(self.quan_tri, ten="de-thi.pdf")
+        self.assertEqual(phan_hoi.status_code, 400)
+        self.assertIn("không phải định dạng .pdf", phan_hoi.json()["detail"])
+        self.assertFalse(os.path.exists(self.trong_kho("de-thi.pdf")))
+
+    def test_duyet_quet_lai_va_giu_tep_doc_ngoai_kho(self):
+        # Tệp vào hàng chờ lúc còn sạch theo cơ sở mẫu cũ; tới lúc duyệt thì
+        # ClamAV đã nhận ra nó.
+        service.luu_tep_vao_kho(self.tep, "de-thi.txt", HOC_SINH)
+        ma = quan_ly_kho.danh_sach_tai_len("cho_duyet")[0]["id"]
+        with patch.dict(os.environ, {"RAG_QUET_VIRUS": "bat_buoc", "RAG_LENH_CLAMDSCAN": "/usr/bin/clamdscan"}), \
+                patch("kiem_tra_tep.subprocess.run") as chay:
+            chay.return_value.returncode = 1
+            chay.return_value.stdout = b"stream: Eicar-Test-Signature FOUND\n"
+            phan_hoi = self.quan_tri.post(
+                f"/api/quan-ly/tai-len/{ma}/duyet", headers={"X-RAG-Action": "duyet-tep"}
+            )
+        self.assertEqual(phan_hoi.status_code, 400)
+        self.assertIn("mã độc", phan_hoi.json()["detail"])
+        self.assertFalse(os.path.exists(self.trong_kho("de-thi.txt")))
+        self.assertEqual(quan_ly_kho.dem_cho_duyet(), 1)  # vẫn chờ để quản trị viên Từ chối
+        self.assertEqual(service.tep_cho_nap, [])
+
+    def test_quan_tri_dua_tep_doc_vao_thang_bi_chan(self):
+        with open(self.tep, "wb") as f:
+            f.write(b"\x7fELF\x02\x01\x01" + b"\x00" * 64)
+        trang_thai, thong_bao = service.luu_tep_vao_kho(self.tep, "de-thi.txt", QUAN_TRI, de_xuat=True)
+        self.assertEqual(trang_thai, "loi")
+        self.assertIn("chương trình", thong_bao)
+        self.assertFalse(os.path.exists(self.trong_kho("de-thi.txt")))
+
+    def test_thu_muc_nong_khong_bi_kiem_tra(self):
+        """Thư mục nóng do quản trị viên cấu hình trên máy chủ - không phải tệp người dùng."""
+        with patch("kiem_tra_tep.kiem_tra_tep_tren_dia") as kiem:
+            service.luu_tep_vao_kho(self.tep, "de-thi.txt", tu_he_thong=True)
+        kiem.assert_not_called()

@@ -349,6 +349,9 @@ def _chuyen_doc_sang_docx(duong_dan: str) -> str:
         try:
             word = win32com.client.Dispatch("Word.Application")
             word.Visible = False
+            # Mặc định tệp mở qua COM chạy được macro (msoAutomationSecurityLow),
+            # tức một .doc có AutoOpen sẽ chạy mã trên máy chủ. 3 = ForceDisable.
+            word.AutomationSecurity = 3
             try:
                 tai_lieu = word.Documents.Open(os.path.abspath(duong_dan), ReadOnly=True)
                 tai_lieu.SaveAs2(dich, FileFormat=16)  # 16 = wdFormatDocumentDefault

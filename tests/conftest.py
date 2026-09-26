@@ -71,3 +71,11 @@ def mo_khoa_quan_tri(monkeypatch):
     mà không đăng nhập. Chúng kiểm tra việc khác, nên tắt khoá quản trị cho
     chúng; test_tai_khoan.py tự bật lại để kiểm tra chính cái khoá đó."""
     monkeypatch.setenv("RAG_KHOA_QUAN_TRI", "0")
+
+
+@pytest.fixture(autouse=True)
+def tat_quet_virus(monkeypatch):
+    """Máy cài clamdscan mà clamd không chạy thì mọi tệp tải lên bị từ chối
+    (fail-closed) - kết quả test không được tuỳ vào máy có ClamAV hay không.
+    tests/test_kiem_tra_tep.py tự bật lại khi cần thử lớp này."""
+    monkeypatch.setenv("RAG_QUET_VIRUS", "tat")

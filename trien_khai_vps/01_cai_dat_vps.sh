@@ -33,6 +33,7 @@ CONG_NEARBY="8081"
 MODEL_TRA_LOI="${MODEL_TRA_LOI:-llama3.2:3b}"
 MODEL_EMBEDDING="${MODEL_EMBEDDING:-bge-m3}"
 CAI_LIBREOFFICE="${CAI_LIBREOFFICE:-1}"   # kho co Thong tu .doc doi cu, thieu soffice la doc khong duoc
+CAI_CLAMAV="${CAI_CLAMAV:-1}"             # quet virus tep nguoi dung tai len (clamd ~1-1,5 GB RAM)
 
 buoc() { echo; echo "=============================================================="; echo ">>> $*"; echo "=============================================================="; }
 
@@ -57,6 +58,35 @@ apt-get -o DPkg::Lock::Timeout=900 install -y --no-install-recommends \
 if [ "$CAI_LIBREOFFICE" = "1" ]; then
   echo "--- Cai LibreOffice (doc file .doc doi cu, ~700 MB)"
   apt-get -o DPkg::Lock::Timeout=900 install -y --no-install-recommends libreoffice-writer libreoffice-impress libreoffice-calc
+fi
+
+if [ "$CAI_CLAMAV" = "1" ]; then
+  echo "--- Cai ClamAV (quet virus tep tai len)"
+  apt-get -o DPkg::Lock::Timeout=900 install -y --no-install-recommends clamav-daemon clamav-freshclam
+  # Mac dinh clamd chi quet 25 MB dau cua moi tep (StreamMaxLength/MaxFileSize
+  # 25M), phan sau bo qua ma VAN tra "OK" - ma doc dat sau 25 MB lot qua.
+  # Gioi han tai len la 40 MB (Caddy chan o 64 MB) nen nang ca hai len 64M.
+  # ConcurrentDatabaseReload no: khi cap nhat mau, clamd khong nap them mot ban
+  # thu hai vao RAM (dinh gap doi) - doi lai vai giay quet phai cho.
+  dat_clamd() {
+    if grep -qE "^#?$1 " /etc/clamav/clamd.conf; then
+      sed -i -E "s|^#?$1 .*|$1 $2|" /etc/clamav/clamd.conf
+    else
+      echo "$1 $2" >> /etc/clamav/clamd.conf
+    fi
+  }
+  dat_clamd StreamMaxLength 64M
+  dat_clamd MaxFileSize 64M
+  dat_clamd MaxScanSize 500M
+  dat_clamd ConcurrentDatabaseReload no
+  # clamd khong khoi dong duoc khi chua co co so mau: tai lan dau cho xong.
+  if ! ls /var/lib/clamav/*.c[lv]d >/dev/null 2>&1; then
+    systemctl stop clamav-freshclam || true
+    freshclam || echo "[CANH BAO] freshclam loi - clamav-freshclam se thu lai sau."
+  fi
+  systemctl enable --now clamav-freshclam
+  systemctl enable clamav-daemon
+  systemctl restart clamav-daemon || echo "[CANH BAO] clamd chua chay (thieu co so mau?). Tai len se bi tu choi toi khi clamd chay."
 fi
 echo "--- Python: $(python3 --version)"
 
@@ -135,6 +165,12 @@ EOE
   echo "--- Da tao $TEP_MOI_TRUONG"
 else
   echo "--- $TEP_MOI_TRUONG da co, giu nguyen."
+fi
+# Tep moi truong da co tu truoc thi van phai bat quet virus. bat_buoc: lo go
+# ClamAV thi viec tai len dung han, khong lang le bo qua buoc quet.
+if [ "$CAI_CLAMAV" = "1" ] && ! grep -q '^RAG_QUET_VIRUS=' "$TEP_MOI_TRUONG"; then
+  echo "RAG_QUET_VIRUS=bat_buoc" >> "$TEP_MOI_TRUONG"
+  echo "--- Them RAG_QUET_VIRUS=bat_buoc vao $TEP_MOI_TRUONG"
 fi
 chown root:"$NGUOI_DUNG" "$TEP_MOI_TRUONG"
 chmod 640 "$TEP_MOI_TRUONG"

@@ -30,6 +30,7 @@ import tai_khoan
 import danh_gia_hoc_sinh
 import dinh_muc_tiet_day
 import dinh_muc_tiet_day_pho_thong
+import kiem_tra_tep
 import tep_dinh_kem
 import tinh_luong
 import tinh_toan
@@ -874,6 +875,14 @@ class RAGService:
                 "Bạn vẫn hỏi về tệp này được ngay."
             )
 
+        if not tu_he_thong:
+            # Tệp vào thẳng kho chung (quản trị viên đề xuất tệp riêng của mình):
+            # quét lại vì tệp có thể được tải lên trước khi có bước kiểm tra này,
+            # và cơ sở mẫu ClamAV đã cập nhật kể từ lúc tải lên.
+            try:
+                kiem_tra_tep.kiem_tra_tep_tren_dia(duong_dan, ten)
+            except kiem_tra_tep.TepKhongAnToan as exc:
+                return "loi", str(exc)
         ten_trong_kho = self._chep_vao_kho(duong_dan, ten)
         quan_ly_kho.ghi_vao_kho(
             ten, ten_trong_kho, ma_bam, os.path.getsize(duong_dan),
@@ -898,6 +907,12 @@ class RAGService:
     # ------------------------------------------------------------
     def dua_tep_duyet_vao_kho(self, duong_dan: str, ten: str) -> tuple[str, str]:
         """Dùng khi quản trị viên bấm Duyệt: trả về (trang_thai, ten_trong_kho | thông báo)."""
+        # Cửa cuối trước khi tệp được phát cho mọi người: quét lại với cơ sở
+        # mẫu mới nhất, và bắt cả tệp đã chờ duyệt từ trước khi có bước kiểm tra.
+        try:
+            kiem_tra_tep.kiem_tra_tep_tren_dia(duong_dan, ten)
+        except kiem_tra_tep.TepKhongAnToan as exc:
+            return "loi", f"Không duyệt được: {exc} Hãy bấm Từ chối."
         trung = self._tim_tep_trung_trong_kho(tinh_hash_file(duong_dan))
         if trung is not None:
             return "da_co", f"Kho đã có tệp này ({os.path.basename(trung)})."
@@ -942,6 +957,10 @@ class RAGService:
             )
         if not du_lieu:
             return "loi", "Tệp rỗng, không có gì để nạp."
+        try:
+            kiem_tra_tep.kiem_tra_tai_len(ten_goc, du_lieu)
+        except kiem_tra_tep.TepKhongAnToan as exc:
+            return "loi", str(exc)
 
         fd, tam = tempfile.mkstemp(suffix=duoi, prefix="kho-upload-")
         try:
