@@ -1,5 +1,20 @@
 const $ = (selector) => document.querySelector(selector);
 
+// `detail` của FastAPI không phải lúc nào cũng là chuỗi: lỗi kiểm dữ liệu (422)
+// trả về MẢNG object {loc, msg, ...}. Đưa thẳng mảng đó vào new Error() thì
+// người dùng chỉ thấy "[object Object]", nên mọi chỗ báo lỗi máy chủ đi qua đây.
+function loiMayChu(payload, macDinh) {
+  const chiTiet = payload?.detail;
+  if (typeof chiTiet === 'string' && chiTiet.trim()) return chiTiet;
+  if (Array.isArray(chiTiet) && chiTiet.length) {
+    return `Yêu cầu chưa hợp lệ: ${chiTiet
+      .map((loi) => [(loi?.loc || []).filter((p) => p !== 'body').join('.'), loi?.msg]
+        .filter(Boolean).join(': '))
+      .join('; ')}`;
+  }
+  return macDinh;
+}
+
 const elements = {
   sidebar: $('#sidebar'),
   sidebarBackdrop: $('#sidebarBackdrop'),
@@ -705,7 +720,7 @@ async function themTepDinhKem(fileList) {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload.detail || `Máy chủ trả về lỗi ${response.status}.`);
+        throw new Error(loiMayChu(payload, `Máy chủ trả về lỗi ${response.status}.`));
       }
       tepDinhKem.delete(maTam);
       tepDinhKem.set(payload.id, payload);
@@ -1700,10 +1715,14 @@ async function submitQuestion(question, tuyChon = {}) {
   let hieuLuc = [];
   let goiY = [];
   let tuCache = null;
+  // Bỏ tin rỗng: bấm Dừng trước khi có chữ nào thì câu trả lời được lưu là ''
+  // (để giữ câu hỏi ở mục Gần đây), mà máy chủ từ chối cả request (422) nếu
+  // lịch sử có tin rỗng - câu hỏi kế tiếp trong cuộc đó sẽ hỏng theo.
   const history = (currentChat?.messages || [])
     .filter((item) => item.role === 'user' || item.role === 'assistant')
-    .slice(-6)
-    .map((item) => ({ role: item.role, content: item.content.slice(0, 4000) }));
+    .map((item) => ({ role: item.role, content: String(item.content ?? '').trim().slice(0, 4000) }))
+    .filter((item) => item.content)
+    .slice(-6);
   // Chốt mã hội thoại TRƯỚC khi gửi, rồi dùng lại đúng mã đó cho bản ghi
   // localStorage bên dưới - nhờ vậy lịch sử trên máy và trên máy chủ trỏ về
   // cùng một cuộc trò chuyện mà không cần thêm vòng gọi nào. Mã phải nằm ngoài
@@ -1740,7 +1759,7 @@ async function submitQuestion(question, tuyChon = {}) {
     });
     if (!response.ok) {
       const detail = await response.json().catch(() => ({}));
-      throw new Error(detail.detail || `Máy chủ trả về lỗi ${response.status}.`);
+      throw new Error(loiMayChu(detail, `Máy chủ trả về lỗi ${response.status}.`));
     }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -2256,7 +2275,7 @@ async function datMoHinhMacDinh(name) {
       body: JSON.stringify({ model: name }),
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.detail || 'Không đổi được model.');
+    if (!response.ok) throw new Error(loiMayChu(payload, 'Không đổi được model.'));
     currentModel = payload.model;
     chonMoHinhRieng(currentModel);
     showToast(`Mô hình mặc định cho mọi người: ${currentModel}`, 2600);
@@ -2372,7 +2391,7 @@ async function goiQuanTriKho(duongDan, hanhDong, than) {
     body: than ? JSON.stringify(than) : undefined,
   });
   const noiDung = await phanHoi.json().catch(() => ({}));
-  if (!phanHoi.ok) throw new Error(noiDung.detail || `Máy chủ trả về lỗi ${phanHoi.status}.`);
+  if (!phanHoi.ok) throw new Error(loiMayChu(noiDung, `Máy chủ trả về lỗi ${phanHoi.status}.`));
   return noiDung;
 }
 
@@ -2878,7 +2897,7 @@ async function taiTepVaoKho(danhSach) {
         body: tep,
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.detail || 'Không tải được.');
+      if (!response.ok) throw new Error(loiMayChu(payload, 'Không tải được.'));
       if (payload.trang_thai === 'da_luu') {
         daThem += 1;
         trangThai.textContent = '✅ Đã thêm vào kho';
@@ -3096,7 +3115,7 @@ elements.driveSync.addEventListener('click', async () => {
       headers: { 'X-RAG-Action': 'drive-sync' },
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.detail || 'Không đồng bộ được.');
+    if (!response.ok) throw new Error(loiMayChu(payload, 'Không đồng bộ được.'));
     showToast('Đang tải tài liệu mới từ Drive');
     renderDriveStatus(payload);
   } catch (error) {
@@ -3142,7 +3161,7 @@ elements.updateIndex.addEventListener('click', async () => {
       headers: { 'X-RAG-Action': 'update-index' },
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.detail || 'Không thể cập nhật chỉ mục.');
+    if (!response.ok) throw new Error(loiMayChu(payload, 'Không thể cập nhật chỉ mục.'));
     showToast('Đã bắt đầu cập nhật kho tri thức');
     await pollStatus();
   } catch (error) {

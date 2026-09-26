@@ -70,6 +70,19 @@ class ChatRequest(BaseModel):
             raise ValueError("Câu hỏi quá ngắn.")
         return value
 
+    @field_validator("history", mode="before")
+    @classmethod
+    def bo_tin_rong(cls, value):
+        """Lượt bị dừng trước khi có chữ nào được trình duyệt lưu với câu trả
+        lời rỗng. Bỏ tin đó đi thay vì từ chối cả câu hỏi mới (422)."""
+        if not isinstance(value, list):
+            return value
+        return [
+            tin for tin in value
+            if not (isinstance(tin, dict) and isinstance(tin.get("content"), str)
+                    and not tin["content"].strip())
+        ]
+
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
