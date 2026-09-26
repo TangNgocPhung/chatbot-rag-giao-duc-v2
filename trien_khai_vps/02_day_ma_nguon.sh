@@ -44,6 +44,118 @@ NHU_RAG="sudo -u rag"
 
 buoc() { echo; echo "--- $*"; }
 
+# ---------------------------------------------------------------------
+# KIEM TRA TRUOC KHI DAY. Kich ban nen nguyen thu muc tren may nay, nen mot
+# lan merge do dang (con dau <<<<<<< / >>>>>>>) cung len VPS nguyen xi: ngay
+# 26/09/2026 api.py dinh dau xung dot, uvicorn chet ngay luc import, systemd
+# khoi dong lai 1245 lan va Caddy tra 502 cho moi nguoi. Moi loi duoi day
+# dung han TRUOC khi dong vao VPS. Khan cap that su moi bo qua: BO_KIEM_TRA=1.
+# ---------------------------------------------------------------------
+# Chay ca o may nay lan tren VPS (Python cua VPS co the cu hon may nay).
+# compile() thay vi py_compile de khong sinh __pycache__ vao thu muc du an.
+KIEM_CU_PHAP_PY='
+import sys
+loi = 0
+for ten in sys.argv[1:]:
+    try:
+        with open(ten, "rb") as f:
+            compile(f.read(), ten, "exec", dont_inherit=True)
+    except (SyntaxError, ValueError) as exc:
+        dong = getattr(exc, "lineno", None) or "?"
+        print("[LOI] %s:%s: %s" % (ten, dong, exc))
+        loi = 1
+sys.exit(loi)
+'
+
+kiem_tra_truoc_khi_day() {
+  local loi=0 py="" p tt
+
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    for tt in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD rebase-merge rebase-apply; do
+      if [ -e "$(git rev-parse --git-path "$tt")" ]; then
+        echo "[LOI] Git dang lam do dang ($tt). Hoan tat hoac huy truoc"
+        echo "      (git merge --abort / git rebase --abort / git cherry-pick --abort)."
+        loi=1
+        break
+      fi
+    done
+    local chua_giai
+    chua_giai="$(git diff --name-only --diff-filter=U)"
+    if [ -n "$chua_giai" ]; then
+      echo "[LOI] Con tep xung dot chua giai quyet:"
+      echo "$chua_giai" | sed 's/^/      /'
+      loi=1
+    fi
+
+    # Chi canh bao: day ban cu hon GitHub hoac day kem thay doi chua commit
+    # doi khi la co y, nhung phai biet minh dang day cai gi.
+    if git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+      GIT_TERMINAL_PROMPT=0 timeout 20 git fetch -q 2>/dev/null || true
+      local cham
+      cham="$(git rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0)"
+      if [ "$cham" -gt 0 ]; then
+        echo "[canh bao] Dang cham $cham commit so voi $(git rev-parse --abbrev-ref '@{u}') - nen git pull truoc."
+      fi
+    fi
+    if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+      echo "[canh bao] Co thay doi chua commit - chung cung se duoc day len:"
+      git status --short --untracked-files=no | sed 's/^/      /'
+    fi
+    echo "    Se day: $(git log --oneline -1) (origin: $(git remote get-url origin 2>/dev/null || echo '?'))"
+  else
+    echo "[canh bao] Khong phai kho git - bo qua kiem tra trang thai merge."
+  fi
+
+  # Dau xung dot trong chinh cac tep se duoc day - bat ca truong hop da lo commit.
+  local co_dau
+  co_dau="$(grep -rlE '^(<<<<<<<|>>>>>>>)( |$)' \
+            --include='*.py' --include='*.js' --include='*.html' --include='*.css' \
+            ./*.py static tests trien_khai_vps 2>/dev/null || true)"
+  if [ -n "$co_dau" ]; then
+    echo "[LOI] Con dau xung dot git (<<<<<<< / >>>>>>>) trong:"
+    echo "$co_dau" | sed 's/^/      /'
+    loi=1
+  fi
+
+  # Tim Python that. Tren Windows "python3" co the chi la loi tat mo Microsoft
+  # Store, nen phai chay thu chu khong chi command -v.
+  for p in python3 python py; do
+    if command -v "$p" >/dev/null 2>&1 && "$p" -c 'import sys' >/dev/null 2>&1; then
+      py="$p"
+      break
+    fi
+  done
+  if [ -n "$py" ]; then
+    "$py" -c "$KIEM_CU_PHAP_PY" ./*.py tests/*.py || loi=1
+  else
+    echo "[canh bao] Khong tim thay Python tren may nay - cu phap se chi duoc kiem tren VPS."
+  fi
+
+  if command -v node >/dev/null 2>&1; then
+    for p in static/*.js; do
+      if ! node --check "$p" >/dev/null 2>&1; then
+        echo "[LOI] $p loi cu phap JavaScript:"
+        node --check "$p" 2>&1 | head -6 | sed 's/^/      /'
+        loi=1
+      fi
+    done
+  fi
+
+  if [ "$loi" -ne 0 ]; then
+    echo
+    echo "[DUNG] Chua day gi len VPS. Sua cac loi tren roi chay lai."
+    exit 1
+  fi
+  echo "    Kiem tra truoc khi day: OK"
+}
+
+if [ "${BO_KIEM_TRA:-0}" = "1" ]; then
+  buoc "[canh bao] BO_KIEM_TRA=1 - bo qua kiem tra truoc khi day"
+else
+  buoc "Kiem tra ma nguon truoc khi day"
+  kiem_tra_truoc_khi_day
+fi
+
 buoc "Kiem tra ket noi toi $NGUOI_SSH@$MAY_CHU"
 $SSH 'echo "Dang nhap OK voi $(id -un)"
       . /etc/os-release 2>/dev/null && echo "He dieu hanh: $PRETTY_NAME"
@@ -204,6 +316,17 @@ print('Tesseract:', ocr_pdf.tim_tesseract(), '| OCR:', thong_bao)
 \""
 
 # ---------------------------------------------------------------------
+# Kiem lai bang chinh Python 3.11 cua VPS: cu phap moi cua Python tren may nay
+# (vd f-string long nhau cua 3.12) qua duoc buoc kiem cuc bo nhung chet o day.
+buoc "Kiem tra cu phap bang Python cua VPS truoc khi khoi dong lai"
+if ! $SSH "cd $THU_MUC_XA && $NHU_RAG ./.venv/bin/python - *.py" <<<"$KIEM_CU_PHAP_PY"; then
+  echo "[DUNG] Ma nguon moi khong chay duoc tren VPS - KHONG khoi dong lai dich vu."
+  echo "       Sua loi tren roi chay lai kich ban nay."
+  exit 1
+fi
+echo "Cu phap OK"
+
+# ---------------------------------------------------------------------
 buoc "Khoi dong dich vu va cho nap kho tri thuc (toi da 10 phut)"
 $SSH "$NHU_ROOT bash -s" <<'REMOTE'
 set -u
@@ -211,6 +334,10 @@ systemctl restart chatbot-rag
 sleep 5
 systemctl --no-pager --lines=8 status chatbot-rag || true
 echo
+# Chet luc khoi dong thi systemd tu khoi dong lai moi 5 giay: dung sang
+# auto-restart/failed hoac doi PID nghia la da chet - bao ngay kem log thay
+# vi in dau cham suot 10 phut.
+pid_dau=$(systemctl show -p MainPID --value chatbot-rag)
 for i in $(seq 1 120); do
   tt=$(curl -s http://127.0.0.1:8010/api/status 2>/dev/null | head -c 500)
   case "$tt" in
@@ -218,6 +345,13 @@ for i in $(seq 1 120); do
     *'"state":"error"'*)  echo; echo "[LOI] $tt"; exit 1 ;;
     *) printf '.' ;;
   esac
+  trang_thai=$(systemctl show -p SubState --value chatbot-rag)
+  pid=$(systemctl show -p MainPID --value chatbot-rag)
+  if [ "$trang_thai" = "auto-restart" ] || [ "$trang_thai" = "failed" ] || [ "$pid" != "$pid_dau" ]; then
+    echo; echo "[LOI] chatbot-rag chet ngay sau khi khoi dong. Log gan nhat:"
+    journalctl -u chatbot-rag -n 30 --no-pager
+    exit 1
+  fi
   sleep 5
 done
 echo; echo "[canh bao] Qua 10 phut chua san sang. Xem: sudo journalctl -u chatbot-rag -n 50"
