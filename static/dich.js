@@ -1,12 +1,11 @@
 /* ============================================================
-   DỊCH ĐA NGÔN NGỮ (mọi ngôn ngữ Google Translate hỗ trợ)
+   DỊCH
    ============================================================
-   Khung dịch hai cột như Google Translate, dịch câu trả lời ngay dưới câu
-   trả lời, và dịch đoạn vừa bôi đen. Mỗi chiều hiện ba ngôn ngữ dùng gần
-   đây; nút mũi tên mở bảng tìm trong hơn 130 ngôn ngữ (danh sách lấy từ
-   /api/dich/cau-hinh). Máy chủ lo phần dịch (/api/dich): dùng
-   Google Cloud Translation nếu có key, không thì dịch bằng mô hình trên máy -
-   khi đó giao diện ghi rõ "bản dịch máy, chỉ để tham khảo".
+   Khung dịch hai cột, dịch câu trả lời ngay dưới câu trả lời, và dịch đoạn
+   vừa bôi đen. Mỗi chiều hiện ba ngôn ngữ dùng gần đây; nút mũi tên mở bảng
+   tìm ngôn ngữ (danh sách lấy từ /api/dich/cau-hinh). Máy chủ dịch bằng mô
+   hình nhỏ chạy qua Ollama (/api/dich), không gọi dịch vụ ngoài, nên giao
+   diện ghi rõ "bản dịch máy, chỉ để tham khảo".
    ============================================================ */
 (() => {
   const $id = (id) => document.getElementById(id);
@@ -25,7 +24,6 @@
     chep: $id('dichChep'),
     ghi: $id('dichGhi'),
     trangThai: $id('dichTrangThai'),
-    ghiChu: $id('dichGhiChu'),
     bang: $id('dichBangChon'),
     tim: $id('dichTimNgonNgu'),
     luoi: $id('dichLuoiNgonNgu'),
@@ -52,7 +50,6 @@
   let ganDayNguon = ['vi', 'en', 'ja'];
   let ganDayDich = ['en', 'vi', 'ja'];
   let nguonPhatHien = '';
-  let congCu = 'cuc_bo';
   let dangGoi = null;
   let henDich = 0;
   let luuTho = {};
@@ -71,7 +68,7 @@
     ganDayDich = themGanDay(ganDayDich, dichSang);
   }
 
-  // Ngôn ngữ vừa chọn lên đầu hàng nếu chưa có sẵn, như Google Translate.
+  // Ngôn ngữ vừa chọn lên đầu hàng nếu chưa có sẵn.
   function themGanDay(ds, ma) {
     const moi = ds.filter((m) => TEN[m]);
     if (ma && ma !== 'tu_dong' && !moi.includes(ma)) moi.unshift(ma);
@@ -212,7 +209,7 @@
   }
 
   // ------------------------------------------------------------
-  // BẢNG CHỌN TẤT CẢ NGÔN NGỮ (phủ lên hai ô văn bản như Google Translate)
+  // BẢNG CHỌN TẤT CẢ NGÔN NGỮ (phủ lên hai ô văn bản)
   // ------------------------------------------------------------
   let bangDangMo = '';
 
@@ -293,7 +290,7 @@
     for (const nut of [d.chep, d.ghi, d.ngheRa]) nut.disabled = !coChu;
   }
 
-  function henDichLai(tre = congCu === 'google' ? 700 : 1400) {
+  function henDichLai(tre = 1400) {
     window.clearTimeout(henDich);
     henDich = window.setTimeout(dichNgay, tre);
   }
@@ -318,9 +315,7 @@
         if (huy.signal.aborted) return;
         if (suKien.type === 'ngon_ngu') {
           nguonPhatHien = suKien.nguon;
-          congCu = suKien.cong_cu || congCu;
           veChip();
-          capNhatGhiChu();
         } else if (suKien.type === 'phase') {
           d.trangThai.textContent = suKien.message;
         } else if (suKien.type === 'warning') {
@@ -332,7 +327,7 @@
       }, huy.signal);
       if (huy.signal.aborted) return;
       const giay = ((performance.now() - batDau) / 1000).toFixed(1);
-      datKetQua(banDich, congCu === 'google' ? `Google Dịch · ${giay} giây` : `Bản dịch máy · ${giay} giây`);
+      datKetQua(banDich, `Bản dịch máy · ${giay} giây`);
     } catch (loi) {
       if (loi.name === 'AbortError') return;
       datKetQua('', loi.message || 'Không dịch được.');
@@ -342,13 +337,6 @@
         d.ra.classList.remove('dang-dich');
       }
     }
-  }
-
-  function capNhatGhiChu() {
-    d.ghiChu.textContent = congCu === 'google'
-      ? 'Văn bản được gửi tới Google Cloud Translation để dịch. Đừng dán thông tin cá nhân nhạy cảm.'
-      : 'Bản dịch máy do mô hình trên máy chủ tạo ra, chỉ để tham khảo - hãy kiểm tra lại trước khi dùng chính thức.';
-    d.ghiChu.classList.toggle('canh-bao', congCu !== 'google');
   }
 
   function moKhungDich(vanBan = '') {
@@ -361,7 +349,6 @@
     }
     veChip();
     capNhatDem();
-    capNhatGhiChu();
     if (!d.hop.open) d.hop.showModal();
     d.vao.focus();
     if (d.vao.value.trim()) dichNgay();
@@ -569,7 +556,7 @@
     try {
       const banDich = await goiDich(vanBan, 'tu_dong', ma, (suKien, tamThoi) => {
         if (suKien.type === 'ngon_ngu') {
-          phu.textContent = suKien.cong_cu === 'google' ? 'Google Dịch' : 'Bản dịch máy, chỉ để tham khảo';
+          phu.textContent = 'Bản dịch máy, chỉ để tham khảo';
           if (suKien.nguon === ma) phu.textContent = 'Câu trả lời đã ở ngôn ngữ này';
         } else if (suKien.type === 'phase' || suKien.type === 'warning') {
           phu.textContent = suKien.message;
@@ -588,11 +575,10 @@
 
   window.dichGiaoDien = { moKhungDich, moMenuDichCauTraLoi };
 
-  // Biết trước công cụ dịch để ghi chú đúng ngay khi mở khung.
+  // Danh sách ngôn ngữ đầy đủ từ máy chủ.
   fetch('/api/dich/cau-hinh')
     .then((r) => (r.ok ? r.json() : null))
     .then((cauHinh) => {
-      if (cauHinh?.cong_cu) congCu = cauHinh.cong_cu;
       if (Array.isArray(cauHinh?.ngon_ngu) && typeof cauHinh.ngon_ngu[0] === 'object') {
         napNgonNgu(cauHinh.ngon_ngu);
         if (d.hop.open) veChip();

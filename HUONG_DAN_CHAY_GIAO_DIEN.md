@@ -91,7 +91,6 @@ Thiết lập biến môi trường trước khi chạy nếu cấu hình máy k
 | `RAG_THU_MUC_BAN_PDF` | `ban_pdf_tam` trong dự án | Nơi nhớ bản PDF do LibreOffice chuyển từ Word, Excel, PowerPoint, HTML |
 | `RAG_SO_BAN_PDF_TOI_DA` | `300` | Số bản PDF chuyển đổi được giữ (bản dùng gần nhất) |
 | `RAG_MO_HINH_CHO_PHEP` | *(trống)* | Các mô hình người dùng được tự chọn, phân cách bằng dấu phẩy; trống là mọi mô hình |
-| `RAG_GOOGLE_TRANSLATE_KEY` | *(trống)* | Khóa Google Cloud Translation; trống thì dịch bằng mô hình trên máy |
 | `RAG_MO_HINH_DICH` | `qwen2.5:3b-instruct` | Mô hình dịch trên máy; máy không có thì dùng mô hình trả lời |
 | `RAG_WHISPER_BEAM_GIONG_NOI` | `5` | Beam size khi nhận giọng nói ở nút **Nói** |
 
@@ -168,7 +167,7 @@ Tệp đính kèm, trình đọc tài liệu và quản lý kho:
 
 Dịch và giọng nói:
 
-- `GET /api/dich/cau-hinh`: công cụ dịch đang dùng (`google` hay `cuc_bo`) và danh sách 133 ngôn ngữ.
+- `GET /api/dich/cau-hinh`: danh sách ngôn ngữ cho menu dịch và số ký tự tối đa (`ky_tu_toi_da`).
 - `POST /api/dich`: `{van_ban, nguon, dich_sang}` (`nguon` = `tu_dong` để tự nhận diện), trả NDJSON.
 - `POST /api/giong-noi`: byte ghi âm trong body (tiêu đề `X-RAG-Action: voice-input`), trả `{van_ban, ngon_ngu, ten_ngon_ngu, do_tin_cay}`.
 
@@ -297,22 +296,23 @@ Nút **Sổ tay** (hoặc `Ctrl + /`) mở một cuốn sổ riêng cho cuộc t
 
 Sổ lưu trong IndexedDB của trình duyệt, khóa theo mã cuộc trò chuyện; đăng nhập thì lưu thêm trên máy chủ. Nút tải về xuất sổ ra Word (`.doc`, gồm ghi chú, ảnh vùng khoanh và bảng vẽ), bản in PDF hoặc ảnh bảng vẽ; khi đang đọc tài liệu có thêm **Tài liệu đang đọc (.pdf)**: PDF gốc kèm mọi nét bút, tô sáng, vùng khoanh, vẽ thành đường véc-tơ nên chữ của tài liệu vẫn chọn và tìm được.
 
-## Dịch đa ngôn ngữ
+## Dịch câu trả lời
 
-Khung dịch hai cột như Google Translate, hỗ trợ 133 ngôn ngữ, mở từ nút **Dịch** dưới câu trả lời hoặc khi bôi đen một đoạn (thanh trên cùng không còn nút Dịch riêng):
+Thanh trên cùng không còn nút Dịch riêng. Có hai lối vào:
 
-- Mỗi chiều hiện **Phát hiện ngôn ngữ** (bên nguồn) và ba ngôn ngữ dùng gần đây. Nút mũi tên cuối hàng mở bảng đủ 133 ngôn ngữ, tìm được theo tên tiếng Việt, tên bản địa hoặc mã (`phap`, `français`, `fr`), gõ không dấu cũng được, `Enter` chọn kết quả đầu, `Esc` đóng bảng.
+- Dưới mỗi câu trả lời có nút **Dịch**: chọn ngôn ngữ (có ô tìm) để xem bản dịch ngay dưới câu trả lời.
+- Bôi đen một đoạn trong câu trả lời rồi chọn **Dịch** để mở khung dịch hai cột với đoạn đó.
+
+Trong khung dịch hai cột:
+
+- Mỗi chiều hiện **Phát hiện ngôn ngữ** (bên nguồn) và ba ngôn ngữ dùng gần đây. Nút mũi tên cuối hàng mở bảng chọn ngôn ngữ, tìm được theo tên tiếng Việt, tên bản địa hoặc mã (`phap`, `français`, `fr`), gõ không dấu cũng được, `Enter` chọn kết quả đầu, `Esc` đóng bảng.
 - Nút đổi chiều, đọc to (giọng có sẵn của hệ điều hành), sao chép và ghi bản dịch vào sổ tay. `Ctrl + Enter` dịch ngay.
-- Dưới mỗi câu trả lời có nút **Dịch**: chọn ngôn ngữ (có ô tìm) để xem bản dịch ngay dưới câu trả lời. Bôi đen một đoạn trong câu trả lời rồi chọn **Dịch** để mở khung dịch với đoạn đó.
 
-Công cụ dịch:
+Việc dịch do mô hình nhỏ chạy qua Ollama ngay trên máy chủ (`RAG_MO_HINH_DICH`, mặc định `qwen2.5:3b-instruct`; máy không có thì dùng mô hình trả lời). Không gọi dịch vụ dịch bên ngoài nào, văn bản không rời máy chủ.
 
-| Cấu hình | Công cụ | Ghi chú |
-|---|---|---|
-| Đặt `RAG_GOOGLE_TRANSLATE_KEY` | Google Cloud Translation | Chất lượng như Google Translate. Văn bản được gửi sang Google, giao diện có ghi rõ. Key cần bật *Cloud Translation API* |
-| Không có key, hoặc Google lỗi | Mô hình trên máy (`RAG_MO_HINH_DICH`) | Cặp không có tiếng Anh thì dịch qua tiếng Anh làm trung gian. Chỉ để tham khảo; với ngôn ngữ ngoài khoảng 19 ngôn ngữ phổ biến, giao diện báo trước bản dịch có thể sai nhiều |
-
-Khi dịch bằng mô hình trên máy, ngôn ngữ nguồn được nhận diện theo bảng chữ (Hàn, Nhật, Trung, Thái, Nga, Ả Rập, Hindi...) và theo các từ thông dụng với ngôn ngữ viết chữ Latinh, không gọi mô hình.
+- Cặp ngôn ngữ không có tiếng Anh thì dịch qua tiếng Anh làm trung gian (hai chặng).
+- Bản dịch chỉ để tham khảo, giao diện luôn ghi "Bản dịch máy". Với ngôn ngữ ngoài khoảng 19 ngôn ngữ mô hình thạo (Việt, Anh, Nhật, Hàn, Trung, Pháp, Đức, Tây Ban Nha, Nga, Thái...), giao diện báo trước bản dịch có thể sai nhiều.
+- Ngôn ngữ nguồn được nhận diện theo bảng chữ (Hàn, Nhật, Trung, Thái, Nga, Ả Rập, Hindi...) và theo các từ thông dụng với ngôn ngữ viết chữ Latinh, không gọi mô hình.
 
 ## Nói thay vì gõ
 
