@@ -194,7 +194,10 @@ printf '%s' "$MAT_KHAU" > "$TEP_MK"
   echo "RAG_MAT_KHAU="
   echo "RAG_HOST=127.0.0.1"
   echo "RAG_PORT=8010"
-  echo "RAG_LLM_MODEL=${RAG_LLM_MODEL:-llama3.2:3b}"
+  # Mo hinh mac dinh va lich nap chi muc la lua chon da dat tren VPS: chi ghi
+  # khi dat bien o may nay, khong thi giu gia tri cu (vong lap ben duoi).
+  [ -n "${RAG_LLM_MODEL:-}" ] && echo "RAG_LLM_MODEL=$RAG_LLM_MODEL"
+  [ -n "${RAG_TU_NAP_CHI_MUC:-}" ] && echo "RAG_TU_NAP_CHI_MUC=$RAG_TU_NAP_CHI_MUC"
   echo "RAG_EMBEDDING_MODEL=${RAG_EMBEDDING_MODEL:-bge-m3}"
   echo "OLLAMA_BASE_URL=http://127.0.0.1:11434"
   echo "PYTHONUNBUFFERED=1"
@@ -209,10 +212,15 @@ unset MAT_KHAU KHOA_DRIVE SMTP_MK
 $SCP "$TEP_TAM" "$NGUOI_SSH@$MAY_CHU:/tmp/chatbot-rag.env" >/dev/null
 $SCP "$TEP_MK"  "$NGUOI_SSH@$MAY_CHU:/tmp/mk.txt" >/dev/null
 # Khoa chi dat tren VPS (RAG_EMAIL_QUAN_TRI...) ma may nay khong co thi giu
-# nguyen gia tri cu, dung de lan day ma nguon nao cung xoa mat.
-$SSH "$NHU_ROOT bash -c 'for k in RAG_EMAIL_QUAN_TRI RAG_SMTP_TAI_KHOAN RAG_SMTP_MAT_KHAU RAG_SMTP_MAY_CHU RAG_SMTP_CONG RAG_SMTP_NGUOI_GUI; do
+# nguyen gia tri cu, dung de lan day ma nguon nao cung xoa mat. 26/9/2026 lan
+# day 21:01 lam mat RAG_TU_NAP_CHI_MUC=0 (tep duyet ban ngay bi bao "can cap
+# nhat chi muc" thay vi cho luot dem) va dua mo hinh mac dinh ve llama3.2:3b.
+# Lan dau trien khai chua co gi de giu thi dung mac dinh cho VPS.
+$SSH "$NHU_ROOT bash -c 'for k in RAG_EMAIL_QUAN_TRI RAG_SMTP_TAI_KHOAN RAG_SMTP_MAT_KHAU RAG_SMTP_MAY_CHU RAG_SMTP_CONG RAG_SMTP_NGUOI_GUI RAG_LLM_MODEL RAG_TU_NAP_CHI_MUC; do
         grep -q \"^\$k=\" /tmp/chatbot-rag.env || grep \"^\$k=\" /etc/chatbot-rag.env >> /tmp/chatbot-rag.env 2>/dev/null || true
-      done'
+      done
+      grep -q ^RAG_LLM_MODEL= /tmp/chatbot-rag.env || echo RAG_LLM_MODEL=llama3.2:3b >> /tmp/chatbot-rag.env
+      grep -q ^RAG_TU_NAP_CHI_MUC= /tmp/chatbot-rag.env || echo RAG_TU_NAP_CHI_MUC=0 >> /tmp/chatbot-rag.env'
       $NHU_ROOT install -o root -g rag -m 640 /tmp/chatbot-rag.env /etc/chatbot-rag.env && rm -f /tmp/chatbot-rag.env && echo 'Da ghi /etc/chatbot-rag.env'"
 
 # KHOA_QUAN_TRI=1 thi dat mat khau cho cac duong dan quan tri; mac dinh 0 =

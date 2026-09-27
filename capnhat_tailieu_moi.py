@@ -310,6 +310,18 @@ def main(bao_tien_do=None):
     tong_chunks = sum(len(c) for c in chunks_theo_file.values())
     if tong_chunks == 0 and not file_bi_xoa:
         print("Không tách được chunk nào từ file mới/sửa đổi, và không có file bị xóa. Dừng lại.")
+        # Tệp đọc được mà không ra đoạn nào vẫn phải vào sổ với status no_text,
+        # y như bước 6 làm khi lượt chạy còn tệp khác có đoạn. Bỏ sót ở đây thì
+        # giao diện so kho với sổ, thấy tệp lạ và báo "cần cập nhật chỉ mục" mãi
+        # không tắt; tệp bị sửa thì sổ còn chunk_ids đã gỡ ở bước 4.
+        for duong_dan in chunks_theo_file:
+            so_ghi_chep[duong_dan] = {
+                "hash": hash_hien_tai[duong_dan],
+                "chunk_ids": [],
+                "status": "no_text",
+                "size": os.path.getsize(duong_dan),
+                "modified_ns": os.stat(duong_dan).st_mtime_ns,
+            }
         vector_store.save_local(DUONG_DAN_LUU_INDEX)
         # Vẫn phải lưu sổ: các file vừa bị đánh dấu lỗi nằm trong đó, không lưu
         # thì lần chạy sau lại coi chúng là file mới và thử đọc lại vô ích.

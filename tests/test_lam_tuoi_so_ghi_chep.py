@@ -106,6 +106,28 @@ class LamTuoiSoGhiChepTests(unittest.TestCase):
 
         self.assertEqual(os.stat(self.so_ghi_chep).st_mtime_ns, mtime_so_truoc)
 
+    def test_tep_moi_khong_ra_doan_nao_van_vao_so(self):
+        """Lượt chạy chỉ có tệp không ra đoạn nào dừng sớm, nhưng vẫn phải ghi
+        tệp đó vào sổ - không thì giao diện báo kho lệch chỉ mục vĩnh viễn."""
+        self._ghi_so_rong()
+        with mock.patch.object(capnhat_tailieu_moi, "doc_va_chunk_file", return_value=[]), \
+                mock.patch.object(capnhat_tailieu_moi, "OllamaEmbeddings"), \
+                mock.patch.object(capnhat_tailieu_moi, "FAISS"):
+            capnhat_tailieu_moi.main()
+
+        ban_ghi = self._doc_so()
+        thong_tin = os.stat(self.tai_lieu)
+        self.assertEqual(ban_ghi["status"], "no_text")
+        self.assertEqual(ban_ghi["chunk_ids"], [])
+        self.assertEqual(ban_ghi["hash"], tinh_hash_file(self.tai_lieu))
+        self.assertFalse(
+            rag_service.ban_ghi_lech_tep(ban_ghi, thong_tin.st_size, thong_tin.st_mtime_ns)
+        )
+
+    def _ghi_so_rong(self) -> None:
+        with open(self.so_ghi_chep, "w", encoding="utf-8") as tep:
+            json.dump({}, tep)
+
 
 if __name__ == "__main__":
     unittest.main()

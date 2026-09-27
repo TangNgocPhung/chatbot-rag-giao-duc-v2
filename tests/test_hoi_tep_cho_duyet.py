@@ -15,9 +15,10 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+import drive_sync
 import tep_dinh_kem
 from api import app
-from rag_service import service
+from rag_service import TrangThaiDrive, service
 
 NOI_DUNG = (
     "Bài 2. Gõ bàn phím đúng cách. Khi gõ phím, em đặt hai ngón trỏ lên hai phím "
@@ -200,6 +201,29 @@ class KhongTuCapNhatBanNgayTests(unittest.TestCase):
             service._hen_cap_nhat_chi_muc()
         luong.assert_called_once()
         service._dang_hen_nap = False
+
+    def _dong_bo_drive(self, ket_qua):
+        self.addCleanup(setattr, service, "drive", service.drive)
+        service.drive = TrangThaiDrive()
+        with patch("rag_service.drive_sync.dong_bo", return_value=ket_qua), \
+                patch.object(service.status, "state", "ready"), \
+                patch.object(service, "start_index_update") as cap_nhat:
+            service._run_drive_sync()
+        return cap_nhat
+
+    def test_dong_bo_drive_co_tep_moi_cung_cho_luot_dem(self):
+        cap_nhat = self._dong_bo_drive(
+            drive_sync.KetQuaDongBo(da_tai=["giao-an.pdf"], da_xoa=["cu.pdf"])
+        )
+        cap_nhat.assert_not_called()
+        self.assertIn("giao-an.pdf", service.tep_cho_nap)
+        self.assertIn("(gỡ) cu.pdf", service.tep_cho_nap)
+        self.assertIn("ban đêm", service.drive.thong_bao)
+
+    def test_dong_bo_drive_khi_tu_nap_thi_cap_nhat_ngay(self):
+        with patch.dict("os.environ", {"RAG_TU_NAP_CHI_MUC": "1"}):
+            cap_nhat = self._dong_bo_drive(drive_sync.KetQuaDongBo(da_tai=["giao-an.pdf"]))
+        cap_nhat.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -1153,7 +1153,15 @@ class RAGService:
             self.drive.so_file_moi = len(ket_qua.da_tai)
             self.drive.thong_bao = ket_qua.tom_tat()
             self.drive.trang_thai = "idle"
-            if ket_qua.co_thay_doi and self.status.state == "ready" and _tu_nap_chi_muc():
+            if ket_qua.co_thay_doi and not _tu_nap_chi_muc():
+                # Như tệp duyệt hay tải lên bằng nút "+": vào kho ngay, chờ lượt
+                # đêm. Ghi vào hàng chờ để giao diện báo "tệp chờ nạp chỉ mục",
+                # không thì người dùng tưởng đồng bộ xong là hỏi được luôn.
+                for ten in [*ket_qua.da_tai, *(f"(gỡ) {ten}" for ten in ket_qua.da_xoa)]:
+                    if ten not in self.tep_cho_nap:
+                        self.tep_cho_nap.append(ten)
+                self.drive.thong_bao += f" Chờ nạp chỉ mục {_luc_nap_chi_muc()}."
+            elif ket_qua.co_thay_doi and self.status.state == "ready":
                 self.start_index_update()
         except Exception as exc:
             self.drive.trang_thai = "error"

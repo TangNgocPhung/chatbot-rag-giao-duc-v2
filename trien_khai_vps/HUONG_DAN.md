@@ -297,6 +297,11 @@ cập nhật chỉ mục giữa ban ngày — lượt cập nhật khoá câu h�
 phút. Tệp nằm chờ tới lượt 02:00. Người gửi vẫn hỏi được về tệp của mình qua
 tệp đính kèm trong lúc chờ duyệt và chờ nạp.
 
+`02_day_ma_nguon.sh` sinh lại tệp env mỗi lần đẩy mã nhưng giữ nguyên
+`RAG_TU_NAP_CHI_MUC` và `RAG_LLM_MODEL` đang có trên VPS (lần đầu thì đặt `0` và
+`llama3.2:3b`). Thiếu dòng `RAG_TU_NAP_CHI_MUC=0` thì giao diện báo vàng "Hãy cập
+nhật chỉ mục" suốt ngày mỗi khi có tệp mới duyệt, thay vì báo chờ lượt đêm.
+
 Kết quả OCR được cache theo từng tệp trong `ocr_cache/`, nên dừng giữa chừng
 không mất công: đêm sau chạy tiếp từ chỗ dở. Muốn chạy ngay (chấp nhận trang
 chậm):
