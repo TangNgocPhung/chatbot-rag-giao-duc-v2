@@ -6,7 +6,7 @@
 
 > **Giới thiệu ngắn**
 >
-> **Chatbot RAG Giáo dục** là trợ lý tra cứu tài liệu giáo dục bằng tiếng Việt. Bạn gõ câu hỏi như khi nhắn tin, trợ lý tìm trong kho hơn một nghìn văn bản và tài liệu giáo dục (luật, nghị định, thông tư, chương trình giáo dục, tài liệu chuyên môn…) rồi trả lời ngắn gọn, **kèm theo nguồn**: tên tài liệu và đúng trang chứa thông tin, để bạn tự kiểm tra lại. Trợ lý còn cảnh báo khi văn bản đã bị thay thế hoặc chỉ là bản dự thảo, và tính sẵn lương nhà giáo, định mức tiết dạy, điểm trung bình môn theo đúng văn bản quy định.
+> **Chatbot RAG Giáo dục** là trợ lý tra cứu tài liệu giáo dục bằng tiếng Việt. Bạn gõ câu hỏi như khi nhắn tin, trợ lý tìm trong kho hơn một nghìn văn bản và tài liệu giáo dục (luật, nghị định, thông tư, chương trình giáo dục, tài liệu chuyên môn…) rồi trả lời ngắn gọn, **kèm theo nguồn**: tên tài liệu và đúng trang chứa thông tin, để bạn tự kiểm tra lại. Trợ lý còn cảnh báo khi văn bản đã bị thay thế hoặc chỉ là bản dự thảo, và tính sẵn lương nhà giáo, định mức tiết dạy theo đúng văn bản quy định.
 >
 > Sản phẩm do học viên Khoa Công nghệ thông tin, Trường Đại học Sư phạm Thành phố Hồ Chí Minh thực hiện, dưới sự hướng dẫn của TS. Nguyễn Minh Hải.
 
@@ -48,9 +48,9 @@ Số lượng tài liệu hiện có luôn hiển thị ngay trên nút **Kho t�
 
 ### Ai nên dùng?
 
-- **Giáo viên, cán bộ quản lý**: tra quy định, chương trình, định mức tiết dạy, cách tính lương, cách đánh giá học sinh.
+- **Giáo viên, cán bộ quản lý**: tra quy định, chương trình, định mức tiết dạy, cách tính lương.
 - **Sinh viên sư phạm, học viên**: tìm hiểu chương trình giáo dục phổ thông và văn bản pháp quy.
-- **Phụ huynh và người quan tâm**: tìm hiểu các quy định như dạy thêm, học thêm; đánh giá, xếp loại học sinh…
+- **Phụ huynh và người quan tâm**: tìm hiểu các quy định như dạy thêm, học thêm…
 
 ### Khác gì so với các chatbot trò chuyện thông thường?
 
@@ -59,7 +59,7 @@ Số lượng tài liệu hiện có luôn hiển thị ngay trên nút **Kho t�
 | Trả lời theo kiến thức chung đã học, thường không nói rõ lấy từ đâu | **Chỉ** trả lời dựa trên tài liệu có trong kho |
 | Hiếm khi đưa nguồn cụ thể | Luôn ghi nguồn, mở được đúng trang, **tô vàng** đoạn được trích |
 | Không biết văn bản nào đã hết hiệu lực | **Cảnh báo** khi văn bản đã bị thay thế, bị sửa đổi, còn là dự thảo hoặc chưa tới ngày có hiệu lực |
-| Tự làm toán, dễ sai | Tính lương, định mức tiết dạy, điểm trung bình **bằng công thức chính xác**, ghi rõ văn bản căn cứ |
+| Tự làm toán, dễ sai | Tính lương, định mức tiết dạy **bằng công thức chính xác**, ghi rõ văn bản căn cứ |
 
 Câu hỏi, giọng nói và tài liệu của bạn được xử lý ngay trên máy chủ của trang web, không gửi sang dịch vụ trí tuệ nhân tạo (AI) bên ngoài. Đó là ý nghĩa của dòng *"Dữ liệu được xử lý trên máy này"* ở thanh bên trái.
 
@@ -71,6 +71,8 @@ Câu hỏi, giọng nói và tài liệu của bạn được xử lý ngay trê
 2. **Kiểm tra trạng thái.** Ở thanh trên cùng (dưới chữ *Trợ lý giáo dục*) và ở ô trạng thái bên trái, thấy **chấm xanh** kèm chữ **Sẵn sàng** là dùng được.
 3. **Đặt câu hỏi.** Gõ câu hỏi vào ô **"Nhập câu hỏi về tài liệu..."** ở cuối màn hình rồi nhấn phím **Enter**. Nếu chưa biết hỏi gì, kéo xuống và bấm một **thẻ gợi ý** trên màn hình chào.
 
+> Cần xem lại hướng dẫn này? Bấm nút **Hướng dẫn** (biểu tượng dấu hỏi) ở thanh trên cùng.
+>
 > **Không cần đăng nhập** để hỏi đáp. Chỉ khi muốn dùng thêm tính năng (xem kho tài liệu, sổ tay, hỏi về tệp của mình) bạn mới cần tạo tài khoản. Xem [mục 9](#9-tài-khoản-có-cần-đăng-ký-không).
 
 ---
@@ -98,6 +100,7 @@ Màn hình chia thành bốn vùng: **thanh bên trái**, **thanh trên cùng**,
 |---|---|
 | Biểu tượng khung chữ nhật ở góc trái | Ẩn hoặc hiện thanh bên trái cho rộng chỗ đọc. Trên điện thoại, đây là nút **☰** để mở thanh bên. |
 | **Trợ lý giáo dục · Sẵn sàng** | Trạng thái hoạt động của trợ lý. |
+| **Hướng dẫn** (biểu tượng dấu hỏi) | Mở tài liệu hướng dẫn này ngay trên trang, lúc nào cần cũng xem lại được. |
 | **Sổ tay** | Mở cuốn sổ ghi chú bên phải màn hình ([mục 12](#12-sổ-tay-ghi-chú-vẽ-đọc-tài-liệu)). |
 | Biểu tượng **mặt trời / mặt trăng** | Đổi giao diện sáng hoặc tối. |
 | Tên mô hình, ví dụ `qwen3.5:9b` | Chọn "bộ não" AI dùng để trả lời. **Người mới nên để nguyên** ([mục 14](#14-tùy-chỉnh-khác)). |
@@ -139,14 +142,14 @@ Nếu bạn hỏi một câu gần giống câu đã có người hỏi trước
 
 1. **Hỏi cụ thể, mỗi câu một ý.** Hỏi hai ba việc một lúc dễ nhận được câu trả lời thiếu.
 2. **Nêu rõ đối tượng**: cấp học, môn học, lớp, loại giáo viên…
-3. **Ghi số hiệu văn bản nếu biết**, ví dụ *Thông tư 22/2021/TT-BGDĐT*.
+3. **Ghi số hiệu văn bản nếu biết**, ví dụ *Công văn 5512/BGDĐT-GDTrH*.
 4. **Nên gõ tiếng Việt có dấu** để trợ lý hiểu chính xác nhất. Các chữ viết tắt thông dụng như *GV*, *HS*, *THCS*, *THPT* vẫn được hiểu.
 5. **Hỏi nối tiếp trong cùng cuộc trò chuyện.** Trợ lý nhớ vài câu gần nhất, nên bạn có thể hỏi tiếp kiểu *"Còn giáo viên THCS thì sao?"*. Khi chuyển sang chủ đề hoàn toàn khác, hãy bấm **Cuộc trò chuyện mới** để trợ lý không bị lẫn.
 
 | Câu hỏi chưa tốt | Câu hỏi tốt hơn |
 |---|---|
 | *dạy thêm* | *Theo quy định mới, giáo viên có được dạy thêm có thu tiền cho học sinh lớp mình đang dạy không?* |
-| *đánh giá học sinh* | *Theo Thông tư 22/2021/TT-BGDĐT, điểm trung bình môn học kì được tính như thế nào?* |
+| *kế hoạch bài dạy* | *Khung kế hoạch bài dạy theo Công văn 5512/BGDĐT-GDTrH gồm những phần nào?* |
 | *chương trình* | *Yêu cầu cần đạt môn Ngữ văn lớp 6 trong Chương trình giáo dục phổ thông 2018 gồm những gì?* |
 
 ### Câu hỏi cần tính toán
@@ -157,7 +160,6 @@ Trợ lý có sẵn **công cụ tính chính xác** (không để AI tự nhẩ
 |---|---|
 | Lương nhà giáo | *Tính lương giáo viên THPT hạng III bậc 1* |
 | Định mức tiết dạy (phổ thông, GDTX) | *Giáo viên THPT chủ nhiệm dạy bao nhiêu tiết?* |
-| Điểm trung bình môn, xếp loại học sinh | *Điểm thường xuyên 8, 9, giữa kì 7, cuối kì 8 thì điểm trung bình môn học kì là bao nhiêu?* |
 | Phép tính thông thường | *12% của 2.340.000 là bao nhiêu?* |
 
 ### Hỏi về một trang web
@@ -471,35 +473,35 @@ Dành cho người dùng máy tính muốn thao tác nhanh:
 
 ## 16. Câu hỏi thường gặp và cách xử lý khi gặp trục trặc
 
-**Trợ lý trả lời rất lâu.**
+### Trợ lý trả lời rất lâu
 Mỗi câu trả lời thường mất khoảng một phút, lâu hơn khi nhiều người cùng dùng. Hãy chờ và đừng tải lại trang. Nếu lâu bất thường, bấm **Dừng trả lời** rồi hỏi lại bằng câu ngắn gọn hơn.
 
-**Trạng thái không phải "Sẵn sàng" (chấm không xanh) hoặc báo mất kết nối.**
+### Trạng thái không phải "Sẵn sàng" (chấm không xanh) hoặc báo mất kết nối
 Kiểm tra mạng Internet của bạn, rồi bấm **Thử kết nối lại** trong ô trạng thái ở thanh bên trái, hoặc tải lại trang (phím **F5**). Nếu trạng thái là *Đang khởi tạo*, hệ thống đang khởi động, hãy chờ vài phút.
 
-**Nút bị mờ, bấm vào thì bị yêu cầu đăng nhập hoặc xác minh email.**
+### Nút bị mờ, bấm vào thì bị yêu cầu đăng nhập hoặc xác minh email
 Tính năng đó cần tài khoản ([mục 9](#9-tài-khoản-có-cần-đăng-ký-không)). Làm theo hướng dẫn hiện ra là mở được.
 
-**Không nhận được mã xác minh email.**
+### Không nhận được mã xác minh email
 Kiểm tra thư mục **Thư rác (Spam)** và **Quảng cáo**; kiểm tra lại email đã gõ đúng chưa (bấm *Nhập sai email? Sửa lại*); chờ 60 giây rồi bấm **Gửi lại mã**. Vẫn không được thì nhờ quản trị viên xác minh hộ.
 
-**Nút "Nói" bị mờ hoặc không ghi âm được.**
+### Nút "Nói" bị mờ hoặc không ghi âm được
 - Khi trình duyệt hỏi quyền micro, phải chọn **Cho phép**. Nếu lỡ chọn *Chặn*: bấm biểu tượng **ổ khóa** bên trái thanh địa chỉ, tìm mục **Micro**, đổi sang **Cho phép**, rồi tải lại trang.
 - Kiểm tra máy đã cắm hoặc có micro, và micro không bị ứng dụng khác (Zoom, Meet…) chiếm dụng.
 
-**Đổi máy thì không thấy lịch sử cũ.**
+### Đổi máy thì không thấy lịch sử cũ
 Lịch sử của khách chỉ lưu trên trình duyệt đã dùng. Hãy **đăng nhập** để lịch sử đi theo tài khoản.
 
-**Trợ lý trả lời sai hoặc thiếu.**
+### Trợ lý trả lời sai hoặc thiếu
 Bấm vào nguồn để đọc văn bản gốc; hỏi lại cụ thể hơn (nêu cấp học, số hiệu văn bản); dùng bộ lọc phạm vi. Nếu thấy sai rõ ràng, hãy báo cho nhóm thực hiện kèm câu hỏi bạn đã hỏi.
 
-**Tệp đính kèm báo lỗi hoặc đọc mãi không xong.**
+### Tệp đính kèm báo lỗi hoặc đọc mãi không xong
 Kiểm tra tệp không quá lớn (khoảng 40 MB) và đúng định dạng hỗ trợ ([mục 10](#10-hỏi-về-tài-liệu-của-riêng-bạn)). PDF scan nhiều trang hoặc video dài cần vài phút. Nếu vẫn lỗi, hãy thử lưu tệp sang định dạng khác (ví dụ Word sang PDF) rồi đính kèm lại.
 
-**Quên mật khẩu.**
+### Quên mật khẩu
 Liên hệ quản trị viên để được đặt lại mật khẩu.
 
-**Dùng trên điện thoại được không?**
+### Dùng trên điện thoại được không?
 Được. Giao diện tự co giãn theo màn hình. Bấm **☰** để mở thanh bên.
 
 ---

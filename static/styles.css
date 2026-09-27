@@ -754,13 +754,16 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
   .app-shell.sidebar-collapsed.co-so-tay { grid-template-columns: 0 minmax(0, 1fr) var(--rong-so-tay); }
 }
 
-/* Nút mở sổ ở thanh trên: đứng trước nút sáng/tối, đẩy cả cụm sang phải. */
+/* Nút mở sổ ở thanh trên: đứng trước nút sáng/tối, đẩy cả cụm sang phải.
+   Nút Hướng dẫn đứng trước nó thì nút Hướng dẫn nhận việc đẩy cụm. */
 .topbar .nut-so-tay { margin-left: auto; }
 .topbar .nut-so-tay ~ .theme-toggle { margin-left: 0; }
-.nut-so-tay { position: relative; display: flex; align-items: center; gap: 7px; padding: 7px 12px; color: var(--ink-soft); background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 650; cursor: pointer; }
-.nut-so-tay:hover { color: var(--ink); border-color: var(--line-strong); background: var(--surface-3); }
+.topbar .nut-huong-dan { margin-left: auto; }
+.topbar .nut-huong-dan ~ .nut-so-tay { margin-left: 0; }
+.nut-so-tay, .nut-huong-dan { position: relative; display: flex; align-items: center; gap: 7px; padding: 7px 12px; color: var(--ink-soft); background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 650; cursor: pointer; }
+.nut-so-tay:hover, .nut-huong-dan:hover { color: var(--ink); border-color: var(--line-strong); background: var(--surface-3); }
 .nut-so-tay.active { color: var(--blue-ink); background: var(--blue-soft); border-color: var(--blue-line); }
-.nut-so-tay svg { width: 16px; height: 16px; }
+.nut-so-tay svg, .nut-huong-dan svg { width: 16px; height: 16px; }
 .cham-so-tay { position: absolute; top: 4px; right: 6px; width: 7px; height: 7px; background: var(--coral); border: 2px solid var(--surface); border-radius: 50%; box-sizing: content-box; }
 
 .workspace { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface-2); border-left: 1px solid var(--line); }
@@ -1129,3 +1132,65 @@ body:not([data-so-tay="1"]) .can-so-tay { display: none !important; }
 .model-menu-ghi-chu { margin: 4px 2px 0; padding: 8px 9px 4px; color: var(--ink-mute); border-top: 1px solid var(--line); font-size: 10.5px; line-height: 1.45; }
 .model-mac-dinh { margin: 4px 2px 2px; padding: 8px 9px; color: var(--blue-ink); background: var(--blue-soft); border: 0; border-radius: 9px; font-size: 11.5px; font-weight: 650; text-align: left; cursor: pointer; }
 .model-mac-dinh:hover { background: var(--blue-soft-2); }
+
+/* ============================================================
+   HƯỚNG DẪN SỬ DỤNG
+   ============================================================
+   Thanh trên gần như đã kín chỗ (màn 810 px vừa khít, mở sổ tay ở màn vừa
+   còn tràn sẵn), nên nút Hướng dẫn mặc định chỉ là biểu tượng dấu hỏi; chữ
+   chỉ hiện ở màn rộng khi sổ tay đang đóng. Để bù chỗ cho biểu tượng, tên mô
+   hình ẩn sớm hơn (như màn hẹp đã làm): cả thanh luôn gọn hơn hoặc bằng lúc
+   chưa có nút. Người mới còn có lối vào thứ hai ngay trên màn hình chào. */
+.nut-huong-dan { padding: 8px; }
+.nut-huong-dan span { display: none; }
+@media (min-width: 1101px) {
+  .app-shell:not(.co-so-tay) .nut-huong-dan { padding: 7px 12px; }
+  .app-shell:not(.co-so-tay) .nut-huong-dan span { display: inline; }
+}
+@media (min-width: 801px) and (max-width: 900px) {
+  .model-pill span { display: none; }
+}
+@media (min-width: 901px) and (max-width: 1200px) {
+  .app-shell.co-so-tay .model-pill span { display: none; }
+}
+.welcome-huong-dan { margin: -16px auto 28px; color: var(--ink-soft); font-size: 13px; }
+.welcome-huong-dan button { padding: 0; color: var(--blue-ink); background: none; border: 0; font: inherit; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.welcome-huong-dan button:hover { color: var(--blue); }
+
+/* Hộp thoại dùng khung của Kho tài liệu (.document-dialog); phần dưới chỉ lo
+   trình bày tài liệu Markdown được dựng thành HTML (huong-dan.js). */
+.huong-dan-noi-dung { flex: 1 1 auto; min-height: 0; padding: 4px 28px 32px; overflow-y: auto; color: var(--ink-body); border-top: 1px solid var(--line); font-size: 13.5px; line-height: 1.7; overflow-wrap: break-word; }
+.huong-dan-noi-dung:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ring); }
+.huong-dan-noi-dung > :first-child { margin-top: 18px; }
+.huong-dan-noi-dung h3 { margin: 30px 0 10px; color: var(--ink); font-family: Cambria, "Times New Roman", serif; font-size: 22px; font-weight: 500; line-height: 1.3; scroll-margin-top: 14px; }
+.huong-dan-noi-dung h4 { margin: 22px 0 8px; color: var(--ink); font-size: 14.5px; font-weight: 700; line-height: 1.4; scroll-margin-top: 14px; }
+.huong-dan-noi-dung p { margin: 0 0 12px; }
+.huong-dan-noi-dung ul, .huong-dan-noi-dung ol { margin: 0 0 12px; padding-left: 22px; }
+.huong-dan-noi-dung li { margin: 3px 0; }
+.huong-dan-noi-dung li > ul, .huong-dan-noi-dung li > ol { margin: 4px 0 6px; }
+.huong-dan-noi-dung strong { color: var(--ink); font-weight: 700; }
+.huong-dan-noi-dung a { color: var(--blue-ink); text-underline-offset: 2px; }
+.huong-dan-noi-dung a:hover { color: var(--blue); }
+.huong-dan-noi-dung code { padding: 1px 5px; background: var(--surface-3); border: 1px solid var(--line); border-radius: 5px; font-family: Consolas, "SFMono-Regular", monospace; font-size: .9em; }
+.huong-dan-noi-dung blockquote { margin: 0 0 14px; padding: 11px 15px; background: var(--blue-soft); border-left: 3px solid var(--blue); border-radius: 4px 10px 10px 4px; }
+.huong-dan-noi-dung blockquote > :last-child { margin-bottom: 0; }
+.huong-dan-noi-dung hr { margin: 26px 0; border: 0; border-top: 1px solid var(--line); }
+.hd-bang { margin: 0 0 14px; overflow-x: auto; }
+.hd-bang table { width: 100%; border-collapse: collapse; font-size: 12.5px; line-height: 1.55; }
+.hd-bang th, .hd-bang td { padding: 7px 10px; text-align: left; vertical-align: top; border: 1px solid var(--line); }
+.hd-bang th { color: var(--ink); background: var(--surface-2); font-weight: 700; }
+.hd-bang .hd-giua { text-align: center; }
+.hd-bang .hd-phai { text-align: right; }
+.hd-trang-thai { padding: 48px 12px; color: var(--ink-soft); text-align: center; }
+.hd-thu-lai { margin-top: 12px; padding: 7px 16px; color: var(--blue); background: transparent; border: 1px solid var(--blue-line); border-radius: 20px; font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.hd-thu-lai:hover { background: var(--blue-soft); }
+@media (max-width: 470px) {
+  .huong-dan-dialog .dialog-header h2 { font-size: 23px; }
+  .huong-dan-noi-dung { padding: 4px 17px 24px; font-size: 13px; }
+  .huong-dan-noi-dung h3 { font-size: 20px; }
+  /* Thêm nút Hướng dẫn thì thanh trên chật hơn: thu khoảng cách giữa các nút
+     để điện thoại 360 px không phải cuộn ngang cả trang. */
+  .topbar { gap: 6px; padding: 0 10px; }
+  .topbar .model-pill { gap: 4px; padding: 7px 8px; }
+  .topbar .nut-dang-nhap { padding: 7px 9px; }
+}

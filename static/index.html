@@ -6,7 +6,7 @@
   <meta name="description" content="Chatbot RAG hỗ trợ tra cứu và hỏi đáp từ kho tri thức giáo dục.">
   <title>Chatbot RAG Giáo dục</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=1.9.15">
+  <link rel="stylesheet" href="./styles.css?v=1.9.16">
   <script>
     /* Đặt nền đúng ngay từ lần vẽ đầu: app.js dùng defer nên nếu đợi nó thì
        người dùng chế độ tối sẽ thấy một nháy màu trắng khi mở trang. */
@@ -144,6 +144,10 @@
           <span>Trợ lý giáo dục</span>
           <small><span class="mini-dot" id="miniDot"></span><span id="miniStatus">Đang kết nối</span></small>
         </div>
+        <button class="nut-huong-dan" id="huongDanButton" type="button" aria-haspopup="dialog" aria-controls="huongDanDialog" aria-label="Hướng dẫn sử dụng" title="Hướng dẫn sử dụng cho người mới" data-mo-huong-dan>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.9.7c0 1.7-2.5 2.2-2.5 3.8M12 17.2v.1"/></svg>
+          <span>Hướng dẫn</span>
+        </button>
         <button class="nut-so-tay" id="soTayButton" type="button" aria-controls="workspace" aria-expanded="false" title="Sổ tay của cuộc trò chuyện: ghi chú, bảng vẽ, đọc tài liệu (Ctrl + /)">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6V3Z"/><path d="M6 3v18M3 7h3M3 12h3M3 17h3M10 8h6M10 12h4"/></svg>
           <span>Sổ tay</span>
@@ -172,6 +176,7 @@
           <p class="eyebrow">KHO TRI THỨC GIÁO DỤC</p>
           <h1>Xin chào, mình có thể<br>giúp bạn tra cứu điều gì?</h1>
           <p class="welcome-copy">Tra cứu kiến thức về giáo dục mầm non, phổ thông, thường xuyên, nghề nghiệp, đại học, cùng các chính sách và quy định quản lý giáo dục.</p>
+          <p class="welcome-huong-dan">Lần đầu sử dụng? <button type="button" aria-haspopup="dialog" aria-controls="huongDanDialog" data-mo-huong-dan>Xem hướng dẫn</button></p>
 
           <div class="welcome-credit">
             <img class="welcome-credit-logo" src="./logo-hcmue.png?v=1" width="1240" height="143" alt="Logo Trường Đại học Sư phạm Thành phố Hồ Chí Minh" loading="lazy" decoding="async">
@@ -609,6 +614,24 @@
     <div class="document-list" id="documentList"></div>
   </dialog>
 
+  <!-- Hướng dẫn sử dụng: nội dung là HUONG_DAN_SU_DUNG.md, tải khi mở lần đầu (huong-dan.js). -->
+  <dialog class="document-dialog huong-dan-dialog" id="huongDanDialog" aria-labelledby="huongDanTitle">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">TRỢ GIÚP</p>
+        <h2 id="huongDanTitle">Hướng dẫn sử dụng</h2>
+      </div>
+      <div class="dialog-header-actions">
+        <button class="icon-button" id="huongDanMucLuc" type="button" aria-label="Về mục lục" title="Về mục lục">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>
+        </button>
+        <button class="icon-button" id="huongDanDong" type="button" aria-label="Đóng hướng dẫn" title="Đóng">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="huong-dan-noi-dung" id="huongDanNoiDung" tabindex="0"></div>
+  </dialog>
   <!-- Quản lý tài khoản: chỉ quản trị viên mở được (menu tài khoản). -->
   <dialog class="document-dialog qltk-dialog" id="qltkDialog" aria-labelledby="qltkTitle">
     <div class="dialog-header">
@@ -650,6 +673,7 @@
   <script src="./tai-khoan.js?v=1.9.12" defer></script>
   <script src="./quan-ly-tai-khoan.js?v=1.9.9" defer></script>
   <script src="./dich.js?v=1.9.12" defer></script>
+  <script src="./huong-dan.js?v=1.9.16" defer></script>
   <script src="./giong-noi.js?v=1.9.7" defer></script>
 </body>
 </html>

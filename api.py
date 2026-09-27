@@ -199,6 +199,26 @@ def get_status():
     return service.status_dict()
 
 
+HUONG_DAN_SU_DUNG = ROOT / "HUONG_DAN_SU_DUNG.md"
+
+
+@app.get("/api/huong-dan")
+def huong_dan_su_dung():
+    """Hướng dẫn cho người mới, để nút "Hướng dẫn" mở ngay trên trang.
+
+    Đọc thẳng tệp Markdown ở gốc repository - cũng là bản hiện trên GitHub -
+    nên chỉ có một chỗ để sửa. "no-cache" để sửa tệp xong là người dùng thấy
+    bản mới; tệp chưa đổi thì máy chủ trả 304 nên gần như không tốn gì.
+    """
+    if not HUONG_DAN_SU_DUNG.is_file():
+        raise HTTPException(status_code=404, detail="Máy chủ chưa có tài liệu hướng dẫn.")
+    return FileResponse(
+        HUONG_DAN_SU_DUNG,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
 @app.get("/api/documents", dependencies=[Depends(yeu_cau_quyen("xem_kho"))])
 def get_documents(request: Request):
     kho = service.document_inventory()
