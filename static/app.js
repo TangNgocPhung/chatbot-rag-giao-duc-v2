@@ -53,6 +53,8 @@ const elements = {
   historySearchBox: $('#historySearchBox'),
   historySearch: $('#historySearch'),
   history: $('#historyList'),
+  historyResizer: $('#historyResizer'),
+  statusDetails: $('#statusDetails'),
   statusDot: $('#statusDot'),
   statusTitle: $('#statusTitle'),
   statusMessage: $('#statusMessage'),
@@ -3452,11 +3454,121 @@ elements.scrollBottom?.addEventListener('click', () => {
   elements.chatScroll.scrollTo({ top: elements.chatScroll.scrollHeight, behavior: 'smooth' });
 });
 
+// ============================================================
+// THU GỌN THẺ TRẠNG THÁI
+// ============================================================
+// Mặc định gập; nhớ lựa chọn mở/gập cho lần sau. Khi máy chủ lỗi hay đang cập
+// nhật thì tiêu đề đã báo và khung cảnh báo ở trên ô nhập hiện đủ chi tiết,
+// nên gập lại không làm mất thông tin.
+const KHOA_MO_TRANG_THAI = 'rag-mo-trang-thai';
+
+elements.statusDetails?.addEventListener('toggle', () => {
+  try {
+    localStorage.setItem(KHOA_MO_TRANG_THAI, elements.statusDetails.open ? '1' : '0');
+  } catch (error) {
+    /* không lưu được thì thôi, vẫn mở/gập được trong phiên này */
+  }
+});
+
+// ============================================================
+// KÉO ĐỔI CHIỀU CAO MỤC "GẦN ĐÂY"
+// ============================================================
+// Mức kéo là chiều cao tối thiểu (xem .cao-tu-chon trong styles.css): màn cao
+// thì danh sách vẫn giãn lấp chỗ trống, màn thấp thì giữ mức đã kéo và cả thanh
+// bên cuộn. Nhấp đúp hoặc Enter để về chế độ tự động.
+const KHOA_CAO_LICH_SU = 'rag-cao-lich-su';
+const DONG_LICH_SU = 36; // chiều cao một dòng lịch sử, khớp với styles.css
+const CAO_LICH_SU_TOI_THIEU = 2 * DONG_LICH_SU;
+
+// Không cao hơn toàn bộ nội dung: kéo quá thì chỉ để lại khoảng trống, và lúc
+// có thêm cuộc trò chuyện danh sách sẽ phình ra bất ngờ.
+function hepCaoLichSu(px) {
+  const noiDung = Math.max(elements.history.scrollHeight, CAO_LICH_SU_TOI_THIEU);
+  return Math.round(Math.min(noiDung, Math.max(CAO_LICH_SU_TOI_THIEU, px)));
+}
+
+function capNhatNhanKeoLichSu() {
+  const nut = elements.historyResizer;
+  const cao = Math.round(elements.history.getBoundingClientRect().height);
+  nut.setAttribute('aria-valuemin', String(CAO_LICH_SU_TOI_THIEU));
+  nut.setAttribute('aria-valuemax', String(Math.max(elements.history.scrollHeight, CAO_LICH_SU_TOI_THIEU)));
+  nut.setAttribute('aria-valuenow', String(cao));
+  nut.setAttribute('aria-valuetext', `Khoảng ${Math.max(1, Math.round(cao / DONG_LICH_SU))} dòng`);
+}
+
+// px = null: về tự động (bỏ mức kéo, xóa lựa chọn đã lưu).
+function datCaoLichSu(px, luu = false) {
+  const danhSach = elements.history;
+  danhSach.classList.toggle('cao-tu-chon', px != null);
+  if (px == null) danhSach.style.removeProperty('--cao-lich-su');
+  else danhSach.style.setProperty('--cao-lich-su', `${px}px`);
+  if (luu) {
+    try {
+      if (px == null) localStorage.removeItem(KHOA_CAO_LICH_SU);
+      else localStorage.setItem(KHOA_CAO_LICH_SU, String(px));
+    } catch (error) {
+      /* không lưu được thì thôi, vẫn kéo được trong phiên này */
+    }
+  }
+  capNhatNhanKeoLichSu();
+}
+
+elements.historyResizer?.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  const nut = elements.historyResizer;
+  nut.setPointerCapture(event.pointerId);
+  elements.appShell.classList.add('dang-keo-lich-su');
+  const yDau = event.clientY;
+  const caoDau = elements.history.getBoundingClientRect().height;
+  let caoMoi = null;
+  const keo = (e) => {
+    caoMoi = hepCaoLichSu(caoDau + e.clientY - yDau);
+    datCaoLichSu(caoMoi);
+  };
+  // Gỡ cả hai trình nghe kết thúc: dùng { once: true } thì cái không chạy sẽ
+  // còn treo lại và chạy nhầm ở lần kéo sau.
+  const tha = () => {
+    nut.removeEventListener('pointermove', keo);
+    nut.removeEventListener('pointerup', tha);
+    nut.removeEventListener('pointercancel', tha);
+    elements.appShell.classList.remove('dang-keo-lich-su');
+    if (caoMoi != null) datCaoLichSu(caoMoi, true);
+  };
+  nut.addEventListener('pointermove', keo);
+  nut.addEventListener('pointerup', tha);
+  nut.addEventListener('pointercancel', tha);
+});
+elements.historyResizer?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    datCaoLichSu(null, true);
+    return;
+  }
+  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+  event.preventDefault();
+  const hienTai = elements.history.getBoundingClientRect().height;
+  datCaoLichSu(hepCaoLichSu(hienTai + (event.key === 'ArrowDown' ? DONG_LICH_SU : -DONG_LICH_SU)), true);
+});
+elements.historyResizer?.addEventListener('dblclick', () => datCaoLichSu(null, true));
+elements.historyResizer?.addEventListener('focus', capNhatNhanKeoLichSu);
+
 apDungGiaoDien();
 try {
   apDungGapThanhBen(localStorage.getItem(KHOA_GAP_THANH_BEN) === '1');
 } catch (error) {
   apDungGapThanhBen(false);
+}
+try {
+  if (elements.statusDetails) elements.statusDetails.open = localStorage.getItem(KHOA_MO_TRANG_THAI) === '1';
+} catch (error) {
+  /* không đọc được thì để gập như mặc định */
+}
+try {
+  const caoDaLuu = Number(localStorage.getItem(KHOA_CAO_LICH_SU));
+  if (elements.historyResizer && caoDaLuu > 0) datCaoLichSu(Math.max(CAO_LICH_SU_TOI_THIEU, caoDaLuu));
+} catch (error) {
+  /* không đọc được thì để chiều cao tự động */
 }
 
 // Mã nháp đã thành một cuộc trò chuyện thật (đã hỏi) thì không dùng lại: màn
