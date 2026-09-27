@@ -36,6 +36,8 @@
   --warn-soft: #fdf5e6;
   --warn-line: #f0dcae;
   --to-sang: rgba(255, 210, 60, .5);
+  --to-so-nen: #ffe066;
+  --to-so-chu: #172b4d;
   --danger: #dc624f;
   --danger-ink: #8a3a34;
   --danger-soft: #fdeceb;
@@ -94,6 +96,8 @@
     --warn-soft: #2c2413;
     --warn-line: #4b3d1c;
     --to-sang: rgba(230, 180, 85, .32);
+    --to-so-nen: #ebc955;
+    --to-so-chu: #1d1a0f;
     --danger: #ef7c69;
     --danger-ink: #f5aa9e;
     --danger-soft: #2e1b1a;
@@ -150,6 +154,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   --warn-soft: #2c2413;
   --warn-line: #4b3d1c;
   --to-sang: rgba(230, 180, 85, .32);
+  --to-so-nen: #ebc955;
+  --to-so-chu: #1d1a0f;
   --danger: #ef7c69;
   --danger-ink: #f5aa9e;
   --danger-soft: #2e1b1a;
@@ -347,7 +353,8 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .answer-text strong { color: var(--ink); font-weight: 700; }
 /* Cụm mô hình tự in đậm là ý then chốt: tô như bút dạ quang. */
 .answer-text strong:not([class]) { padding: 0 1px; background: linear-gradient(transparent 56%, var(--to-sang) 56%); border-radius: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-.answer-text .to-so { color: var(--blue-ink); white-space: nowrap; }
+/* Con số: in đậm, nền vàng đặc như bút dạ quang để mắt bắt ngay. */
+.answer-text .to-so { padding: 1px 4px; color: var(--to-so-chu); background: var(--to-so-nen); border-radius: 4px; white-space: nowrap; }
 .answer-text .to-van-ban { font-weight: 650; }
 .answer-text p.ket-luan { margin-bottom: 14px; padding: 10px 14px; color: var(--ink); background: var(--blue-soft); border-left: 3px solid var(--blue); border-radius: 4px 10px 10px 4px; }
 @media (max-width: 470px) {
