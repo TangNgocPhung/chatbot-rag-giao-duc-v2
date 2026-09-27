@@ -61,6 +61,12 @@ Hai luồng tách biệt về thời gian: luồng ngoại tuyến biến tài l
 
 ![Pipeline RAG của Chatbot Giáo dục](so_do_rag_pipeline.svg)
 
+### Trả lời có căn cứ, chống ảo giác
+
+Bảy bước của một câu hỏi, với ba chốt kiểm soát đứng giữa mô hình ngôn ngữ và người dùng: công cụ tính, chặn câu hỏi lạc đề và hậu kiểm.
+
+![Pipeline trả lời có căn cứ và chống ảo giác](so_do_pipeline_slide.svg)
+
 ### Nạp và cập nhật kho tri thức
 
 Mỗi tệp được băm SHA-256 và đối chiếu với sổ ghi chép, nên chỉ tệp mới, đã sửa hoặc đã xóa mới phải xử lý lại. Chỉ mục mới được ghi trên đĩa trong khi câu hỏi vẫn dùng chỉ mục cũ trong RAM; ghi xong mới nạp lại, lập hồ sơ hiệu lực, phân loại và dựng BM25.
@@ -72,6 +78,12 @@ Mỗi tệp được băm SHA-256 và đối chiếu với sổ ghi chép, nên 
 Câu hỏi kèm tệp, câu tính toán và câu trùng cache rẽ ra sớm. Phần còn lại qua truy hồi lai, cổng chặn lạc đề và cảnh báo hiệu lực rồi mới tới mô hình ngôn ngữ; câu trả lời được hậu kiểm trước khi lưu cache.
 
 ![Hỏi đáp trực tuyến](so_do_hoi_dap_truc_tuyen.svg)
+
+### Các điểm rẽ khi trả lời
+
+Cùng quy trình hỏi đáp, vẽ theo các điểm quyết định: có đường tắt không, câu hỏi có dính tới kho không, trích dẫn và số liệu có khớp không.
+
+![Các điểm rẽ khi trả lời một câu hỏi](so_do_quy_trinh.svg)
 
 ### Kiến trúc mô hình
 
