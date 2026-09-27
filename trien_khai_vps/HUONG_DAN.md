@@ -63,11 +63,33 @@ Ollama vẫn dùng hết 8 nhân.
 ## Cách vào máy (đã dựng xong, ghi lại để khỏi mò)
 
 ```bash
-ssh -i ~/.ssh/ovh_vps root@<IP_VPS>
+ssh -i ~/.ssh/ovh_vps root@<IP_VPS>      # quản trị
+ssh -i ~/.ssh/ovh_vps debian@<IP_VPS>    # tài khoản các kịch bản 02 / 03 / 04 dùng
 ```
 
 Khóa riêng nằm ở `C:/Users/Phung/.ssh/ovh_vps`, không đặt mật khẩu bảo vệ để
-kịch bản chạy tự động. Tài khoản `debian` cũng vào được bằng mật khẩu bạn đặt.
+kịch bản chạy tự động.
+
+**Khóa phải có ở cả hai tài khoản.** Mỗi tài khoản Linux có tệp
+`~/.ssh/authorized_keys` riêng: khóa vào được `root` không có nghĩa là vào được
+`debian`. Cách gỡ bẫy bên dưới chỉ chép khóa cho `root`, nên chạy kịch bản bằng
+`debian` thì SSH lùi về hỏi mật khẩu ở mọi lệnh (bẫy số 12). Chép khóa sang
+`debian` một lần — đi qua `root` nên không cần nhớ mật khẩu `debian`:
+
+```bash
+ssh-keygen -y -f ~/.ssh/ovh_vps | ssh -i ~/.ssh/ovh_vps root@<IP_VPS> '
+  install -d -m 700 -o debian -g debian /home/debian/.ssh
+  cat >> /home/debian/.ssh/authorized_keys
+  chown debian:debian /home/debian/.ssh/authorized_keys
+  chmod 600 /home/debian/.ssh/authorized_keys'
+
+# Phải in "ok" mà KHÔNG hỏi mật khẩu:
+ssh -i ~/.ssh/ovh_vps -o BatchMode=yes debian@<IP_VPS> 'echo ok'
+```
+
+`ssh-keygen -y` in khóa công khai ra từ chính khóa riêng, nên không cần tệp
+`.pub`. Lỡ chạy hai lần chỉ thêm một dòng trùng, vô hại. Mật khẩu `debian` (bạn
+tự đặt lúc OVH bắt đổi) vẫn dùng được nhưng không kịch bản nào cần đến nó nữa.
 
 ### Cái bẫy đã mất một tiếng để gỡ
 
@@ -88,7 +110,8 @@ cũng vô ích vì SSH bắt đổi mật khẩu trước khi cho chạy bất c
 **Cách gỡ:** cài lại VPS **không chọn khóa SSH**. Khi đó OVH buộc phải sinh mật
 khẩu thật cho tài khoản `debian` và gửi qua link bí mật. Đăng nhập bằng mật khẩu
 đó → lần này `passwd` có mật khẩu hiện tại để đối chiếu nên đổi được → vào được
-shell → tự tay chép khóa công khai vào `/root/.ssh/authorized_keys`.
+shell → tự tay chép khóa công khai vào `/root/.ssh/authorized_keys` → chép
+tiếp cho `debian` bằng lệnh ở trên.
 
 Lưu ý thêm: `root` **không** đăng nhập bằng mật khẩu qua SSH được, vì Debian đặt
 `PermitRootLogin prohibit-password` — root chỉ vào bằng khóa. Mật khẩu root chỉ
@@ -134,6 +157,9 @@ dự án chatbot đang dùng.
 
 ## Bước 2 — Cài đặt nền máy chủ
 
+Từ bước này các lệnh đăng nhập bằng `debian`, nên khóa phải đã được chép cho
+`debian` (mục "Cách vào máy"). Chưa chép thì lệnh nào cũng hỏi mật khẩu.
+
 ```bash
 scp -i ~/.ssh/ovh_vps trien_khai_vps/01_cai_dat_vps.sh debian@<IP_VPS>:/tmp/
 ssh -i ~/.ssh/ovh_vps debian@<IP_VPS> "sudo IP_VPS=<IP_VPS> bash /tmp/01_cai_dat_vps.sh"
@@ -156,7 +182,7 @@ Lần **đầu tiên** — VPS chưa có chỉ mục nào — phải đẩy kèm
 nếu không máy chủ sẽ embed lại cả kho mất nhiều giờ CPU:
 
 ```bash
-DAY_CHI_MUC=1 bash trien_khai_vps/02_day_ma_nguon.sh <IP_VPS> root
+DAY_CHI_MUC=1 bash trien_khai_vps/02_day_ma_nguon.sh <IP_VPS> debian
 ```
 
 Những lần sau **để mặc định** (không đặt `DAY_CHI_MUC`): chỉ mã nguồn được đẩy,
@@ -357,6 +383,18 @@ ssh -i ~/.ssh/ovh_vps root@<IP_VPS> /usr/local/bin/capnhat_chi_muc_dem.sh
    trước khi khởi động lại; và nếu dịch vụ chết ngay sau khi khởi động thì báo
    lỗi kèm log thay vì in dấu chấm 10 phút. Khẩn cấp thật sự mới bỏ qua:
    `BO_KIEM_TRA=1`.
+12. **Kịch bản hỏi mật khẩu liên tục, gõ sai vài lần là bị khóa ngoài.** Khóa chỉ
+   nằm trong `/root/.ssh/authorized_keys` nên chạy bằng `debian` thì SSH lùi về
+   hỏi mật khẩu — mật khẩu Linux của `debian`, **không phải** mật khẩu trong
+   `mat_khau.bat` (dòng "Doc mat khau tu mat_khau.bat" in ngay trên dấu nhắc nên
+   rất dễ nhầm). `02_day_ma_nguon.sh` gọi ssh/scp khoảng mười lần nên hỏi ngần ấy
+   lần, trong khi fail2ban chặn IP 1 giờ sau 5 lần sai trong 10 phút (27/09/2026).
+   Chữa gốc: chép khóa cho `debian` (mục "Cách vào máy"). Ngoài ra `02`/`03`/`04`
+   nay mở **một** kết nối chung (SSH ControlMaster, `_ket_noi_chung.sh`) cho mọi
+   lệnh sau: có phải gõ mật khẩu thì cũng chỉ một lần, gõ sai thì dừng ngay thay vì
+   hỏi tiếp. Máy nào `ssh` không gộp được kết nối thì kịch bản tự lùi về cách cũ
+   và cảnh báo; tắt hẳn bằng `KHONG_GOP_KET_NOI=1`. Đã bị chặn thì đợi hết giờ,
+   hoặc vào console KVM của OVH chạy `fail2ban-client set sshd unbanip <IP máy bạn>`.
 
 ---
 
