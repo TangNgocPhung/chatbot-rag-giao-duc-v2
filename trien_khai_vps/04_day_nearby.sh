@@ -23,13 +23,16 @@ THU_MUC_XA="/opt/nearby"
 [ -d "$NGUON" ] || { echo "[LOI] Khong thay thu muc nguon $NGUON"; exit 1; }
 [ -f "$NGUON/config/production.env" ] || { echo "[LOI] Thieu $NGUON/config/production.env"; exit 1; }
 
-SSH="ssh -i $KHOA -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 $NGUOI_SSH@$MAY_CHU"
-SCP="scp -i $KHOA -o StrictHostKeyChecking=accept-new"
 KIT="$(cd "$(dirname "$0")" && pwd)"
+# SSH, SCP va ket noi chung (ControlMaster): go mat khau toi da MOT lan.
+# shellcheck source=trien_khai_vps/_ket_noi_chung.sh
+. "$KIT/_ket_noi_chung.sh"
 
 buoc() { echo; echo "--- $*"; }
 
 buoc "Kiem tra VPS"
+trap dong_ket_noi_chung EXIT
+mo_ket_noi_chung
 $SSH 'echo "Dang nhap: $(id -un)"; docker --version || { echo "[LOI] Chua co Docker - chay 01_cai_dat_vps.sh truoc."; exit 1; }
       docker ps >/dev/null 2>&1 || { echo "[LOI] Tai khoan chua dung duoc docker (can dang xuat vao lai sau khi vao nhom docker)."; exit 1; }'
 
