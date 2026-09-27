@@ -31,8 +31,8 @@
   <g text-anchor="middle" fill="#23303e">
     <rect x="58" y="198" width="304" height="68" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
     <text x="210" y="219" font-size="15" font-weight="600">Nguồn nạp</text>
-    <text x="210" y="238" font-size="13">Google Drive (tự đồng bộ) · thư mục kho</text>
-    <text x="210" y="255" font-size="13">quản trị viên tải lên · tài liệu riêng được duyệt</text>
+    <text x="210" y="238" font-size="13">Google Drive (15 phút/lần) · thư mục nóng</text>
+    <text x="210" y="255" font-size="13">quản trị viên tải lên · tệp đề xuất được duyệt</text>
     <line x1="210" y1="266" x2="210" y2="280" stroke="#6d7f96" stroke-width="2" marker-end="url(#mui)"/>
 
     <rect x="58" y="282" width="304" height="68" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
@@ -43,7 +43,7 @@
 
     <rect x="58" y="366" width="304" height="68" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
     <text x="210" y="387" font-size="15" font-weight="600">Ảnh, PDF scan · video, âm thanh</text>
-    <text x="210" y="406" font-size="13">OCR Tesseract · phiên âm tự động</text>
+    <text x="210" y="406" font-size="13">OCR Tesseract · phiên âm faster-whisper</text>
     <text x="210" y="423" font-size="13">phụ đề SRT, VTT</text>
     <line x1="210" y1="434" x2="210" y2="448" stroke="#6d7f96" stroke-width="2" marker-end="url(#mui)"/>
 
@@ -53,16 +53,16 @@
     <text x="210" y="507" font-size="13">văn bản pháp quy tách theo từng Điều</text>
     <line x1="210" y1="518" x2="210" y2="532" stroke="#6d7f96" stroke-width="2" marker-end="url(#mui)"/>
 
-    <rect x="58" y="534" width="304" height="68" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
-    <text x="210" y="555" font-size="15" font-weight="600">Phân loại &amp; hồ sơ văn bản</text>
-    <text x="210" y="574" font-size="13">môn, cấp học, lớp, loại tài liệu</text>
-    <text x="210" y="591" font-size="13">số hiệu, hiệu lực, thay thế, sửa đổi</text>
+    <rect x="58" y="534" width="304" height="68" rx="9" fill="#dcefe7" stroke="#79ae9a" stroke-width="1.5"/>
+    <text x="210" y="555" font-size="15" font-weight="600">Nhúng bge-m3 → FAISS trên đĩa</text>
+    <text x="210" y="574" font-size="13">chỉ tệp mới, sửa, xóa (so mã băm)</text>
+    <text x="210" y="591" font-size="13">khi máy rảnh hoặc lượt ban đêm</text>
     <line x1="210" y1="602" x2="210" y2="616" stroke="#6d7f96" stroke-width="2" marker-end="url(#mui)"/>
 
     <rect x="58" y="618" width="304" height="68" rx="9" fill="#dcefe7" stroke="#79ae9a" stroke-width="1.5"/>
-    <text x="210" y="639" font-size="15" font-weight="600">Lập chỉ mục</text>
-    <text x="210" y="658" font-size="13">FAISS (bge-m3) + BM25</text>
-    <text x="210" y="675" font-size="13">cập nhật khi kho có tệp mới hoặc đổi</text>
+    <text x="210" y="639" font-size="15" font-weight="600">Nạp chỉ mục vào RAM</text>
+    <text x="210" y="658" font-size="13">hồ sơ số hiệu, hiệu lực · phân loại môn, lớp</text>
+    <text x="210" y="675" font-size="13">dựng BM25 và từ vựng kho</text>
   </g>
 
   <!-- Trang web: không vào kho, tải lúc hỏi -->
@@ -81,7 +81,7 @@
     <!-- 1 -->
     <rect x="420" y="132" width="620" height="76" rx="12" fill="#c7daec" stroke="#6f8fb5" stroke-width="2" filter="url(#bong)"/>
     <text x="730" y="162" font-size="19" font-weight="700" fill="#1f2d3d">1. Nhận câu hỏi &amp; rẽ nhánh sớm</text>
-    <text x="730" y="190" font-size="14.5" fill="#2d3b4a">Tệp đính kèm · 3 công cụ tính theo thông tư + máy tính số học (Python) · cache ≥ 0,96</text>
+    <text x="730" y="190" font-size="14.5" fill="#2d3b4a">Tệp đính kèm: chỉ tìm trong tệp · câu tính toán: 5 công cụ Python · cache ≥ 0,96</text>
     <line x1="730" y1="208" x2="730" y2="230" stroke="#6d7f96" stroke-width="2.4" marker-end="url(#mui)"/>
 
     <!-- 2 -->
@@ -111,7 +111,7 @@
     <!-- 6 -->
     <rect x="420" y="632" width="620" height="76" rx="12" fill="#c7daec" stroke="#6f8fb5" stroke-width="2" filter="url(#bong)"/>
     <text x="730" y="662" font-size="19" font-weight="700" fill="#1f2d3d">6. Sinh câu trả lời</text>
-    <text x="730" y="690" font-size="14.5" fill="#2d3b4a">LLM cục bộ qua Ollama (mặc định qwen3.5:4b) · chỉ dựa trên đoạn trích · kèm [1][2]</text>
+    <text x="730" y="690" font-size="14.5" fill="#2d3b4a">Ollama cục bộ, mặc định qwen3.5:4b (người hỏi tự chọn) · chỉ dựa trên đoạn trích · [n]</text>
     <line x1="730" y1="708" x2="730" y2="730" stroke="#6d7f96" stroke-width="2.4" marker-end="url(#mui)"/>
 
     <!-- 7 -->
@@ -158,27 +158,27 @@
   <g text-anchor="middle">
     <rect x="1380" y="180" width="176" height="74" rx="9" fill="#fffaf0" stroke="#d8bf8a" stroke-width="1.4"/>
     <text x="1468" y="210" font-size="14.5" font-weight="600" fill="#3a2e12">Đồng bộ Google Drive</text>
-    <text x="1468" y="232" font-size="13" fill="#5c4b2a">tự động theo chu kỳ</text>
+    <text x="1468" y="232" font-size="13" fill="#5c4b2a">tự kiểm tra 15 phút/lần</text>
 
     <rect x="1380" y="264" width="176" height="74" rx="9" fill="#fffaf0" stroke="#d8bf8a" stroke-width="1.4"/>
-    <text x="1468" y="294" font-size="14.5" font-weight="600" fill="#3a2e12">Quét thư mục kho</text>
-    <text x="1468" y="316" font-size="13" fill="#5c4b2a">tự cập nhật chỉ mục</text>
+    <text x="1468" y="294" font-size="14.5" font-weight="600" fill="#3a2e12">Tài khoản, phân quyền</text>
+    <text x="1468" y="316" font-size="13" fill="#5c4b2a">4 vai, xác minh email</text>
 
     <rect x="1380" y="348" width="176" height="74" rx="9" fill="#fffaf0" stroke="#d8bf8a" stroke-width="1.4"/>
     <text x="1468" y="378" font-size="14.5" font-weight="600" fill="#3a2e12">Lọc phạm vi</text>
-    <text x="1468" y="400" font-size="13" fill="#5c4b2a">người dùng tự chọn</text>
+    <text x="1468" y="400" font-size="13" fill="#5c4b2a">môn, cấp học, lớp</text>
 
     <rect x="1380" y="432" width="176" height="74" rx="9" fill="#fffaf0" stroke="#d8bf8a" stroke-width="1.4"/>
     <text x="1468" y="462" font-size="14.5" font-weight="600" fill="#3a2e12">Gợi ý câu hỏi</text>
-    <text x="1468" y="484" font-size="13" fill="#5c4b2a">mở đầu và hỏi tiếp</text>
+    <text x="1468" y="484" font-size="13" fill="#5c4b2a">17 câu mở đầu · hỏi tiếp</text>
 
     <rect x="1380" y="516" width="176" height="74" rx="9" fill="#fffaf0" stroke="#d8bf8a" stroke-width="1.4"/>
-    <text x="1468" y="546" font-size="14.5" font-weight="600" fill="#3a2e12">Lịch sử hội thoại</text>
-    <text x="1468" y="568" font-size="13" fill="#5c4b2a">lưu và mở lại</text>
+    <text x="1468" y="546" font-size="14.5" font-weight="600" fill="#3a2e12">Lịch sử, sổ tay</text>
+    <text x="1468" y="568" font-size="13" fill="#5c4b2a">lưu theo tài khoản</text>
 
     <rect x="1380" y="600" width="176" height="74" rx="9" fill="#fffaf0" stroke="#d8bf8a" stroke-width="1.4"/>
-    <text x="1468" y="630" font-size="14.5" font-weight="600" fill="#3a2e12">Đổi mô hình</text>
-    <text x="1468" y="652" font-size="13" fill="#5c4b2a">chọn model trên Ollama</text>
+    <text x="1468" y="630" font-size="14.5" font-weight="600" fill="#3a2e12">Chọn mô hình</text>
+    <text x="1468" y="652" font-size="13" fill="#5c4b2a">mỗi người tự chọn</text>
   </g>
 
   <!-- Người dùng -->

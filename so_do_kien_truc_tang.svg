@@ -63,11 +63,13 @@
 <rect x="726.0" y="530" width="144.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
 <text x="798.0" y="550.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Tính lương</text>
 <rect x="878.0" y="530" width="144.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
-<text x="950.0" y="550.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Tính toán</text>
-<rect x="726.0" y="568" width="296.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
-<text x="874.0" y="588.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Định mức tiết dạy GDTX</text>
+<text x="950.0" y="550.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Số học</text>
+<rect x="726.0" y="568" width="144.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
+<text x="798.0" y="588.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Định mức GDTX</text>
+<rect x="878.0" y="568" width="144.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
+<text x="950.0" y="588.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Định mức phổ thông</text>
 <rect x="726.0" y="606" width="296.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
-<text x="874.0" y="626.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Định mức tiết dạy phổ thông</text>
+<text x="874.0" y="626.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Điểm trung bình, xếp loại học sinh</text>
 <rect x="1046" y="494" width="338" height="160" rx="8" fill="#7a4414" fill-opacity="0.35" stroke="#ffd59c" stroke-width="1.6"/>
 <text x="1215.0" y="517" font-size="16.5" font-weight="700" fill="#fff4e3" text-anchor="middle">Ngôn ngữ &amp; đọc tài liệu</text>
 <rect x="1058.0" y="530" width="153.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
@@ -85,7 +87,7 @@
 </g>
 <line x1="300" y1="340" x2="1300" y2="340" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2"/>
 <text x="800" y="367" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">Tầng 3: Điều phối &amp; API</text>
-<text x="800" y="392" font-size="16" fill="#eef2f8" text-anchor="middle">FastAPI  |  Tài khoản &amp; xác minh email  |  Phân quyền tệp riêng</text>
+<text x="800" y="392" font-size="16" fill="#eef2f8" text-anchor="middle">FastAPI  |  Tài khoản &amp; xác minh email  |  Phân quyền theo vai</text>
 <text x="800" y="413" font-size="16" fill="#eef2f8" text-anchor="middle">Định tuyến công cụ  |  Cache ngữ nghĩa  |  Ngắt sinh giữa chừng</text>
 <rect x="334" y="204" width="932" height="114" rx="14" fill="#bfeaff" opacity="0.55" filter="url(#sang)"/>
 <g filter="url(#bong)">
@@ -95,7 +97,7 @@
 <line x1="340" y1="228" x2="1260" y2="228" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2"/>
 <text x="800" y="255" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">Tầng 2: Giao diện ứng dụng</text>
 <text x="800" y="280" font-size="16" fill="#eef2f8" text-anchor="middle">Khung hỏi đáp  |  Tài liệu của tôi &amp; Đề xuất  |  Sổ tay đọc tài liệu</text>
-<text x="800" y="301" font-size="16" fill="#eef2f8" text-anchor="middle">Tô sáng dòng trích  |  Lịch sử hội thoại  |  Trang quản trị</text>
+<text x="800" y="301" font-size="16" fill="#eef2f8" text-anchor="middle">Tô sáng dòng trích  |  Lịch sử hội thoại  |  Quản lý kho &amp; tài khoản</text>
 <rect x="374" y="120" width="852" height="86" rx="14" fill="#bfeaff" opacity="0.55" filter="url(#sang)"/>
 <g filter="url(#bong)">
 <polygon points="406,124 1194,124 1220,144 380,144" fill="#8ea6d6" stroke="#dff4ff" stroke-width="1.5"/>
@@ -103,7 +105,7 @@
 </g>
 <line x1="380" y1="144" x2="1220" y2="144" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2"/>
 <text x="800" y="170" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">Tầng 1: Người dùng</text>
-<text x="800" y="192" font-size="16" fill="#eef2f8" text-anchor="middle">Khách  |  Giáo viên, cán bộ quản lý (có tài khoản)  |  Quản trị viên</text>
+<text x="800" y="192" font-size="16" fill="#eef2f8" text-anchor="middle">Khách (chỉ hỏi)  |  Tài khoản chưa xác minh  |  Đã xác minh email  |  Quản trị viên</text>
 <path d="M431,176 h18 v278 h9 l-18,18 l-18,-18 h9 z" fill="url(#muiten)" stroke="#5fb6de" stroke-width="1.2" opacity="0.9"/>
 <path d="M1151,472 h18 v-278 h9 l-18,-18 l-18,18 h9 z" fill="url(#muiten)" stroke="#5fb6de" stroke-width="1.2" opacity="0.9"/>
 <text x="326" y="276" font-size="16" fill="#3b5a78" text-anchor="end" font-style="italic">câu hỏi</text>
