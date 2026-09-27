@@ -81,7 +81,7 @@
     <!-- 1 -->
     <rect x="420" y="132" width="620" height="76" rx="12" fill="#c7daec" stroke="#6f8fb5" stroke-width="2" filter="url(#bong)"/>
     <text x="730" y="162" font-size="19" font-weight="700" fill="#1f2d3d">1. Nhận câu hỏi &amp; rẽ nhánh sớm</text>
-    <text x="730" y="190" font-size="14.5" fill="#2d3b4a">Tệp đính kèm: chỉ tìm trong tệp · câu tính toán: 5 công cụ Python · cache ≥ 0,96</text>
+    <text x="730" y="190" font-size="14.5" fill="#2d3b4a">Tệp đính kèm: chỉ tìm trong tệp · câu tính toán: công cụ Python · cache ≥ 0,96</text>
     <line x1="730" y1="208" x2="730" y2="230" stroke="#6d7f96" stroke-width="2.4" marker-end="url(#mui)"/>
 
     <!-- 2 -->
