@@ -52,6 +52,7 @@ Thiết lập biến môi trường trước khi chạy nếu cấu hình máy k
 | `RAG_SO_DOAN_TOM_TAT` | `6` | Số đoạn trích để tóm tắt một tệp |
 | `RAG_KY_TU_TOM_TAT` | `5000` | Ngân sách ký tự tài liệu khi tóm tắt |
 | `RAG_KEEP_ALIVE` | `2h` | Giữ model trong RAM bao lâu sau câu hỏi cuối |
+| `RAG_GOI_Y_MO_DAU` | `tinh` | Gợi ý ở màn hình chào: `tinh` = bộ 17 câu viết tay chia 4 nhóm chủ đề; `metadata` = câu dựng từ metadata văn bản trong kho qua cây quyết định, đổi mẻ được |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Địa chỉ Ollama |
 | `RAG_INDEX_PATH` | `faiss_index_data_giao_duc` trong dự án | Đường dẫn FAISS index |
 | `RAG_DATA_PATH` | `ollama-rag-desktop/data_giao_duc` | Kho tài liệu giáo dục dùng để build/cập nhật index |
@@ -127,7 +128,7 @@ Hỏi đáp và kho tri thức:
 - `GET /api/status`: trạng thái model và kho tri thức.
 - `GET /api/documents`: danh sách tài liệu và tình trạng lập chỉ mục.
 - `GET /api/bo-loc`: các lựa chọn phạm vi (môn, cấp học...) kèm số tài liệu.
-- `GET /api/goi-y?so_luong=6`: mẻ câu hỏi gợi ý cho màn hình chào.
+- `GET /api/goi-y?so_luong=6`: câu hỏi gợi ý cho màn hình chào. Trả `che_do`, `goi_y` và, ở chế độ `tinh`, `nhom` (đủ 17 câu theo 4 chủ đề). Thêm `&che_do=metadata` để xem chế độ còn lại mà không đổi biến môi trường.
 - `POST /api/chat/stream`: nhận câu hỏi và trả NDJSON streaming.
 - `POST /api/chat/dung`: dừng câu trả lời đang sinh dở.
 - `GET /api/source?name=...`: mở tệp nguồn đã được kiểm tra trong kho dữ liệu.
@@ -192,7 +193,7 @@ Payload cho endpoint chat (chỉ `question` là bắt buộc):
 
 Trong giao diện, câu trả lời hỗ trợ tiêu đề, danh sách, chữ đậm, mã ngắn và liên kết trích dẫn. Với nguồn PDF hoặc ảnh, dưới câu trả lời có ảnh thu nhỏ của trang gốc: các dòng được trích tô vàng, câu sát câu hỏi nhất viền đỏ. Nhấp vào nguồn hoặc ảnh trang để mở tài liệu trong trình đọc của sổ tay, đúng trang và cuộn tới đúng dòng đó (`Ctrl` + bấm để mở tài liệu gốc ở tab mới). Chunk lập chỉ mục từ trước khi lưu số trang vẫn hiện được trang, vì máy chủ dò lại chính chữ của đoạn trích trong tệp gốc. Nếu chủ động dừng giữa chừng, phần nội dung đã nhận vẫn được lưu vào lịch sử.
 
-Dưới bốn thẻ chủ đề ở màn hình chào có hàng **Gợi ý khác từ kho tài liệu**: câu hỏi dựng theo tên văn bản đang có trong kho, bấm **Đổi gợi ý** để lấy mẻ khác. Cuối mỗi câu trả lời có hàng **Hỏi tiếp** dựng từ chính nguồn vừa trích - văn bản đã bị thay thế hay còn là dự thảo thì gợi ý hỏi ngay về chỗ đó, nguồn trích theo Điều thì gợi ý đọc sâu vào Điều đó. Khác với bốn thẻ chủ đề (chỉ điền vào khung hỏi để sửa lại), gợi ý dạng chip đã là câu hỏi trọn vẹn nên bấm là gửi luôn. Cả hai hàng gợi ý đều dựng bằng dữ liệu có sẵn, không gọi thêm model nên không làm chậm câu trả lời.
+Dưới bốn thẻ chủ đề ở màn hình chào có khối **Câu hỏi gợi ý theo chủ đề**: mặc định là bộ 17 câu viết tay cố định, chia theo bốn nhóm Mầm non & phổ thông, Giáo dục nghề nghiệp, Giáo dục đại học, Chính sách và đội ngũ nhà giáo; câu nào cũng có văn bản tương ứng trong kho. Đặt `RAG_GOI_Y_MO_DAU=metadata` thì khối này thành **Gợi ý khác từ kho tài liệu**: mỗi văn bản trong kho đi qua cây quyết định theo metadata (bị thay thế, bị sửa đổi, chưa tới ngày hiệu lực, dự thảo, có thay thế văn bản khác, còn lại thì hỏi nội dung chính) ra một câu hỏi, mỗi mẻ lấy xen kẽ các nhánh, bấm **Đổi gợi ý** để lấy mẻ khác; kho quá ít văn bản thì bù bằng câu tĩnh. Cuối mỗi câu trả lời có hàng **Hỏi tiếp** dựng từ chính nguồn vừa trích qua cùng cây quyết định đó - văn bản đã bị thay thế hay còn là dự thảo thì gợi ý hỏi ngay về chỗ đó, nguồn trích theo Điều thì gợi ý đọc sâu vào Điều đó. Khác với bốn thẻ chủ đề (chỉ điền vào khung hỏi để sửa lại), gợi ý dạng chip đã là câu hỏi trọn vẹn nên bấm là gửi luôn. Cả hai hàng gợi ý đều dựng bằng dữ liệu có sẵn, không gọi thêm model nên không làm chậm câu trả lời.
 
 Nút **Kho tài liệu** mở danh sách nguồn, cho phép tìm theo tên hoặc thư mục và hiển thị trạng thái đã lập chỉ mục, cần OCR, tệp trùng hoặc chờ cập nhật.
 

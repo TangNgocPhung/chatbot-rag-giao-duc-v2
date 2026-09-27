@@ -22,6 +22,7 @@ import cache_ngu_nghia
 import chuyen_pdf
 import dich_thuat
 import giong_noi
+import goi_y_cau_hoi
 import gui_thu
 import lich_su_chat
 import phan_loai_giao_duc
@@ -219,9 +220,22 @@ def bo_loc_pham_vi():
 
 
 @app.get("/api/goi-y")
-def goi_y_mo_dau(so_luong: int = 6):
-    """Câu hỏi gợi ý cho màn hình chào; mỗi lần gọi trả một mẻ khác nhau."""
-    return {"goi_y": service.goi_y_mo_dau(so_luong)}
+def goi_y_mo_dau(so_luong: int = 6, che_do: str | None = None):
+    """Câu hỏi gợi ý cho màn hình chào.
+
+    Mặc định là bộ câu tĩnh, kèm "nhom" để giao diện vẽ đủ các câu theo từng
+    chủ đề. Chế độ "metadata" (RAG_GOI_Y_MO_DAU hoặc tham số che_do) dựng câu
+    từ hồ sơ văn bản qua cây quyết định, mỗi lần gọi một mẻ khác, không có nhóm.
+    """
+    che_do = goi_y_cau_hoi.che_do_goi_y_mo_dau(che_do)
+    return {
+        "che_do": che_do,
+        "goi_y": service.goi_y_mo_dau(so_luong, che_do),
+        "nhom": (
+            goi_y_cau_hoi.nhom_goi_y_tinh()
+            if che_do == goi_y_cau_hoi.CHE_DO_TINH else []
+        ),
+    }
 
 
 @app.post("/api/reinitialize")

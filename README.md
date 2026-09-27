@@ -257,6 +257,7 @@ Chạy tay: `.\.venv\Scripts\python.exe drive_sync.py` (thêm `--thu` để ch�
 | `RAG_MO_HINH_DICH` | `qwen2.5:3b-instruct` | Mô hình dịch trên máy (không có thì dùng mô hình trả lời) |
 | `RAG_WHISPER_MODEL` | `small` | Mô hình faster-whisper cho phiên âm và nhận giọng nói |
 | `RAG_WHISPER_BEAM_GIONG_NOI` | `5` | Beam size khi nhận giọng nói |
+| `RAG_GOI_Y_MO_DAU` | `tinh` | Gợi ý màn hình chào: `tinh` là bộ 17 câu cố định theo 4 chủ đề, `metadata` là câu dựng từ metadata văn bản qua cây quyết định |
 
 ## Chạy công khai
 
