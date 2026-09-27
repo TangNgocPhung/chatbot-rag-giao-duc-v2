@@ -1200,3 +1200,12 @@ body:not([data-so-tay="1"]) .can-so-tay { display: none !important; }
 .topbar.gon-5 .topbar-title > span, .topbar.gon-5 .topbar-title small { white-space: normal; }
 .topbar.gon-6 .topbar-title, .topbar.gon-6 .topbar-title small { min-width: 0; }
 .topbar.gon-6 .topbar-title > span, .topbar.gon-6 #miniStatus { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Điện thoại hẹp của khách: nút Đăng nhập đứng sau thẻ mô hình nên mép phải
+   thẻ nằm gần giữa màn, menu rộng 230 px neo vào đó lòi ra mép trái (màn
+   300 px lòi 26 px). Neo menu vào mép phải thanh trên. Màn rộng không gặp:
+   khung chat luôn còn ít nhất 420 px (so-tay.js). */
+@media (max-width: 379px) {
+  .topbar { position: relative; }
+  .model-picker { position: static; }
+  .model-menu { top: calc(100% - 8px); right: 10px; width: min(250px, 100% - 20px); }
+}
