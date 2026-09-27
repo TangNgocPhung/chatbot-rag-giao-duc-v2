@@ -1,6 +1,6 @@
 # Chatbot RAG Giáo dục
 
-**Trường Đại học Sư phạm Thành phố Hồ Chí Minh**
+**Trường Đại học Sư phạm Thành phố Hồ Chí Minh**\
 **Khoa Công nghệ thông tin**
 
 Học viên thực hiện:
@@ -19,12 +19,15 @@ Giảng viên hướng dẫn: TS. Nguyễn Minh Hải
 
 - Tìm kiếm lai FAISS + BM25, chặn câu hỏi ngoài phạm vi kho
 - Trích dẫn nguồn chỉ đúng dòng trên trang gốc: tô sáng đoạn được trích ngay trên ảnh trang PDF, kể cả bản scan
+- Hậu kiểm trích dẫn và số liệu; cảnh báo văn bản bị thay thế, sửa đổi, còn là dự thảo hoặc chưa tới ngày áp dụng
+- Công cụ tính bằng Python cho lương nhà giáo, định mức tiết dạy (GDTX, phổ thông), điểm trung bình môn và số học: trả kết quả kèm công thức và văn bản căn cứ, không để mô hình làm toán
+- Câu trả lời dễ đọc lướt: tô sẵn số liệu, số hiệu văn bản, tách câu kết luận; màn hình chào có 17 câu gợi ý theo 4 chủ đề
 - Cập nhật chỉ mục tăng dần (chỉ xử lý tệp thêm, sửa hoặc xóa)
 - Đọc PDF, Word (`.docx`, `.doc`), PowerPoint (`.pptx`), Excel/CSV, TXT, Markdown, HTML, EPUB
 - OCR PDF scan và ảnh bằng Tesseract
 - Phiên âm video/âm thanh offline bằng faster-whisper, đọc phụ đề `.srt`/`.vtt`
 - Tệp đính kèm trong cuộc trò chuyện, lịch sử chat, cache ngữ nghĩa
-- Tài khoản người dùng và quyền quản trị; tệp người dùng tải lên là tài liệu riêng, chỉ vào kho chung khi chủ tệp đề xuất và quản trị viên duyệt
+- Tài khoản và phân quyền theo vai: khách chỉ hỏi đáp, xác minh email mới có sổ tay và tải tệp; tệp người dùng tải lên là tài liệu riêng, chỉ vào kho chung khi chủ tệp đề xuất và quản trị viên duyệt
 - Sổ tay bên cạnh cuộc trò chuyện: ghi chú, bảng vẽ, trình đọc PDF, ảnh, Word, Excel, PowerPoint, HTML với công cụ **Khoanh để hỏi**, đánh dấu và tải tài liệu kèm nét đánh dấu
 - Dịch hơn 130 ngôn ngữ ngay trong giao diện
 - Nói thay vì gõ: nhận giọng nói bằng faster-whisper trên máy chủ, tự nhận ra ngôn ngữ
@@ -34,9 +37,17 @@ Giảng viên hướng dẫn: TS. Nguyễn Minh Hải
 
 ## Sơ đồ hệ thống
 
+Các con số trong sơ đồ lấy thẳng từ mã nguồn: cắt đoạn trong `chunking_utils.py`, truy hồi trong `hybrid_retrieval.py`, ngưỡng cache trong `cache_ngu_nghia.py`, thứ tự rẽ nhánh trong `rag_service.py`.
+
 ### Các chức năng
 
 ![Các chức năng của Chatbot RAG Giáo dục](so_do_chuc_nang.svg)
+
+### Kiến trúc năm tầng
+
+Người dùng theo bốn vai, giao diện web, điều phối và API (FastAPI), xử lý RAG cùng các công cụ chuyên biệt, và dưới cùng là lõi AI cục bộ với nền tảng tri thức.
+
+![Kiến trúc hệ thống tổng thể](so_do_kien_truc_tang.svg)
 
 ### Pipeline tổng thể
 
@@ -44,29 +55,33 @@ Hai luồng tách biệt về thời gian: luồng ngoại tuyến biến tài l
 
 ![Pipeline toàn hệ thống](so_do_pipeline_tong_the.svg)
 
-### Kiến trúc mô hình
+### Pipeline RAG
 
-`bge-m3` nhúng cả tài liệu lẫn câu hỏi; truy hồi lai FAISS + BM25 hợp nhất bằng RRF rồi xếp hạng lại; `qwen3.5:4b` sinh câu trả lời chỉ từ 4 đoạn bằng chứng và được hậu kiểm trích dẫn, số liệu.
+Đường chính của RAG, từ lập chỉ mục tới sinh câu trả lời. Các lối rẽ sớm (tệp đính kèm, công cụ tính, cache) và cổng chặn lạc đề nằm ở sơ đồ hỏi đáp trực tuyến bên dưới.
 
-![Kiến trúc mô hình RAG](so_do_kien_truc_mo_hinh.svg)
-
-### Các tầng xử lý
-
-Năm tầng từ người dùng, giao diện, điều phối, xử lý chuyên biệt đến lõi AI và nền tảng tri thức.
-
-![Kiến trúc hệ thống tổng thể](so_do_kien_truc_tang.svg)
+![Pipeline RAG của Chatbot Giáo dục](so_do_rag_pipeline.svg)
 
 ### Nạp và cập nhật kho tri thức
+
+Mỗi tệp được băm SHA-256 và đối chiếu với sổ ghi chép, nên chỉ tệp mới, đã sửa hoặc đã xóa mới phải xử lý lại. Chỉ mục mới được ghi trên đĩa trong khi câu hỏi vẫn dùng chỉ mục cũ trong RAM; ghi xong mới nạp lại, lập hồ sơ hiệu lực, phân loại và dựng BM25.
 
 ![Nạp và cập nhật kho tri thức](so_do_nap_kho_tri_thuc.svg)
 
 ### Hỏi đáp trực tuyến
 
+Câu hỏi kèm tệp, câu tính toán và câu trùng cache rẽ ra sớm. Phần còn lại qua truy hồi lai, cổng chặn lạc đề và cảnh báo hiệu lực rồi mới tới mô hình ngôn ngữ; câu trả lời được hậu kiểm trước khi lưu cache.
+
 ![Hỏi đáp trực tuyến](so_do_hoi_dap_truc_tuyen.svg)
+
+### Kiến trúc mô hình
+
+`bge-m3` nhúng cả tài liệu lẫn câu hỏi; truy hồi lai FAISS + BM25 hợp nhất bằng RRF rồi xếp hạng lại; mô hình ngôn ngữ (mặc định `qwen3.5:4b`, người hỏi tự đổi được) sinh câu trả lời chỉ từ 4 đoạn bằng chứng và được hậu kiểm trích dẫn, số liệu.
+
+![Kiến trúc mô hình RAG](so_do_kien_truc_mo_hinh.svg)
 
 ### Tác tử AI
 
-Mô hình ngôn ngữ chạy cục bộ qua Ollama và chỉ soạn câu trả lời từ các đoạn trích được cấp.
+Mô hình ngôn ngữ chạy cục bộ qua Ollama và chỉ soạn câu trả lời từ các đoạn trích được cấp; phép tính do công cụ Python làm.
 
 ![Tác tử AI trong Chatbot RAG Giáo dục](so_do_tac_tu_ai.svg)
 
@@ -129,7 +144,7 @@ Hộp thoại **Kho tài liệu** (cần đăng nhập) có các thẻ: kho chun
 - **Duyệt**: quản trị viên duyệt hoặc từ chối trong thẻ **Chờ duyệt**. Tệp đề xuất dạng HTML/SVG được mở kèm CSP `sandbox` nên script trong tệp không chạy được với phiên đăng nhập của quản trị viên.
 - **Thùng rác**: tệp bị từ chối và tài liệu bị gỡ khỏi kho chung đều chuyển vào đây. Khôi phục tài liệu đã gỡ thì nó về lại kho; khôi phục tệp bị từ chối thì nó về lại hàng chờ duyệt.
 
-Tệp mới vào kho chung (duyệt, tải lên, đồng bộ Drive) được lập chỉ mục khi máy rảnh. Lượt cập nhật khoá câu hỏi trên cả kho vài phút, nên máy có người dùng ban ngày (như VPS) đặt `RAG_TU_NAP_CHI_MUC=0`: tệp vẫn vào kho ngay nhưng chờ lượt cập nhật ban đêm hoặc tới khi quản trị viên tự bấm cập nhật. Trong lúc cập nhật, câu hỏi về cả kho vẫn trả lời bằng chỉ mục cũ đang nằm trong RAM.
+Tệp mới vào kho chung (duyệt, tải lên, đồng bộ Drive) được lập chỉ mục khi máy rảnh, tức 90 giây không có câu hỏi nào (`RAG_CHO_NAP_TEP_GIAY`). Trong lúc cập nhật, câu hỏi về cả kho vẫn trả lời bằng chỉ mục cũ đang nằm trong RAM, nhưng OCR và nhúng giành CPU với mô hình trả lời nên câu trả lời chậm đi nhiều lần. Vì vậy máy có người dùng ban ngày (như VPS) đặt `RAG_TU_NAP_CHI_MUC=0`: tệp vẫn vào kho ngay nhưng chờ lượt cập nhật ban đêm hoặc tới khi quản trị viên tự bấm cập nhật.
 
 ### Sổ tay của cuộc trò chuyện
 

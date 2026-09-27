@@ -86,8 +86,8 @@
 <circle cx="646" cy="649.0" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
 <text x="820.0" y="585.465" font-size="16.5" fill="#1f2a3a" text-anchor="middle"><tspan font-weight="700">Bộ công cụ: </tspan>truy xuất</text>
 <text x="820.0" y="608.895" font-size="16.5" fill="#1f2a3a" text-anchor="middle">lai FAISS + BM25, đọc</text>
-<text x="820.0" y="632.325" font-size="16.5" fill="#1f2a3a" text-anchor="middle">tệp đính kèm, công cụ tính</text>
-<text x="820.0" y="655.755" font-size="16.5" fill="#1f2a3a" text-anchor="middle">lương và định mức tiết dạy.</text>
+<text x="820.0" y="632.325" font-size="16.5" fill="#1f2a3a" text-anchor="middle">tệp đính kèm, 5 công cụ tính</text>
+<text x="820.0" y="655.755" font-size="16.5" fill="#1f2a3a" text-anchor="middle">lương, tiết dạy, điểm, số học.</text>
 <g filter="url(#bong)">
 <rect x="1010" y="530" width="320" height="170" rx="20" fill="#e3eaf4" stroke="#8a9cc0" stroke-width="3"/>
 </g>

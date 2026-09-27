@@ -33,15 +33,15 @@
   <g font-size="12" fill="#4d5a68">
     <text x="60" y="250">đoạn tối đa 1.200 ký tự</text>
     <text x="60" y="270">chồng lấn 150 ký tự</text>
-    <text x="60" y="290">kèm siêu dữ liệu nguồn</text>
+    <text x="60" y="290">kèm tệp, chương, điều, trang</text>
     <text x="297" y="250">mô hình nhúng đa ngôn ngữ</text>
     <text x="297" y="270">đoạn → vector 1.024 chiều</text>
     <text x="297" y="290">chạy cục bộ trên CPU</text>
     <text x="534" y="250">FAISS: tìm theo nghĩa</text>
     <text x="534" y="270">BM25: tìm theo từ khóa</text>
-    <text x="534" y="290">FAISS ghi ra đĩa</text>
+    <text x="534" y="290">BM25 dựng lại trong RAM</text>
     <text x="771" y="250"><tspan font-weight="600" fill="#138a60">bge-m3</tspan> — mô hình nhúng, dùng cho cả tài liệu lẫn câu hỏi</text>
-    <text x="771" y="270"><tspan font-weight="600" fill="#138a60">qwen3.5:4b</tspan> — mô hình ngôn ngữ sinh câu trả lời, đổi được</text>
+    <text x="771" y="270"><tspan font-weight="600" fill="#138a60">qwen3.5:4b</tspan> — mô hình ngôn ngữ mặc định, người hỏi tự đổi được</text>
     <text x="771" y="290">Tài liệu và câu hỏi không gửi ra dịch vụ bên ngoài</text>
   </g>
   <g stroke="#2a78d6" stroke-width="1.6" fill="none" marker-end="url(#ab)">
@@ -80,9 +80,9 @@
     <text x="60" y="498">gộp ngữ cảnh hội thoại</text>
     <text x="60" y="518">lọc phạm vi môn / cấp</text>
     <text x="297" y="444">câu hỏi → vector 1.024 chiều</text>
-    <text x="297" y="464">đo tương đồng ngữ nghĩa</text>
+    <text x="297" y="464">viết đủ từ viết tắt (GV, THPT…)</text>
     <text x="297" y="552">bỏ từ dừng</text>
-    <text x="297" y="572">mở rộng từ đồng nghĩa</text>
+    <text x="297" y="572">đồng nghĩa, biến thể không dấu</text>
     <text x="534" y="444">15 đoạn gần nghĩa nhất</text>
     <text x="534" y="464">bắt được cách diễn đạt khác</text>
     <text x="534" y="552">15 đoạn khớp từ khóa nhất</text>
@@ -90,7 +90,7 @@
     <text x="771" y="492">điểm = Σ 1 / (60 + hạng)</text>
     <text x="771" y="512">hai danh sách → một</text>
     <text x="771" y="532">không cần chuẩn hóa điểm</text>
-    <text x="1008" y="492">cộng điểm khớp tiêu đề</text>
+    <text x="1008" y="492">cộng điểm từ khóa, tên tệp</text>
     <text x="1008" y="512">trừ điểm hết hiệu lực</text>
     <text x="1008" y="532">tối đa 2 đoạn / tài liệu</text>
   </g>
@@ -104,7 +104,7 @@
     <line x1="963" y1="490" x2="987" y2="490"/>
     <path d="M1094,546 V608 H146 V628"/>
   </g>
-  <text x="857" y="600" font-size="11" fill="#2a78d6" text-anchor="middle">4 đoạn bằng chứng tốt nhất</text>
+  <text x="857" y="600" font-size="11" fill="#2a78d6" text-anchor="middle">4 đoạn bằng chứng tốt nhất · qua cổng chặn lạc đề</text>
 
   <!-- ===== B hang 2 ===== -->
   <rect x="44" y="634" width="204" height="118" rx="11" fill="#ffffff" stroke="#dfe5ec"/>
@@ -124,16 +124,16 @@
     <text x="60" y="710">đoạn trích đánh số [1]…[4]</text>
     <text x="60" y="730">lịch sử hội thoại gần nhất</text>
     <text x="297" y="690">sinh câu trả lời tiếng Việt</text>
-    <text x="297" y="710">phát dần từng chữ</text>
+    <text x="297" y="710">nhiệt độ 0,15 · phát dần từng chữ</text>
     <text x="297" y="730">chỉ dựa trên đoạn trích</text>
     <text x="534" y="690">trích dẫn [n] có hợp lệ?</text>
     <text x="534" y="710">con số có trong đoạn trích?</text>
-    <text x="534" y="730">không đạt → báo rõ</text>
+    <text x="534" y="730">không đạt → gắn cảnh báo</text>
     <text x="771" y="690">kèm nguồn và vị trí</text>
     <text x="771" y="710">gợi ý câu hỏi tiếp theo</text>
-    <text x="771" y="730">lưu cache ngữ nghĩa</text>
+    <text x="771" y="730">đạt hậu kiểm mới lưu cache</text>
     <text x="1008" y="690">trùng cache (cosine ≥ 0,96)</text>
-    <text x="1008" y="710">câu tính toán → Python</text>
+    <text x="1008" y="710">câu tính → 5 công cụ Python</text>
     <text x="1008" y="730">lạc đề → từ chối, không đoán</text>
   </g>
   <g stroke="#2a78d6" stroke-width="1.6" fill="none" marker-end="url(#ab)">
