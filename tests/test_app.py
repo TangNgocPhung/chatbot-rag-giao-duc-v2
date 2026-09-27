@@ -1,14 +1,16 @@
 import json
 import os
+import re
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 import phan_loai_giao_duc
 import tep_dinh_kem
-from api import app
+from api import HUONG_DAN_SU_DUNG, app
 from rag_service import THU_MUC_TEP_TRONG_KHO, service
 from web_loader import nen_ngu_canh_theo_cau_hoi, tim_url_trong_cau_hoi
 
@@ -342,6 +344,45 @@ class GiaoDienTinhTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.headers.get("cache-control"))
+
+
+class HuongDanSuDungTests(unittest.TestCase):
+    """Nút "Hướng dẫn" đọc thẳng HUONG_DAN_SU_DUNG.md qua /api/huong-dan."""
+
+    def test_may_chu_tra_tai_lieu_huong_dan(self):
+        with TestClient(app) as client:
+            response = client.get("/api/huong-dan")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.headers["content-type"].startswith("text/markdown"))
+        # Sửa tệp .md xong thì người dùng phải thấy bản mới ngay.
+        self.assertEqual(response.headers.get("cache-control"), "no-cache")
+        self.assertTrue(response.text.startswith("# Hướng dẫn sử dụng"))
+
+    def test_thieu_tep_thi_bao_404(self):
+        with tempfile.TemporaryDirectory() as tam:
+            with patch("api.HUONG_DAN_SU_DUNG", Path(tam) / "khong-co.md"):
+                with TestClient(app) as client:
+                    response = client.get("/api/huong-dan")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_moi_lien_ket_muc_trong_tai_lieu_tro_toi_mot_tieu_de(self):
+        # Cùng quy tắc tạo id với GitHub và với taoMa trong static/huong-dan.js:
+        # đổi tên một mục mà quên sửa mục lục thì bấm vào không đi tới đâu,
+        # trên cả GitHub lẫn hộp thoại Hướng dẫn.
+        van = HUONG_DAN_SU_DUNG.read_text(encoding="utf-8")
+        da_dung: dict[str, int] = {}
+        cac_ma = set()
+        for tieu_de in re.findall(r"^#{1,6}\s+(.+?)\s*$", van, flags=re.M):
+            goc = re.sub(r"[^\w\- ]", "", tieu_de.lower()).replace(" ", "-")
+            lan = da_dung.get(goc, 0)
+            da_dung[goc] = lan + 1
+            cac_ma.add(f"{goc}-{lan}" if lan else goc)
+
+        lien_ket = re.findall(r"\]\(#([^)]+)\)", van)
+        self.assertTrue(lien_ket)
+        self.assertEqual(sorted(set(lien_ket) - cac_ma), [])
 
 
 if __name__ == "__main__":
