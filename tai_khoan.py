@@ -476,6 +476,33 @@ def _bam_ma(nguoi_dung_id: str, ma: str) -> str:
     return hashlib.sha256(f"{nguoi_dung_id}:{ma}".encode("utf-8")).hexdigest()
 
 
+def _giay_phai_doi(lan: list[float], bay_gio: float) -> int:
+    """Số giây còn phải đợi mới được xin mã tiếp; 0 là xin được ngay."""
+    if lan and bay_gio - lan[-1] < GIAY_GIUA_HAI_LAN_GUI:
+        return int(GIAY_GIUA_HAI_LAN_GUI - (bay_gio - lan[-1])) + 1
+    return 0
+
+
+def ma_da_gui(nguoi_dung_id: str) -> dict | None:
+    """Mã gần nhất đã gửi tới email hiện tại, còn hạn hay đã hết.
+
+    None nghĩa là email này chưa được gửi mã nào: chỉ khi đó hộp xác minh mới
+    tự gửi. Đã gửi rồi thì dù mã đã quá 15 phút cũng không tự gửi thêm, muốn
+    mã mới phải bấm "Gửi lại mã" - người chưa muốn xác minh mà cứ bấm vào tính
+    năng bị khoá sẽ không bị gửi thư liên tục.
+    """
+    dong = _connect().execute(
+        "SELECT het_han FROM ma_xac_minh WHERE nguoi_dung_id = ?", (nguoi_dung_id,)
+    ).fetchone()
+    if dong is None:
+        return None
+    bay_gio = time.time()
+    with _khoa_dem:
+        cho = _giay_phai_doi(_lan_gui_ma.get(nguoi_dung_id, []), bay_gio)
+    # Trả số giây còn lại chứ không trả mốc giờ: đồng hồ trình duyệt có thể lệch.
+    return {"con_giay": max(0, int(dong["het_han"] - bay_gio)), "cho_giay": cho}
+
+
 def tao_ma_xac_minh(nguoi_dung_id: str) -> tuple[dict, str]:
     """Sinh mã mới (thay mã cũ). Trả về (người dùng, mã) để bên gọi gửi thư."""
     dong = _connect().execute("SELECT * FROM nguoi_dung WHERE id = ?", (nguoi_dung_id,)).fetchone()
@@ -486,8 +513,8 @@ def tao_ma_xac_minh(nguoi_dung_id: str) -> tuple[dict, str]:
     bay_gio = time.time()
     with _khoa_dem:
         lan = _con_trong_han(_lan_gui_ma.get(nguoi_dung_id, []), 3600)
-        if lan and bay_gio - lan[-1] < GIAY_GIUA_HAI_LAN_GUI:
-            con = int(GIAY_GIUA_HAI_LAN_GUI - (bay_gio - lan[-1])) + 1
+        con = _giay_phai_doi(lan, bay_gio)
+        if con:
             raise LoiTaiKhoan(f"Hãy đợi {con} giây rồi gửi lại mã.", 429)
         if len(lan) >= SO_LAN_GUI_MOI_GIO:
             raise LoiTaiKhoan("Đã gửi mã quá nhiều lần. Hãy thử lại sau một giờ.", 429)
@@ -506,10 +533,18 @@ def tao_ma_xac_minh(nguoi_dung_id: str) -> tuple[dict, str]:
 
 
 def huy_lan_gui_ma(nguoi_dung_id: str) -> None:
-    """Thư không đi được thì không tính lượt, để người dùng bấm gửi lại ngay."""
+    """Thư không đi được thì không tính lượt, để người dùng bấm gửi lại ngay.
+
+    Mã vừa sinh chưa tới tay ai nên bỏ luôn: coi như email chưa được gửi mã,
+    lần mở hộp xác minh sau sẽ tự gửi (ma_da_gui).
+    """
     with _khoa_dem:
         if _lan_gui_ma.get(nguoi_dung_id):
             _lan_gui_ma[nguoi_dung_id].pop()
+    with _khoa_ghi:
+        conn = _connect()
+        conn.execute("DELETE FROM ma_xac_minh WHERE nguoi_dung_id = ?", (nguoi_dung_id,))
+        conn.commit()
 
 
 def xac_minh(nguoi_dung_id: str, ma: str) -> dict:
@@ -519,14 +554,17 @@ def xac_minh(nguoi_dung_id: str, ma: str) -> dict:
         dong = conn.execute(
             "SELECT * FROM ma_xac_minh WHERE nguoi_dung_id = ?", (nguoi_dung_id,)
         ).fetchone()
+        # Mã hết hạn hay bị huỷ vẫn giữ dòng: còn dòng là email này đã được
+        # gửi mã, hộp xác minh không tự gửi thêm nữa (ma_da_gui).
         if dong is None or dong["het_han"] < time.time():
-            conn.execute("DELETE FROM ma_xac_minh WHERE nguoi_dung_id = ?", (nguoi_dung_id,))
-            conn.commit()
             raise LoiTaiKhoan("Mã đã hết hạn hoặc chưa được gửi. Hãy bấm gửi mã mới.", 410)
         if len(ma) != 6 or not hmac.compare_digest(_bam_ma(nguoi_dung_id, ma), dong["ma_bam"]):
             sai = dong["so_lan_sai"] + 1
             if sai >= SO_LAN_NHAP_SAI_MA:
-                conn.execute("DELETE FROM ma_xac_minh WHERE nguoi_dung_id = ?", (nguoi_dung_id,))
+                conn.execute(
+                    "UPDATE ma_xac_minh SET het_han = 0, so_lan_sai = ? WHERE nguoi_dung_id = ?",
+                    (sai, nguoi_dung_id),
+                )
                 conn.commit()
                 raise LoiTaiKhoan("Nhập sai quá nhiều lần, mã đã bị huỷ. Hãy gửi mã mới.", 429)
             conn.execute(
