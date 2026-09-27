@@ -1,9 +1,9 @@
-"""Dịch mọi ngôn ngữ Google hỗ trợ: Google Cloud Translation, dự phòng bằng mô hình trên máy."""
+"""Dịch bằng mô hình nhỏ chạy qua Ollama trên máy chủ, không gọi dịch vụ ngoài."""
 
 import json
 import os
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -32,7 +32,7 @@ class NhanDienTests(unittest.TestCase):
         # à, é... có cả ở tiếng Pháp nên "Xin chào" phải nhận ra nhờ từ.
         self.assertEqual(dich_thuat.nhan_dien("Xin chào"), "vi")
 
-    def test_ma_ngon_ngu_va_bi_danh_cua_google(self):
+    def test_ma_ngon_ngu_va_bi_danh(self):
         self.assertGreater(len(dich_thuat.NGON_NGU), 130)
         self.assertEqual(dich_thuat.chuan_hoa_ma("zh-cn"), "zh-CN")
         self.assertEqual(dich_thuat.chuan_hoa_ma("iw"), "he")
@@ -72,37 +72,24 @@ class ApiDichTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
 
-    def test_google_khi_co_khoa(self):
-        gia = MagicMock(status_code=200)
-        gia.json.return_value = {"data": {"translations": [
-            {"translatedText": "学校は安全です。", "detectedSourceLanguage": "vi"}]}}
-        with patch.dict(os.environ, {"RAG_GOOGLE_TRANSLATE_KEY": "khoa-thu"}), \
-             patch("dich_thuat.requests.post", return_value=gia) as goi:
-            su_kien = _su_kien(self.client.post("/api/dich", json={"van_ban": "Trường học an toàn.", "dich_sang": "ja"}))
-        self.assertEqual(goi.call_args.kwargs["data"]["target"], "ja")
-        self.assertNotIn("source", goi.call_args.kwargs["data"])  # để Google tự nhận
-        self.assertEqual(su_kien[0], {"type": "ngon_ngu", "nguon": "vi", "dich_sang": "ja", "cong_cu": "google"})
-        self.assertEqual(su_kien[1]["content"], "学校は安全です。")
-        self.assertEqual(su_kien[-1]["type"], "done")
-
-    def test_google_loi_thi_dung_may_chu_va_bao_ly_do(self):
-        loi = MagicMock(status_code=403)
-        loi.json.return_value = {"error": {"message": "API has not been used"}}
-        with patch.dict(os.environ, {"RAG_GOOGLE_TRANSLATE_KEY": "khoa-thu"}), \
-             patch("dich_thuat.requests.post", return_value=loi), \
-             patch("dich_thuat._goi_ollama", return_value=iter(["Hello"])), \
+    def test_khong_goi_dich_vu_ngoai_du_con_bien_khoa_cu(self):
+        # Máy từng đặt RAG_GOOGLE_TRANSLATE_KEY cũng không được gửi văn bản đi đâu:
+        # chỉ mô hình qua Ollama dịch, và không có yêu cầu HTTP nào khác.
+        with patch.dict(os.environ, {"RAG_GOOGLE_TRANSLATE_KEY": "khoa-cu"}), \
+             patch("dich_thuat.requests.post") as goi_http, \
+             patch("dich_thuat._goi_ollama", return_value=iter(["Hello"])) as goi_ollama, \
              patch("api._chon_mo_hinh_dich", return_value="qwen2.5:3b-instruct"):
             su_kien = _su_kien(self.client.post("/api/dich", json={"van_ban": "Xin chào", "dich_sang": "en"}))
-        self.assertEqual(su_kien[0]["cong_cu"], "cuc_bo")
-        canh_bao = next(s for s in su_kien if s["type"] == "warning")["message"]
-        self.assertIn("Cloud Translation API", canh_bao)
+        goi_http.assert_not_called()
+        goi_ollama.assert_called_once()
+        self.assertEqual(su_kien[0], {"type": "ngon_ngu", "nguon": "vi", "dich_sang": "en"})
         self.assertEqual("".join(s["content"] for s in su_kien if s["type"] == "token"), "Hello")
+        self.assertEqual(su_kien[-1]["type"], "done")
 
     def test_cuc_bo_hai_chang_chi_phat_chang_cuoi(self):
         def gia_ollama(van_ban, tu, sang, mo_hinh):
             return iter(["School is safe."] if sang == "en" else ["学校は", "安全です。"])
-        with patch.dict(os.environ, {"RAG_GOOGLE_TRANSLATE_KEY": ""}), \
-             patch("dich_thuat._goi_ollama", side_effect=gia_ollama) as goi, \
+        with patch("dich_thuat._goi_ollama", side_effect=gia_ollama) as goi, \
              patch("api._chon_mo_hinh_dich", return_value="qwen2.5:3b-instruct"):
             su_kien = _su_kien(self.client.post(
                 "/api/dich", json={"van_ban": "Trường học an toàn.", "nguon": "tu_dong", "dich_sang": "ja"}))
@@ -111,16 +98,15 @@ class ApiDichTests(unittest.TestCase):
         self.assertEqual("".join(s["content"] for s in su_kien if s["type"] == "token"), "学校は安全です。")
         self.assertTrue(any(s["type"] == "phase" for s in su_kien))
 
-    def test_cau_hinh_bao_van_ban_co_roi_may_chu(self):
-        with patch.dict(os.environ, {"RAG_GOOGLE_TRANSLATE_KEY": ""}):
-            cau_hinh = self.client.get("/api/dich/cau-hinh").json()
-        self.assertEqual(cau_hinh["cong_cu"], "cuc_bo")
+    def test_cau_hinh_tra_danh_sach_ngon_ngu(self):
+        cau_hinh = self.client.get("/api/dich/cau-hinh").json()
         self.assertIn({"ma": "fr", "ten": "Tiếng Pháp", "ten_goc": "Français"}, cau_hinh["ngon_ngu"])
-        with patch.dict(os.environ, {"RAG_GOOGLE_TRANSLATE_KEY": "k"}):
-            self.assertEqual(self.client.get("/api/dich/cau-hinh").json()["cong_cu"], "google")
+        self.assertEqual(cau_hinh["ky_tu_toi_da"], 5000)
+        self.assertNotIn("cong_cu", cau_hinh)
 
     def test_cuc_bo_ngon_ngu_yeu_co_canh_bao(self):
-        with patch.dict(os.environ, {"RAG_GOOGLE_TRANSLATE_KEY": ""}),              patch("dich_thuat._goi_ollama", return_value=iter(["Habari"])),              patch("api._chon_mo_hinh_dich", return_value="qwen2.5:3b-instruct"):
+        with patch("dich_thuat._goi_ollama", return_value=iter(["Habari"])), \
+             patch("api._chon_mo_hinh_dich", return_value="qwen2.5:3b-instruct"):
             su_kien = _su_kien(self.client.post("/api/dich", json={"van_ban": "Hello", "dich_sang": "sw"}))
         self.assertEqual(su_kien[0]["dich_sang"], "sw")
         self.assertIn("tiếng Swahili", next(s for s in su_kien if s["type"] == "warning")["message"])

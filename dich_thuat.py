@@ -1,22 +1,17 @@
 """
-DỊCH ĐA NGÔN NGỮ: mọi ngôn ngữ Google Translate hỗ trợ (hơn 130)
-================================================================
-Hai công cụ, tự chọn theo cấu hình:
+DỊCH BẰNG MÔ HÌNH NHỎ CHẠY QUA OLLAMA TRÊN MÁY CHỦ
+=================================================
+Văn bản cần dịch không rời máy chủ: không gọi dịch vụ dịch bên ngoài nào.
 
-1. Google Cloud Translation (khi đặt RAG_GOOGLE_TRANSLATE_KEY) - chất lượng
-   đúng như Google Translate, trả về tức thì, dịch tốt mọi ngôn ngữ trong
-   danh sách. Văn bản cần dịch được gửi sang Google; giao diện nói rõ điều đó.
+Đã thử ngày 23/9/2026 trên máy 15 GB RAM: qwen2.5:3b dịch Việt->Nhật ra tiếng
+Trung hoặc lặp vô hạn ("担任担任..."), Nhật->Việt sai nghĩa; llama3.2:3b tự
+bịa thêm cả đoạn. Dịch qua tiếng Anh làm trung gian khá hơn hẳn nên cặp nào
+không có tiếng Anh thì đi hai chặng. Vẫn chỉ đủ để tham khảo - giao diện ghi
+"bản dịch máy". Ngôn ngữ ngoài MO_HINH_NHO_DICH_DUOC thì mô hình 3B gần như
+không biết, nên máy chủ báo trước cho người dùng.
 
-2. Mô hình nhỏ trên máy (dự phòng khi chưa có key hoặc Google lỗi). Đã thử
-   ngày 23/9/2026 trên máy 15 GB RAM: qwen2.5:3b dịch Việt->Nhật ra tiếng
-   Trung hoặc lặp vô hạn ("担任担任..."), Nhật->Việt sai nghĩa; llama3.2:3b tự
-   bịa thêm cả đoạn. Dịch qua tiếng Anh làm trung gian khá hơn hẳn nên cặp nào
-   không có tiếng Anh thì đi hai chặng. Vẫn chỉ đủ để tham khảo - giao diện
-   ghi "bản dịch máy". Ngôn ngữ ngoài MO_HINH_NHO_DICH_DUOC thì mô hình 3B
-   gần như không biết, nên máy chủ báo trước cho người dùng.
-
-Nhận diện ngôn ngữ nguồn khi dịch cục bộ: theo bảng chữ, rồi đếm từ phổ biến
-với các ngôn ngữ viết chữ Latinh - không gọi mô hình.
+Nhận diện ngôn ngữ nguồn: theo bảng chữ, rồi đếm từ phổ biến với các ngôn ngữ
+viết chữ Latinh - không gọi mô hình.
 """
 
 from __future__ import annotations
@@ -29,7 +24,7 @@ from typing import Iterator
 
 import requests
 
-# (mã Google, tên tiếng Việt, tên tiếng Anh cho lời nhắc mô hình, tên bản địa).
+# (mã ngôn ngữ, tên tiếng Việt, tên tiếng Anh cho lời nhắc mô hình, tên bản địa).
 # Mấy ngôn ngữ hay dùng đứng đầu để menu dịch câu trả lời hiện chúng trước.
 _BANG_NGON_NGU = [
     ("vi", "Tiếng Việt", "Vietnamese", "Tiếng Việt"),
@@ -168,7 +163,7 @@ _BANG_NGON_NGU = [
 ]
 NGON_NGU = {ma: ten_anh for ma, _, ten_anh, _ in _BANG_NGON_NGU}
 TEN_VIET = {ma: ten[0].lower() + ten[1:] for ma, ten, _, _ in _BANG_NGON_NGU}
-# Google trả mã cũ hoặc mã rút gọn cho vài ngôn ngữ khi tự nhận diện.
+# Mã cũ hoặc mã rút gọn của vài ngôn ngữ vẫn hay gặp ("iw", "zh"...).
 _BI_DANH = {"iw": "he", "jw": "jv", "zh": "zh-CN", "fil": "tl", "mni": "mni-Mtei"}
 _MA_THUONG = {ma.lower(): ma for ma in NGON_NGU}
 _CHU_HAN_DUOC_PHEP = {"ja", "zh-CN", "zh-TW"}
@@ -178,8 +173,7 @@ MO_HINH_NHO_DICH_DUOC = {
     "vi", "en", "ja", "ko", "zh-CN", "zh-TW", "fr", "de", "es", "pt", "it",
     "ru", "th", "ar", "id", "ms", "nl", "tr", "pl",
 }
-KY_TU_TOI_DA = 5000  # như Google Translate
-GOOGLE_URL = "https://translation.googleapis.com/language/translate/v2"
+KY_TU_TOI_DA = 5000
 
 _KANA = re.compile(r"[぀-ヿㇰ-ㇿｦ-ﾟ]")
 _HANGUL = re.compile(r"[ᄀ-ᇿ㄰-㆏가-힯]")
@@ -239,10 +233,6 @@ class LoiDich(ValueError):
     pass
 
 
-def khoa_google() -> str:
-    return os.getenv("RAG_GOOGLE_TRANSLATE_KEY", "").strip()
-
-
 def mo_hinh_dich() -> str:
     return os.getenv("RAG_MO_HINH_DICH", "qwen2.5:3b-instruct")
 
@@ -264,7 +254,7 @@ def _bo_dau(chu: str) -> str:
 
 
 def nhan_dien(van_ban: str) -> str:
-    """Đoán ngôn ngữ của văn bản khi dịch trên máy (Google tự nhận diện được)."""
+    """Đoán ngôn ngữ của văn bản khi người dùng để "Phát hiện ngôn ngữ"."""
     van_ban = unicodedata.normalize("NFC", van_ban or "")
     if _HANGUL.search(van_ban):
         return "ko"
@@ -306,7 +296,7 @@ def nhan_dien(van_ban: str) -> str:
 
 
 def chuan_hoa_yeu_cau(van_ban: str, nguon: str, dich_sang: str) -> tuple[str, str, str]:
-    """Kiểm tra yêu cầu. nguon trả về có thể là "tu_dong" (để Google tự nhận)."""
+    """Kiểm tra yêu cầu. nguon trả về có thể là "tu_dong" (để nhan_dien đoán sau)."""
     van_ban = (van_ban or "").strip()
     if not van_ban:
         raise LoiDich("Chưa có văn bản để dịch.")
@@ -336,40 +326,7 @@ def canh_bao_mo_hinh_nho(nguon: str, dich_sang: str) -> str:
 
 
 # ------------------------------------------------------------
-# GOOGLE CLOUD TRANSLATION
-# ------------------------------------------------------------
-class LoiGoogle(RuntimeError):
-    pass
-
-
-def dich_bang_google(van_ban: str, nguon: str, dich_sang: str) -> tuple[str, str]:
-    """Trả về (bản dịch, mã ngôn ngữ nguồn Google nhận ra hoặc đã chọn)."""
-    tham_so = {"q": van_ban, "target": dich_sang, "format": "text"}
-    if nguon != "tu_dong":
-        tham_so["source"] = nguon
-    try:
-        phan_hoi = requests.post(
-            GOOGLE_URL, params={"key": khoa_google()}, data=tham_so, timeout=20
-        )
-    except requests.RequestException as exc:
-        raise LoiGoogle(f"Không kết nối được Google Translate: {exc}") from exc
-    if phan_hoi.status_code != 200:
-        try:
-            ly_do = phan_hoi.json()["error"]["message"]
-        except (ValueError, KeyError, TypeError):
-            ly_do = phan_hoi.text[:200]
-        goi_y = (
-            " Hãy bật Cloud Translation API cho dự án Google Cloud của key này."
-            if phan_hoi.status_code == 403 else ""
-        )
-        raise LoiGoogle(f"Google Translate báo lỗi {phan_hoi.status_code}: {ly_do}.{goi_y}")
-    ket_qua = phan_hoi.json()["data"]["translations"][0]
-    nhan_ra = ket_qua.get("detectedSourceLanguage") or nguon
-    return ket_qua["translatedText"], chuan_hoa_ma(nhan_ra) or nhan_ra
-
-
-# ------------------------------------------------------------
-# DỰ PHÒNG: MÔ HÌNH NHỎ TRÊN MÁY
+# DỊCH BẰNG MÔ HÌNH NHỎ TRÊN MÁY CHỦ
 # ------------------------------------------------------------
 def tin_nhan(van_ban: str, nguon: str, dich_sang: str) -> list[dict]:
     """Lời nhắc viết bằng tiếng Anh: mô hình nhỏ làm theo chỉ dẫn tiếng Anh

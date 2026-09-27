@@ -75,7 +75,7 @@ ollama pull qwen3.5:4b
 | `tinh_luong.py`, `dinh_muc_tiet_day.py`, `danh_gia_hoc_sinh.py`, `tinh_toan.py`, `can_cu_van_ban.py` | Công cụ tính bằng Python (lương, định mức tiết dạy, điểm và xếp loại, số học) kèm căn cứ pháp lý |
 | `hieu_luc_bo_sung.py` | Hiệu lực theo thời gian: dự thảo, văn bản chưa tới ngày áp dụng |
 | `tu_vung_kho.py`, `goi_y_cau_hoi.py` | Từ vựng kho để chặn câu hỏi lạc đề và chấm khớp tên tài liệu theo IDF; gợi ý câu hỏi |
-| `dich_thuat.py`, `giong_noi.py` | Dịch hơn 130 ngôn ngữ; nhận giọng nói bằng faster-whisper |
+| `dich_thuat.py`, `giong_noi.py` | Dịch bằng mô hình nhỏ qua Ollama trên máy chủ; nhận giọng nói bằng faster-whisper |
 | `bao_ve_truy_cap.py`, `trien_khai_vps/` | Lớp mật khẩu cho bản chạy công khai; bộ script và hướng dẫn triển khai lên VPS |
 
 ---

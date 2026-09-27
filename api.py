@@ -1319,7 +1319,7 @@ def xoa_tai_khoan(ma: str, request: Request, x_rag_action: str | None = Header(d
 
 
 # ============================================================
-# DỊCH ĐA NGÔN NGỮ (mọi ngôn ngữ Google Translate hỗ trợ)
+# DỊCH: mô hình nhỏ chạy qua Ollama trên máy chủ, văn bản không rời máy
 # ============================================================
 class YeuCauDich(BaseModel):
     van_ban: str = Field(min_length=1, max_length=dich_thuat.KY_TU_TOI_DA)
@@ -1343,9 +1343,8 @@ def _chon_mo_hinh_dich() -> str:
 
 @app.get("/api/dich/cau-hinh")
 def cau_hinh_dich():
-    """Giao diện cần biết văn bản có rời máy chủ không để báo cho người dùng."""
+    """Danh sách ngôn ngữ và giới hạn độ dài cho khung dịch."""
     return {
-        "cong_cu": "google" if dich_thuat.khoa_google() else "cuc_bo",
         "ngon_ngu": dich_thuat.ngon_ngu_cho_giao_dien(),
         "ky_tu_toi_da": dich_thuat.KY_TU_TOI_DA,
     }
@@ -1365,22 +1364,9 @@ def dich_van_ban(yeu_cau: YeuCauDich):
 
     def generate():
         bat_dau = time.perf_counter()
-        canh_bao = ""
-        if dich_thuat.khoa_google():
-            try:
-                ban_dich, nguon_that = dich_thuat.dich_bang_google(van_ban, nguon, dich_sang)
-                yield phat({"type": "ngon_ngu", "nguon": nguon_that, "dich_sang": dich_sang, "cong_cu": "google"})
-                yield phat({"type": "token", "content": ban_dich})
-                yield phat({"type": "done", "giay": round(time.perf_counter() - bat_dau, 1)})
-                return
-            except dich_thuat.LoiGoogle as exc:
-                # Google lỗi (hết hạn mức, chưa bật API...) thì vẫn dịch được
-                # bằng máy chủ, kèm lời giải thích vì sao chất lượng kém đi.
-                canh_bao = f"{exc} Đang dùng bản dịch máy trên máy chủ."
-
         nguon_that = dich_thuat.nhan_dien(van_ban) if nguon == "tu_dong" else nguon
-        yield phat({"type": "ngon_ngu", "nguon": nguon_that, "dich_sang": dich_sang, "cong_cu": "cuc_bo"})
-        canh_bao = " ".join(filter(None, [canh_bao, dich_thuat.canh_bao_mo_hinh_nho(nguon_that, dich_sang)]))
+        yield phat({"type": "ngon_ngu", "nguon": nguon_that, "dich_sang": dich_sang})
+        canh_bao = dich_thuat.canh_bao_mo_hinh_nho(nguon_that, dich_sang)
         if canh_bao:
             yield phat({"type": "warning", "message": canh_bao})
         try:
