@@ -657,10 +657,11 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 /* ============================================================
    GỢI Ý CÂU HỎI
    ============================================================
-   Hai chỗ dùng cùng một kiểu chip: hàng "Gợi ý khác" dưới bốn thẻ chủ đề ở màn
-   hình chào, và hàng "Hỏi tiếp" dưới mỗi câu trả lời. Chip chỉ một dòng, dài
-   quá thì cắt bằng dấu ba chấm - chờ đọc hết một câu hỏi dài ba dòng thì thà
-   tự gõ còn nhanh hơn; nội dung đầy đủ vẫn có trong title khi trỏ chuột. */
+   Hai chỗ dùng cùng một kiểu chip: khối gợi ý dưới bốn thẻ chủ đề ở màn hình
+   chào, và hàng "Hỏi tiếp" dưới mỗi câu trả lời. Màn rộng thì chip chỉ một
+   dòng, dài quá thì cắt bằng dấu ba chấm - chờ đọc hết một câu hỏi dài ba dòng
+   thì thà tự gõ còn nhanh hơn; nội dung đầy đủ vẫn có trong title khi trỏ
+   chuột. Màn hẹp thì xuống dòng (xem khối @media bên dưới). */
 .suggestion-more { margin-top: 20px; text-align: left; }
 .suggestion-more-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 9px; color: var(--ink-mute); font-size: 11px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
 .suggestion-refresh { display: flex; align-items: center; gap: 6px; padding: 5px 9px; color: var(--ink-soft); background: transparent; border: 1px solid var(--line); border-radius: 20px; font: inherit; font-size: 10.5px; letter-spacing: .04em; cursor: pointer; transition: border-color .18s, color .18s, background .18s; }
@@ -684,17 +685,14 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .goi-y-tiep .suggestion-chip { background: var(--surface-2); font-size: 12px; }
 
 @media (max-width: 800px) {
-  /* Màn hẹp: chip xếp thành cột một dòng cho dễ bấm bằng ngón tay. */
+  /* Màn hẹp: chip xếp thành cột cho dễ bấm bằng ngón tay, và xuống dòng thay
+     vì cắt "…": một dòng trên điện thoại chỉ chứa chừng 45 ký tự, cắt thì mất
+     nửa câu mà không có chuột để trỏ xem title. Bộ câu tĩnh vì thế dài ra, nên
+     ban đầu chỉ hiện vài câu, bấm "Xem thêm" mới đủ; các hàng khác chỉ vài câu
+     nên không cần. */
   .suggestion-chips { flex-direction: column; }
-  .suggestion-chip { width: 100%; }
-  /* Bộ câu tĩnh và hàng "Hỏi tiếp": một dòng trên điện thoại chỉ chứa chừng
-     45 ký tự, cắt "…" thì mất nửa câu mà không có chuột để trỏ xem title, nên
-     cho xuống dòng. Bộ câu tĩnh vì thế dài ra, nên ban đầu chỉ hiện vài câu,
-     bấm "Xem thêm" mới đủ; hàng hỏi tiếp chỉ có ba câu nên không cần. */
-  .theo-nhom .suggestion-chip,
-  .goi-y-tiep .suggestion-chip { border-radius: 14px; }
-  .theo-nhom .suggestion-chip span,
-  .goi-y-tiep .suggestion-chip span { overflow: visible; white-space: normal; line-height: 1.4; }
+  .suggestion-chip { width: 100%; border-radius: 14px; }
+  .suggestion-chip span { overflow: visible; white-space: normal; line-height: 1.4; }
   .theo-nhom:not(.mo-rong) .goi-y-phu { display: none; }
   .theo-nhom .suggestion-toggle { display: block; }
 }
