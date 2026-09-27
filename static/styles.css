@@ -687,11 +687,14 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
   /* Màn hẹp: chip xếp thành cột một dòng cho dễ bấm bằng ngón tay. */
   .suggestion-chips { flex-direction: column; }
   .suggestion-chip { width: 100%; }
-  /* Bộ câu tĩnh: một dòng trên điện thoại chỉ chứa chừng 45 ký tự, cắt "…"
-     thì mất nửa câu mà không có chuột để trỏ xem title, nên cho xuống dòng.
-     Đổi lại cột dài ra, nên ban đầu chỉ hiện vài câu, bấm "Xem thêm" mới đủ. */
-  .theo-nhom .suggestion-chip { border-radius: 14px; }
-  .theo-nhom .suggestion-chip span { overflow: visible; white-space: normal; line-height: 1.4; }
+  /* Bộ câu tĩnh và hàng "Hỏi tiếp": một dòng trên điện thoại chỉ chứa chừng
+     45 ký tự, cắt "…" thì mất nửa câu mà không có chuột để trỏ xem title, nên
+     cho xuống dòng. Bộ câu tĩnh vì thế dài ra, nên ban đầu chỉ hiện vài câu,
+     bấm "Xem thêm" mới đủ; hàng hỏi tiếp chỉ có ba câu nên không cần. */
+  .theo-nhom .suggestion-chip,
+  .goi-y-tiep .suggestion-chip { border-radius: 14px; }
+  .theo-nhom .suggestion-chip span,
+  .goi-y-tiep .suggestion-chip span { overflow: visible; white-space: normal; line-height: 1.4; }
   .theo-nhom:not(.mo-rong) .goi-y-phu { display: none; }
   .theo-nhom .suggestion-toggle { display: block; }
 }
