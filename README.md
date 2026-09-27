@@ -29,7 +29,7 @@ Giảng viên hướng dẫn: TS. Nguyễn Minh Hải
 - Tệp đính kèm trong cuộc trò chuyện, lịch sử chat, cache ngữ nghĩa
 - Tài khoản và phân quyền theo vai: khách chỉ hỏi đáp, xác minh email mới có sổ tay và tải tệp; tệp người dùng tải lên là tài liệu riêng, chỉ vào kho chung khi chủ tệp đề xuất và quản trị viên duyệt
 - Sổ tay bên cạnh cuộc trò chuyện: ghi chú, bảng vẽ, trình đọc PDF, ảnh, Word, Excel, PowerPoint, HTML với công cụ **Khoanh để hỏi**, đánh dấu và tải tài liệu kèm nét đánh dấu
-- Dịch hơn 130 ngôn ngữ ngay trong giao diện
+- Dịch câu trả lời và đoạn bôi đen bằng mô hình chạy qua Ollama trên máy chủ, không gọi dịch vụ dịch bên ngoài
 - Nói thay vì gõ: nhận giọng nói bằng faster-whisper trên máy chủ, tự nhận ra ngôn ngữ
 - Mỗi người tự chọn mô hình trả lời cho câu hỏi của mình
 - Đồng bộ thư mục Google Drive
@@ -161,12 +161,14 @@ Word, Excel, PowerPoint và HTML được LibreOffice chuyển một lần sang 
 
 Sổ tay tải về được dạng Word (ghi chú, ảnh vùng khoanh và bảng vẽ), bản in PDF hoặc ảnh bảng vẽ. Tài liệu đang đọc tải về được thành PDF kèm mọi nét bút, tô sáng và vùng khoanh: nét được vẽ thành đường véc-tơ ngay trên trang PDF gốc nên chữ của tài liệu vẫn chọn và tìm được; ảnh chụp thì thành PDF một trang.
 
-### Dịch đa ngôn ngữ
+### Dịch câu trả lời
 
-Khung dịch hai cột (mở từ nút **Dịch** dưới câu trả lời hoặc khi bôi đen một đoạn) như Google Translate cho 133 ngôn ngữ: mỗi chiều hiện ba ngôn ngữ dùng gần đây, nút mũi tên mở bảng tìm theo tên tiếng Việt, tên bản địa hoặc mã (`Pháp`, `français`, `fr`). Có thể đọc to văn bản, sao chép, ghi bản dịch vào sổ tay, dịch câu trả lời ngay dưới câu trả lời và dịch đoạn vừa bôi đen.
+Thanh trên cùng không còn nút Dịch riêng. Muốn dịch thì:
 
-- Có `RAG_GOOGLE_TRANSLATE_KEY` thì dịch bằng Google Cloud Translation (văn bản được gửi sang Google, giao diện có ghi chú).
-- Không có key thì dịch bằng mô hình nhỏ trên máy (mặc định `qwen2.5:3b-instruct`), đi qua tiếng Anh làm trung gian với các cặp không có tiếng Anh. Chất lượng chỉ để tham khảo; với ngôn ngữ mô hình chưa thạo (ngoài khoảng 19 ngôn ngữ phổ biến), giao diện báo trước bản dịch có thể sai nhiều.
+- Bấm **Dịch** dưới một câu trả lời, chọn ngôn ngữ (tìm theo tên tiếng Việt, tên bản địa hoặc mã: `Pháp`, `français`, `fr`); bản dịch hiện ngay dưới câu trả lời.
+- Bôi đen một đoạn rồi bấm **Dịch** trên thanh nổi: khung dịch hai cột mở ra để sửa văn bản, đổi chiều dịch, nghe đọc to, sao chép hoặc ghi bản dịch vào sổ tay.
+
+Việc dịch do một mô hình nhỏ chạy qua Ollama ngay trên máy chủ (mặc định `qwen2.5:3b-instruct`, đổi bằng `RAG_MO_HINH_DICH`), không gọi dịch vụ dịch bên ngoài nên văn bản không rời máy chủ. Cặp ngôn ngữ không có tiếng Anh thì đi qua tiếng Anh làm trung gian. Bản dịch chỉ để tham khảo; với ngôn ngữ mô hình chưa thạo (ngoài khoảng 19 ngôn ngữ phổ biến), giao diện báo trước bản dịch có thể sai nhiều.
 
 ### Nói thay vì gõ
 
@@ -184,7 +186,7 @@ Mỗi người chọn mô hình trả lời cho câu hỏi của mình trong men
 - Một model hội thoại, mặc định `qwen3.5:4b` (đổi bằng biến môi trường `RAG_LLM_MODEL` hoặc chọn trên giao diện)
 - Tesseract OCR (kèm dữ liệu tiếng Việt `vie`) nếu cần đọc PDF scan hoặc ảnh
 - Microsoft Word hoặc LibreOffice nếu cần đọc tệp `.doc` đời cũ; LibreOffice (`soffice`) để sổ tay mở được Word, Excel, PowerPoint và HTML
-- Tuỳ chọn: model `qwen2.5:3b-instruct` để dịch khi không có khóa Google Cloud Translation. Model faster-whisper `small` (khoảng 480 MB) tự tải ở lần phiên âm hoặc nhận giọng nói đầu tiên.
+- Tuỳ chọn: model `qwen2.5:3b-instruct` để dịch (không có thì dịch bằng mô hình trả lời). Model faster-whisper `small` (khoảng 480 MB) tự tải ở lần phiên âm hoặc nhận giọng nói đầu tiên.
 
 ## Cài đặt
 
@@ -268,7 +270,6 @@ Chạy tay: `.\.venv\Scripts\python.exe drive_sync.py` (thêm `--thu` để ch�
 | `RAG_TU_NAP_CHI_MUC` | `1` | `0` để tệp mới vào kho chờ lượt cập nhật ban đêm thay vì cập nhật chỉ mục ngay khi máy rảnh |
 | `RAG_SO_TAI_LIEU_RIENG_TOI_DA` | `100` | Số tài liệu riêng tối đa của mỗi tài khoản |
 | `RAG_MO_HINH_CHO_PHEP` | trống | Các mô hình người dùng được tự chọn; trống là mọi mô hình |
-| `RAG_GOOGLE_TRANSLATE_KEY` | trống | Khóa Google Cloud Translation; trống thì dịch bằng mô hình trên máy |
 | `RAG_MO_HINH_DICH` | `qwen2.5:3b-instruct` | Mô hình dịch trên máy (không có thì dùng mô hình trả lời) |
 | `RAG_WHISPER_MODEL` | `small` | Mô hình faster-whisper cho phiên âm và nhận giọng nói |
 | `RAG_WHISPER_BEAM_GIONG_NOI` | `5` | Beam size khi nhận giọng nói |

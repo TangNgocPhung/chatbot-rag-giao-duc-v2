@@ -185,19 +185,21 @@
 <text x="1097" y="963" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">9</text>
 <text x="1123" y="964" font-size="21" font-weight="700" fill="#1f2a3a">Dịch &amp; giọng nói</text>
 <circle cx="1095" cy="1015" r="4" fill="#62853a"/>
-<text x="1109" y="1020" font-size="16" fill="#27313d">Dịch hơn 130 ngôn ngữ trong khung hai cột</text>
+<text x="1109" y="1020" font-size="16" fill="#27313d">Dịch câu trả lời ngay dưới câu trả lời</text>
 <circle cx="1095" cy="1050" r="4" fill="#62853a"/>
-<text x="1109" y="1055" font-size="16" fill="#27313d">Dịch câu trả lời và đoạn vừa bôi đen</text>
+<text x="1109" y="1055" font-size="16" fill="#27313d">Bôi đen một đoạn để mở khung dịch hai cột</text>
 <circle cx="1095" cy="1085" r="4" fill="#62853a"/>
-<text x="1109" y="1090" font-size="16" fill="#27313d">Google Cloud Translation hoặc mô hình trên máy</text>
+<text x="1109" y="1090" font-size="16" fill="#27313d">Dịch bằng mô hình Ollama trên máy chủ</text>
 <circle cx="1095" cy="1120" r="4" fill="#62853a"/>
-<text x="1109" y="1125" font-size="16" fill="#27313d">Đọc to văn bản và bản dịch</text>
+<text x="1109" y="1125" font-size="16" fill="#27313d">Không gọi dịch vụ dịch bên ngoài</text>
 <circle cx="1095" cy="1155" r="4" fill="#62853a"/>
-<text x="1109" y="1160" font-size="16" fill="#27313d">Nói thay gõ: faster-whisper chạy trên máy chủ</text>
+<text x="1109" y="1160" font-size="16" fill="#27313d">Đọc to văn bản và bản dịch</text>
 <circle cx="1095" cy="1190" r="4" fill="#62853a"/>
-<text x="1109" y="1195" font-size="16" fill="#27313d">Tự nhận ra ngôn ngữ người nói</text>
+<text x="1109" y="1195" font-size="16" fill="#27313d">Nói thay gõ: faster-whisper chạy trên máy chủ</text>
 <circle cx="1095" cy="1225" r="4" fill="#62853a"/>
-<text x="1109" y="1230" font-size="16" fill="#27313d">Âm thanh không rời khỏi máy chủ</text>
+<text x="1109" y="1230" font-size="16" fill="#27313d">Tự nhận ra ngôn ngữ người nói</text>
+<circle cx="1095" cy="1260" r="4" fill="#62853a"/>
+<text x="1109" y="1265" font-size="16" fill="#27313d">Âm thanh không rời khỏi máy chủ</text>
 <rect x="0" y="1327" width="1600" height="34" fill="#8577b3" opacity="0.85"/>
 <text x="800" y="1350" font-size="16" fill="#ffffff" text-anchor="middle">Chatbot RAG Giáo dục</text>
 </svg>
