@@ -152,20 +152,30 @@
     if (giay <= 0) tk.chuyenNut.disabled = false;
   }
 
-  async function guiMaXacMinh() {
+  // tuDong: hộp xác minh vừa mở. Máy chủ chỉ gửi mã nếu email này chưa được
+  // gửi lần nào; gửi rồi thì chỉ báo mã còn hạn hay đã hết (quá 15 phút không
+  // nhập). Mã mới chỉ gửi khi bấm "Gửi lại mã", để người chưa muốn xác minh mà
+  // cứ bấm vào tính năng bị khoá không bị gửi thư liên tục.
+  async function guiMaXacMinh(tuDong = false) {
     baoLoi('');
     tk.chuyenNut.disabled = true;
-    tk.moTa.textContent = 'Đang gửi mã…';
+    tk.moTa.textContent = tuDong ? 'Đang kiểm tra…' : 'Đang gửi mã…';
     try {
-      const { email, phut } = await goi('/api/tai-khoan/gui-ma-xac-minh', {});
-      tk.moTa.textContent = `Đã gửi mã 6 số tới ${email}. Mã có hiệu lực trong ${phut} phút.`;
-      datDemNguoc(60);
+      const kq = await goi('/api/tai-khoan/gui-ma-xac-minh', { tu_dong: tuDong });
+      tk.moTa.textContent = moTaMaDaGui(kq);
+      datDemNguoc(kq.cho_giay ?? 60);
     } catch (error) {
       tk.moTa.textContent = `Mã sẽ được gửi tới ${nguoiDung?.email || 'email của bạn'}.`;
       baoLoi(error.message);
       const giay = /(\d+) giây/.exec(error.message || '');
       datDemNguoc(giay ? Number(giay[1]) : 0);
     }
+  }
+
+  function moTaMaDaGui({ email, phut, da_gui: vuaGui = true, con_giay: conGiay = 0 }) {
+    if (vuaGui) return `Đã gửi mã 6 số tới ${email}. Mã có hiệu lực trong ${phut} phút.`;
+    if (conGiay > 0) return `Mã 6 số đã gửi tới ${email}, còn hiệu lực khoảng ${Math.ceil(conGiay / 60)} phút.`;
+    return `Mã đã gửi tới ${email} không còn hiệu lực. Bấm "Gửi lại mã" để nhận mã mới.`;
   }
 
   function baoLoi(thongBao) {
@@ -188,7 +198,7 @@
     if (!tk.hop.open) tk.hop.showModal();
     const dau = { 'dang-ky': tk.ten, 'doi-mat-khau': tk.matKhauCu, 'xac-minh': tk.ma, 'sua-thong-tin': tk.ten }[moi] || tk.email;
     dau.focus();
-    if (moi === 'xac-minh') guiMaXacMinh();
+    if (moi === 'xac-minh') guiMaXacMinh(true);
   }
 
   function datMatKhauHien(hien) {
@@ -584,7 +594,7 @@
   tk.nutTren.addEventListener('click', () => moHop('dang-nhap'));
 
   // Bấm vào tính năng chưa có quyền: khách được mời đăng nhập, tài khoản chưa
-  // xác minh được mời xác minh email (hộp xác minh tự gửi mã).
+  // xác minh được mời xác minh email (hộp xác minh tự gửi mã, chỉ lần đầu).
   function moiMoKhoa(ten) {
     if (!nguoiDung) {
       moHop('dang-nhap', loiThieuQuyen(ten));
