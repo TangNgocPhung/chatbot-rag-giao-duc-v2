@@ -1572,6 +1572,9 @@ function themDongVanBan(block, noiDung, messageId, sourceCount) {
 const laDongBang = (line) => line.startsWith('|') && line.length > 1;
 const laDongNganCach = (line) => line.includes('-') && /^\|[\s:|-]+$/.test(line);
 const tachO = (line) => line.replace(/^\|/, '').replace(/\|$/, '').split('|').map((o) => o.trim());
+// Cột số thứ tự (STT, TT, #): số ở đó chỉ để đếm hàng, tô vàng cả cột thì rối mắt.
+const MAU_COT_STT = /^(?:stt|tt|số tt|số thứ tự|thứ tự|#|no)\.?$/iu;
+const laCotStt = (o) => MAU_COT_STT.test(o.replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim());
 
 function dungBang(khoi, messageId, sourceCount) {
   // Không có dòng ngăn cách thì đây chỉ là văn bản có dấu gạch đứng, không phải bảng.
@@ -1581,7 +1584,9 @@ function dungBang(khoi, messageId, sourceCount) {
   const table = document.createElement('table');
   const thead = document.createElement('thead');
   const headRow = document.createElement('tr');
-  for (const o of tachO(khoi[0])) {
+  const oDau = tachO(khoi[0]);
+  const toCot = oDau.map((o) => !laCotStt(o));
+  for (const o of oDau) {
     const th = document.createElement('th');
     appendInlineContent(th, o, messageId, sourceCount, true);
     headRow.append(th);
@@ -1590,9 +1595,10 @@ function dungBang(khoi, messageId, sourceCount) {
   const tbody = document.createElement('tbody');
   for (const dong of khoi.slice(2)) {
     const row = document.createElement('tr');
-    for (const o of tachO(dong)) {
+    for (const [cot, o] of tachO(dong).entries()) {
       const td = document.createElement('td');
-      appendInlineContent(td, o, messageId, sourceCount, true);
+      // Hàng dư ô so với dòng tiêu đề: ô dư vẫn tô như thường.
+      appendInlineContent(td, o, messageId, sourceCount, toCot[cot] !== false);
       row.append(td);
     }
     tbody.append(row);
