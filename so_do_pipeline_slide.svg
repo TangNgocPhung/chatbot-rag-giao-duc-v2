@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="nen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef5f9"/>
+      <stop offset="1" stop-color="#dde9f0"/>
+    </linearGradient>
+    <linearGradient id="tieude" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5e4f98"/>
+      <stop offset="1" stop-color="#8a7cc0"/>
+    </linearGradient>
+    <filter id="bong" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#40526a" flood-opacity="0.28"/>
+    </filter>
+    <marker id="mui" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6d7f96"/>
+    </marker>
+    <g id="ten-xuong">
+      <path d="M-5,0 h10 v8 h6 l-11,11 l-11,-11 h6 z" fill="#eef4f9" stroke="#6f8fb5" stroke-width="1.6" stroke-linejoin="round"/>
+    </g>
+  </defs>
+
+  <!-- Nền slide -->
+  <rect width="1600" height="900" fill="url(#nen)"/>
+
+  <!-- Thanh tiêu đề -->
+  <rect x="0" y="28" width="1600" height="84" fill="url(#tieude)"/>
+  <text x="60" y="84" font-size="38" fill="#ffffff">Pipeline Chatbot RAG Giáo dục: Trả lời có căn cứ &amp; chống “Ảo giác”</text>
+
+  <!-- ===== Cột trái: kho tri thức ===== -->
+  <rect x="50" y="292" width="310" height="356" rx="14" fill="#e6e1f3" stroke="#9c8cc6" stroke-width="2" filter="url(#bong)"/>
+  <text x="205" y="326" font-size="19" font-weight="700" fill="#3b2f6b" text-anchor="middle">Kho tri thức</text>
+  <text x="205" y="349" font-size="15" fill="#4a4270" text-anchor="middle">(Nạp trước, cập nhật tăng dần)</text>
+
+  <g font-size="15" fill="#23303e" text-anchor="middle">
+    <rect x="72" y="366" width="266" height="48" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
+    <text x="205" y="387" font-weight="600">Tài liệu giáo dục</text>
+    <text x="205" y="405" font-size="13.5">Drive · tải lên web · thư mục kho</text>
+    <use href="#ten-xuong" x="205" y="416" transform="translate(0,0) scale(1)" />
+
+    <rect x="72" y="438" width="266" height="48" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
+    <text x="205" y="459" font-weight="600">Đọc &amp; nhận dạng chữ</text>
+    <text x="205" y="477" font-size="13.5">PDF · Office · OCR Tesseract</text>
+    <use href="#ten-xuong" x="205" y="488"/>
+
+    <rect x="72" y="510" width="266" height="48" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
+    <text x="205" y="531" font-weight="600">Cắt đoạn</text>
+    <text x="205" y="549" font-size="13.5">1.200 ký tự · chồng lấn 150</text>
+    <use href="#ten-xuong" x="205" y="560"/>
+
+    <rect x="72" y="582" width="266" height="48" rx="9" fill="#dcefe7" stroke="#79ae9a" stroke-width="1.5"/>
+    <text x="205" y="603" font-weight="600">Lập chỉ mục</text>
+    <text x="205" y="621" font-size="13.5">FAISS (bge-m3) + BM25</text>
+  </g>
+
+  <!-- Kho → bước 4 -->
+  <line x1="360" y1="470" x2="414" y2="470" stroke="#6d7f96" stroke-width="2.4" marker-end="url(#mui)"/>
+
+  <!-- ===== Cột giữa: 7 bước ===== -->
+  <g text-anchor="middle">
+    <!-- 1 -->
+    <rect x="420" y="140" width="580" height="72" rx="12" fill="#c7daec" stroke="#6f8fb5" stroke-width="2" filter="url(#bong)"/>
+    <text x="710" y="170" font-size="20" font-weight="700" fill="#1f2d3d">1. Câu hỏi bằng ngôn ngữ tự nhiên</text>
+    <text x="710" y="197" font-size="16" fill="#2d3b4a">(Giáo viên, cán bộ hỏi qua giao diện web · lọc phạm vi tài liệu)</text>
+    <use href="#ten-xuong" x="710" y="215"/>
+
+    <!-- 2 -->
+    <rect x="420" y="238" width="580" height="72" rx="12" fill="#c7daec" stroke="#6f8fb5" stroke-width="2" filter="url(#bong)"/>
+    <text x="710" y="268" font-size="20" font-weight="700" fill="#1f2d3d">2. Định tuyến công cụ &amp; tra cache ngữ nghĩa</text>
+    <text x="710" y="295" font-size="16" fill="#2d3b4a">(Tệp đính kèm · công cụ tính lương, tiết dạy bằng Python · cache bge-m3)</text>
+    <use href="#ten-xuong" x="710" y="313"/>
+
+    <!-- 3 -->
+    <rect x="420" y="336" width="580" height="72" rx="12" fill="#c7daec" stroke="#6f8fb5" stroke-width="2" filter="url(#bong)"/>
+    <text x="710" y="366" font-size="20" font-weight="700" fill="#1f2d3d">3. Dựng lại truy vấn theo hội thoại</text>
+    <text x="710" y="393" font-size="16" fill="#2d3b4a">(Ghép các lượt hỏi trước để hiểu câu hỏi nối tiếp)</text>
+    <use href="#ten-xuong" x="710" y="411"/>
+
+    <!-- 4 -->
+    <rect x="420" y="434" width="580" height="72" rx="12" fill="#bfe0d4" stroke="#79ae9a" stroke-width="2.4" filter="url(#bong)"/>
+    <text x="710" y="464" font-size="20" font-weight="700" fill="#1f2d3d">4. Truy xuất lai tri thức liên quan</text>
+    <text x="710" y="491" font-size="16" fill="#2d3b4a">(FAISS top-15 + BM25 top-15 → hợp nhất RRF → 4 đoạn tốt nhất)</text>
+    <use href="#ten-xuong" x="710" y="509"/>
+
+    <!-- 5 -->
+    <rect x="420" y="532" width="580" height="72" rx="12" fill="#c7daec" stroke="#6f8fb5" stroke-width="2" filter="url(#bong)"/>
+    <text x="710" y="562" font-size="20" font-weight="700" fill="#1f2d3d">5. Chặn câu hỏi lạc đề</text>
+    <text x="710" y="589" font-size="16" fill="#2d3b4a">(Đo độ liên quan giữa câu hỏi, đoạn trích và từ vựng của kho)</text>
+    <use href="#ten-xuong" x="710" y="607"/>
+
+    <!-- 6 -->
+    <rect x="420" y="630" width="580" height="72" rx="12" fill="#c7daec" stroke="#6f8fb5" stroke-width="2" filter="url(#bong)"/>
+    <text x="710" y="660" font-size="20" font-weight="700" fill="#1f2d3d">6. Sinh câu trả lời</text>
+    <text x="710" y="687" font-size="16" fill="#2d3b4a">(LLM chạy cục bộ qua Ollama, chỉ dựa trên các đoạn trích)</text>
+    <use href="#ten-xuong" x="710" y="705"/>
+
+    <!-- 7 -->
+    <rect x="420" y="728" width="580" height="72" rx="12" fill="#b3d6a4" stroke="#82b06f" stroke-width="2.4" filter="url(#bong)"/>
+    <text x="710" y="758" font-size="20" font-weight="700" fill="#1f2d3d">7. Hậu kiểm &amp; trích dẫn nguồn</text>
+    <text x="710" y="785" font-size="16" fill="#2d3b4a">(Đối chiếu trích dẫn, số liệu · cảnh báo hiệu lực văn bản)</text>
+  </g>
+
+  <!-- ===== Nhánh rẽ bên phải ===== -->
+  <g font-size="13.5" fill="#5a6676" text-anchor="middle" font-style="italic">
+    <line x1="1000" y1="274" x2="1052" y2="274" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+    <text x="1026" y="266">khớp</text>
+    <line x1="1000" y1="568" x2="1052" y2="568" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+    <text x="1026" y="560">lạc đề</text>
+    <line x1="1000" y1="764" x2="1052" y2="764" stroke="#6d7f96" stroke-width="2.2" marker-end="url(#mui)"/>
+    <text x="1026" y="756">sai lệch</text>
+  </g>
+
+  <g text-anchor="middle">
+    <rect x="1058" y="242" width="232" height="64" rx="11" fill="#e6e1f3" stroke="#9c8cc6" stroke-width="2" filter="url(#bong)"/>
+    <text x="1174" y="268" font-size="17" font-weight="700" fill="#2f2a55">Trả lời ngay</text>
+    <text x="1174" y="292" font-size="14" fill="#3d3a5c">Phép tính kèm công thức · cache</text>
+
+    <rect x="1058" y="536" width="232" height="64" rx="11" fill="#f1dce1" stroke="#c48d99" stroke-width="2" filter="url(#bong)"/>
+    <text x="1174" y="562" font-size="17" font-weight="700" fill="#5a2a36">Từ chối có lý do</text>
+    <text x="1174" y="586" font-size="14" fill="#5c3a43">Kèm 3 gợi ý câu hỏi khác</text>
+
+    <rect x="1058" y="732" width="232" height="64" rx="11" fill="#f3e6c9" stroke="#c9a661" stroke-width="2" filter="url(#bong)"/>
+    <text x="1174" y="758" font-size="17" font-weight="700" fill="#5a4413">Gắn cảnh báo</text>
+    <text x="1174" y="782" font-size="14" fill="#5c4b2a">Không ghi vào cache</text>
+  </g>
+
+  <!-- Ngoặc nhọn -->
+  <path d="M1308,242 q18,0 18,18 v242 q0,17 16,17 q-16,0 -16,17 v242 q0,18 -18,18" fill="none" stroke="#3c4654" stroke-width="2.4"/>
+
+  <!-- Ô điểm khác biệt -->
+  <rect x="1354" y="400" width="210" height="238" rx="6" fill="#d3e2ee" stroke="#8aa3bb" stroke-width="1.8" filter="url(#bong)"/>
+  <g font-size="16" fill="#1f2d3d">
+    <text x="1370" y="430"><tspan font-weight="700">Điểm khác biệt:</tspan></text>
+    <text x="1370" y="456">Mỗi câu hỏi đi qua</text>
+    <text x="1370" y="480">3 chốt kiểm soát –</text>
+    <text x="1370" y="504">công cụ tính, chặn lạc</text>
+    <text x="1370" y="528">đề và hậu kiểm – trước</text>
+    <text x="1370" y="552">khi đến người dùng.</text>
+    <text x="1370" y="584">Toàn bộ chạy cục bộ,</text>
+    <text x="1370" y="608">dữ liệu không rời máy.</text>
+  </g>
+
+  <!-- Thanh chân trang -->
+  <rect x="0" y="846" width="1600" height="34" fill="#8577b3" opacity="0.85"/>
+  <text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">Chatbot RAG Giáo dục</text>
+</svg>

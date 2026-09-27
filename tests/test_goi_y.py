@@ -1,0 +1,388 @@
+import os
+import random
+import unittest
+from unittest import mock
+
+from fastapi.testclient import TestClient
+
+import goi_y_cau_hoi
+from api import app
+from hieu_luc_bo_sung import TinhTrangThoiGian
+from rag_service import service
+from van_ban_meta import HoSoVanBan
+
+
+def bo_bien_che_do():
+    """Chạy test như máy chưa đặt RAG_GOI_Y_MO_DAU, dù máy thật có đặt."""
+    moi_truong = {k: v for k, v in os.environ.items() if k != "RAG_GOI_Y_MO_DAU"}
+    return mock.patch.dict(os.environ, moi_truong, clear=True)
+
+
+class TieuDeTuTenTepTests(unittest.TestCase):
+    def test_ten_tai_tu_cong_van_ban_thanh_cau_hoi(self):
+        cau_hoi = goi_y_cau_hoi.goi_y_tu_kho(
+            {"Thông tư quy định về dạy thêm, học thêm.pdf": None}
+        )
+        self.assertEqual(
+            cau_hoi,
+            ["Thông tư quy định về dạy thêm, học thêm có những nội dung chính nào?"],
+        )
+
+    def test_ten_ma_hoa_bi_loai(self):
+        self.assertEqual(
+            goi_y_cau_hoi.goi_y_tu_kho({
+                "20-bgddt.pdf": None,
+                "PPCT-5.docx": None,
+                "5512_BGDDT-GDTrH_462988 (1).doc": None,
+                "PhanPhoi-ChuongTrinh-Tin4.docx": None,
+                "QUAN 10 - NOI DUNG GDKNCDS KHOI LOP 3-4-5-2.docx": None,
+            }),
+            [],
+        )
+
+    def test_ten_bi_cat_ngan_thi_bo_chu_cat_do_va_ma_bam(self):
+        tieu_de = goi_y_cau_hoi._lam_sach_tieu_de(
+            "Phê duyệt đề án Chương trình học bổng toàn phần dành cho sinh viên "
+            "xuất sắc đi đào tạo về các công nghệ ch--caa14599.pdf"
+        )
+        self.assertTrue(tieu_de.endswith("về các công nghệ"), tieu_de)
+
+    def test_so_hieu_trong_ten_tep_duoc_tra_lai_dau_gach_cheo(self):
+        tieu_de = goi_y_cau_hoi._lam_sach_tieu_de(
+            "Sửa đổi, bổ sung một số điều của Nghị định số 86_2021_NĐ-CP.pdf"
+        )
+        self.assertIn("86/2021/NĐ-CP", tieu_de)
+
+    def test_ten_qua_dai_khong_dung_lam_goi_y(self):
+        dai = "Thông tư quy định " + "tiêu chuẩn và quy trình biên soạn tài liệu " * 4
+        self.assertEqual(goi_y_cau_hoi.goi_y_tu_kho({f"{dai}.pdf": None}), [])
+
+
+KHO_MUOI_VAN_BAN = {
+    f"Thông tư quy định nội dung {chu} trong trường phổ thông.pdf": None
+    for chu in "ABCDEFGHIJ"
+}
+
+
+class GoiYMoDauTinhTests(unittest.TestCase):
+    def setUp(self):
+        self.moi_truong = bo_bien_che_do()
+        self.moi_truong.start()
+        self.addCleanup(self.moi_truong.stop)
+
+    def test_bo_cau_tinh_du_17_cau_chia_4_nhom(self):
+        self.assertEqual(
+            [(nhom["chu_de"], len(nhom["cau_hoi"])) for nhom in goi_y_cau_hoi.nhom_goi_y_tinh()],
+            [("Mầm non & phổ thông", 6), ("Giáo dục nghề nghiệp", 3),
+             ("Giáo dục đại học", 4), ("Chính sách và đội ngũ nhà giáo", 4)],
+        )
+        self.assertEqual(len(set(goi_y_cau_hoi.GOI_Y_CHU_DE)), 17)
+
+    def test_mac_dinh_la_bo_cau_tinh_khong_tron_cau_tu_kho(self):
+        lan_mot = goi_y_cau_hoi.goi_y_mo_dau(KHO_MUOI_VAN_BAN, 6, random.Random(1))
+        lan_hai = goi_y_cau_hoi.goi_y_mo_dau(KHO_MUOI_VAN_BAN, 6, random.Random(2))
+        self.assertEqual(lan_mot, lan_hai)
+        self.assertTrue(set(lan_mot) <= set(goi_y_cau_hoi.GOI_Y_CHU_DE))
+
+    def test_lay_it_cau_van_trai_du_cac_chu_de(self):
+        # Lời từ chối chỉ chừa ba chỗ gợi ý; ba câu đó không được dồn cả vào
+        # nhóm mầm non & phổ thông.
+        nhom_cua = {
+            cau: nhom["chu_de"]
+            for nhom in goi_y_cau_hoi.nhom_goi_y_tinh() for cau in nhom["cau_hoi"]
+        }
+        self.assertEqual(len({nhom_cua[cau] for cau in goi_y_cau_hoi.goi_y_mo_dau({}, 4)}), 4)
+
+    def test_lay_du_bo_thi_ra_dung_17_cau(self):
+        self.assertEqual(
+            sorted(goi_y_cau_hoi.goi_y_mo_dau({}, 17)), sorted(goi_y_cau_hoi.GOI_Y_CHU_DE)
+        )
+
+    def test_so_luong_bi_chan_tren_va_chan_duoi(self):
+        self.assertEqual(len(goi_y_cau_hoi.goi_y_mo_dau({}, 0)), 1)
+        self.assertEqual(
+            len(goi_y_cau_hoi.goi_y_mo_dau({}, 999)), goi_y_cau_hoi.SO_GOI_Y_TOI_DA
+        )
+
+    def test_che_do_la_quay_ve_bo_cau_tinh(self):
+        self.assertEqual(goi_y_cau_hoi.che_do_goi_y_mo_dau("khong-co"), "tinh")
+        with mock.patch.dict(os.environ, {"RAG_GOI_Y_MO_DAU": "Metadata"}):
+            self.assertEqual(goi_y_cau_hoi.che_do_goi_y_mo_dau(), "metadata")
+
+
+class GoiYMoDauMetadataTests(unittest.TestCase):
+    def goi_y(self, ho_so, so_luong=6, tinh_trang=None, hat_giong=1):
+        return goi_y_cau_hoi.goi_y_mo_dau(
+            ho_so, so_luong, random.Random(hat_giong),
+            che_do="metadata", tinh_trang=tinh_trang,
+        )
+
+    def test_khong_co_kho_van_ban_van_co_goi_y_chu_de(self):
+        goi_y = self.goi_y({})
+        self.assertEqual(len(goi_y), 6)
+        self.assertEqual(len(set(goi_y)), 6)
+
+    def test_kho_du_van_ban_thi_ca_me_lay_tu_kho(self):
+        goi_y = self.goi_y(KHO_MUOI_VAN_BAN)
+        self.assertEqual(len(goi_y), 6)
+        self.assertTrue(all("trong trường phổ thông" in cau for cau in goi_y), goi_y)
+
+    def test_kho_it_van_ban_thi_bu_bang_cau_tinh(self):
+        goi_y = self.goi_y({"Thông tư quy định về dạy thêm, học thêm.pdf": None})
+        self.assertEqual(
+            goi_y[0], "Thông tư quy định về dạy thêm, học thêm có những nội dung chính nào?"
+        )
+        self.assertTrue(set(goi_y[1:]) <= set(goi_y_cau_hoi.GOI_Y_CHU_DE))
+
+    def test_moi_nhanh_cua_cay_quyet_dinh_gop_mot_cau(self):
+        def ho_so(ten, so, **them):
+            return HoSoVanBan(ten_file=ten, so_hieu=so, loai="Thông tư", **them)
+
+        kho = {
+            "a.pdf": ho_so("a.pdf", "1/2020/TT-BGDĐT", bi_thay_the_boi=["b.pdf"]),
+            "b.pdf": ho_so("b.pdf", "2/2024/TT-BGDĐT", thay_the=["1/2020/TT-BGDĐT"]),
+            "c.pdf": ho_so("c.pdf", "3/2021/TT-BGDĐT", bi_sua_doi_boi=["b.pdf"]),
+            "d.pdf": ho_so("d.pdf", "4/2099/TT-BGDĐT"),
+            "e.pdf": ho_so("e.pdf", "5/2025/TT-BGDĐT"),
+        }
+        kho.update({
+            f"Thông tư quy định nội dung {chu} trong trường phổ thông.pdf": None
+            for chu in "ABCDEF"
+        })
+        tinh_trang = {
+            "d.pdf": TinhTrangThoiGian(ten_file="d.pdf", ngay_hieu_luc="2999-01-01"),
+            "e.pdf": TinhTrangThoiGian(ten_file="e.pdf", la_du_thao=True),
+        }
+        goi_y = self.goi_y(kho, 6, tinh_trang)
+        self.assertEqual(goi_y[:5], [
+            "Văn bản nào đã thay thế Thông tư 1/2020/TT-BGDĐT?",
+            "Thông tư 3/2021/TT-BGDĐT đã được sửa đổi, bổ sung những nội dung nào?",
+            "Thông tư 4/2099/TT-BGDĐT có hiệu lực từ ngày nào và áp dụng ra sao?",
+            "Đã có văn bản chính thức nào ban hành thay cho bản dự thảo "
+            "Thông tư 5/2025/TT-BGDĐT chưa?",
+            "Thông tư 2/2024/TT-BGDĐT thay thế những văn bản nào?",
+        ])
+        self.assertIn("trong trường phổ thông có những nội dung chính nào?", goi_y[5])
+
+    def test_ten_tep_ma_hoa_co_so_hieu_thi_goi_bang_so_hieu(self):
+        goi_y = goi_y_cau_hoi.goi_y_tu_kho({
+            "5512_BGDDT-GDTrH_462988.doc": HoSoVanBan(
+                ten_file="5512_BGDDT-GDTrH_462988.doc",
+                so_hieu="5512/BGDĐT-GDTrH", loai="Công văn",
+            ),
+            "PPCT-5.docx": HoSoVanBan(ten_file="PPCT-5.docx"),
+        })
+        self.assertEqual(goi_y, ["Công văn 5512/BGDĐT-GDTrH có những nội dung chính nào?"])
+
+
+class GoiYTiepTheoTests(unittest.TestCase):
+    def nguon(self, **ghi_de):
+        nguon = {
+            "name": "Thông tư quy định về dạy thêm, học thêm.pdf",
+            "van_ban": {"so_hieu": "29/2024/TT-BGDĐT", "loai": "Thông tư", "thay_the": []},
+            "validity": {"code": "con_hieu_luc"},
+        }
+        nguon.update(ghi_de)
+        return nguon
+
+    def test_van_ban_bi_thay_the_thi_goi_y_tim_van_ban_thay_the(self):
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo(
+            "Dạy thêm được quy định thế nào?",
+            [self.nguon(validity={"code": "bi_thay_the"})],
+        )
+        self.assertEqual(
+            goi_y[0], "Văn bản nào đã thay thế Thông tư 29/2024/TT-BGDĐT?"
+        )
+
+    def test_dieu_duoc_trich_thanh_goi_y_hoi_sau(self):
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo(
+            "Dạy thêm được quy định thế nào?",
+            [self.nguon(article="Điều 4. Các trường hợp không được dạy thêm")],
+        )
+        self.assertIn(
+            "Điều 4 của Thông tư 29/2024/TT-BGDĐT quy định chi tiết những gì?", goi_y
+        )
+
+    def test_ban_du_thao_thi_goi_y_tim_ban_chinh_thuc(self):
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo(
+            "Chế độ dạy thêm giờ thế nào?",
+            [self.nguon(validity={"code": "du_thao"})],
+        )
+        self.assertEqual(
+            goi_y[0],
+            "Đã có văn bản chính thức nào ban hành thay cho bản dự thảo "
+            "Thông tư 29/2024/TT-BGDĐT chưa?",
+        )
+
+    def test_moi_van_ban_chi_gop_mot_cau_goi_y(self):
+        # Một câu trả lời hay trích hai ba Điều của cùng một thông tư; cả ba chỗ
+        # gợi ý đều hỏi về văn bản đó thì mất hướng nhìn sang nguồn khác.
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo(
+            "Dạy thêm được quy định thế nào?",
+            [
+                self.nguon(article="Điều 2. Giải thích từ ngữ"),
+                self.nguon(article="Điều 5. Dạy thêm trong nhà trường"),
+                self.nguon(
+                    name="Thông tư quy định chế độ làm việc của giáo viên.pdf",
+                    van_ban={"so_hieu": "5/2025/TT-BGDĐT", "loai": "Thông tư", "thay_the": []},
+                    validity={"code": "du_thao"},
+                ),
+            ],
+        )
+        self.assertEqual(
+            goi_y[:2],
+            [
+                "Điều 2 của Thông tư 29/2024/TT-BGDĐT quy định chi tiết những gì?",
+                "Đã có văn bản chính thức nào ban hành thay cho bản dự thảo "
+                "Thông tư 5/2025/TT-BGDĐT chưa?",
+            ],
+        )
+
+    def test_khong_goi_y_lai_dung_cau_vua_hoi(self):
+        cau_hoi = "Tóm tắt những nội dung chính của Thông tư 29/2024/TT-BGDĐT"
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo(cau_hoi, [self.nguon()])
+        self.assertNotIn(cau_hoi, goi_y)
+        self.assertEqual(len(goi_y), goi_y_cau_hoi.SO_GOI_Y_TIEP)
+
+    def test_khong_co_nguon_van_tra_goi_y_chung(self):
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo("Câu hỏi gì đó", [])
+        self.assertEqual(len(goi_y), goi_y_cau_hoi.SO_GOI_Y_TIEP)
+        self.assertNotIn("", goi_y)
+
+    def test_goi_y_theo_tep_dinh_kem_uu_tien_tom_tat(self):
+        goi_y = goi_y_cau_hoi.goi_y_theo_tep("Tệp này nói gì?", ["bao-cao.pdf"])
+        self.assertEqual(goi_y[0], "Tóm tắt tệp bao-cao.pdf")
+
+    def test_nhieu_tep_thi_goi_y_so_sanh(self):
+        goi_y = goi_y_cau_hoi.goi_y_theo_tep(
+            "Hai tệp này nói gì?", ["bao-cao.pdf", "ke-hoach.docx"]
+        )
+        self.assertIn("So sánh nội dung giữa các tệp đã đính kèm", goi_y)
+
+
+class GoiYTheoNoiDungTraLoiTests(unittest.TestCase):
+    TRA_LOI_TRUYEN = (
+        "Truyện kể về cuộc giao tranh giữa Sơn Tinh và Thủy Tinh để cầu hôn "
+        "Mị Nương [1].\n"
+        "- **Sính lễ**: vua đòi voi chín ngà, gà chín cựa [2].\n"
+        "- Thủy Tinh đến sau, nổi giận dâng nước đánh Sơn Tinh [3]."
+    )
+
+    def test_tep_truyen_thi_goi_y_bam_nhan_vat_chu_khong_hoi_moc_thoi_gian(self):
+        goi_y = goi_y_cau_hoi.goi_y_theo_tep(
+            "Truyện nói về gì?", ["SƠN TINH - THỦY TINH.docx"],
+            cau_tra_loi=self.TRA_LOI_TRUYEN,
+        )
+        self.assertEqual(goi_y[0], "Sơn Tinh và Thủy Tinh có quan hệ với nhau thế nào?")
+        self.assertIn("Nói rõ hơn về sính lễ", goi_y)
+        self.assertFalse(any("mốc thời gian" in cau for cau in goi_y))
+
+    def test_nguon_khong_duoc_trich_thi_khong_goi_y_hoi_ve_no(self):
+        nguon = [
+            {
+                "name": "thong-tu-37.doc",
+                "van_ban": {"so_hieu": "37/2021/TT-BGDĐT", "loai": "Thông tư"},
+                "article": "Điều 1. Ban hành kèm theo",
+            },
+            {"name": "11-sgk-tin-hoc-11-dinh-huong-tin-hoc-ung-dung.pdf"},
+        ]
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo(
+            "Môn tin học là môn như thế nào",
+            nguon,
+            cau_tra_loi="Môn Tin học có định hướng **Tin học ứng dụng** [2].",
+        )
+        self.assertEqual(goi_y[0], "Nói rõ hơn về tin học ứng dụng")
+        self.assertFalse(any("37/2021" in cau for cau in goi_y))
+        self.assertFalse(any("sgk-tin-hoc" in cau for cau in goi_y))
+
+    def test_hoi_mon_tin_hoc_khong_goi_y_thong_tu_thiet_bi_lac_de(self):
+        # Câu trả lời thật: trích cả Thông tư 37 về thiết bị dạy học tiểu học,
+        # nhắc "Nhà xuất bản Giáo dục Việt Nam" và giải nghĩa ICT/CS trong ngoặc.
+        tra_loi = (
+            "Dựa trên **cấu trúc và định hướng** của môn Tin học tại bậc THPT "
+            "(từ lớp 10 trở lên):\n"
+            "- Nội dung được tổ chức thành ICT (Tin học ứng dụng) và CS "
+            "(Khoa học máy tính). [4]\n"
+            "- Sách giáo khoa thuộc bộ của Nhà xuất bản Giáo dục Việt Nam. [4]\n"
+            "- Danh mục thiết bị dạy học tối thiểu cấp Tiểu học không liệt kê "
+            "chi tiết nội dung Tin học. [1]"
+        )
+        nguon = [
+            {
+                "name": "thong-tu-37-2021-tt-bgddt-bo-giao-duc-va-dao-tao.doc",
+                "van_ban": {"so_hieu": "37/2021/TT-BGDĐT", "loai": "Thông tư"},
+                "article": "Điều 1. Ban hành kèm theo Thông tư này Danh mục thiết bị",
+            },
+            {"name": "11-sgk-tin-hoc-11-dinh-huong-tin-hoc-ung-dung.pdf"},
+            {"name": "12-sgk-tin-hoc-12-dinh-huong-tin-hoc-ung-dung.pdf"},
+            {"name": "11-sgk-tin-hoc-11-dinh-huong-khoa-hoc-may-tinh.pdf"},
+        ]
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo(
+            "Môn tin học là môn như thế nào", nguon, cau_tra_loi=tra_loi
+        )
+        self.assertEqual(
+            goi_y[:2],
+            ["Nói rõ hơn về tin học ứng dụng",
+             "Tài liệu còn nói gì thêm về khoa học máy tính?"],
+        )
+        self.assertFalse(any("37/2021" in cau or "Việt Nam" in cau for cau in goi_y))
+        self.assertFalse(any("lớp 10" in cau for cau in goi_y))
+
+    def test_dau_cau_viet_hoa_khong_bi_coi_la_ten_rieng(self):
+        y_chinh = goi_y_cau_hoi.rut_y_chinh("Học sinh được học hai buổi. Giáo viên dạy.")
+        self.assertEqual(y_chinh, [])
+
+
+class GoiYApiTests(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(app)
+        self.ho_so_goc = service.ho_so_van_ban
+        service.ho_so_van_ban = {
+            "Thông tư quy định về dạy thêm, học thêm.pdf": HoSoVanBan(
+                ten_file="Thông tư quy định về dạy thêm, học thêm.pdf",
+                so_hieu="29/2024/TT-BGDĐT",
+            )
+        }
+
+    def tearDown(self):
+        service.ho_so_van_ban = self.ho_so_goc
+
+    def test_tra_ve_dung_so_luong_goi_y(self):
+        with bo_bien_che_do():
+            response = self.client.get("/api/goi-y?so_luong=4")
+        self.assertEqual(response.status_code, 200)
+        goi_y = response.json()["goi_y"]
+        self.assertEqual(len(goi_y), 4)
+        self.assertEqual(len(set(goi_y)), 4)
+
+    def test_mac_dinh_tra_ca_bo_cau_tinh_theo_nhom(self):
+        with bo_bien_che_do():
+            payload = self.client.get("/api/goi-y").json()
+        self.assertEqual(payload["che_do"], "tinh")
+        self.assertEqual(len(payload["nhom"]), 4)
+        self.assertEqual(sum(len(nhom["cau_hoi"]) for nhom in payload["nhom"]), 17)
+
+    def test_che_do_metadata_dung_ho_so_van_ban_trong_kho(self):
+        payload = self.client.get("/api/goi-y?so_luong=3&che_do=metadata").json()
+        self.assertEqual(payload["che_do"], "metadata")
+        self.assertEqual(payload["nhom"], [])
+        self.assertEqual(
+            payload["goi_y"][0],
+            "Thông tư quy định về dạy thêm, học thêm có những nội dung chính nào?",
+        )
+
+    def test_goi_y_co_san_khi_kho_tri_thuc_chua_nap(self):
+        # Giao diện lấy gợi ý ngay lúc mở trang, trước cả khi Ollama trả lời
+        # được, nên endpoint không được phụ thuộc vào trạng thái "ready".
+        trang_thai_goc = service.status.state
+        service.status.state = "loading"
+        try:
+            response = self.client.get("/api/goi-y")
+        finally:
+            service.status.state = trang_thai_goc
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["goi_y"])
+
+
+if __name__ == "__main__":
+    unittest.main()

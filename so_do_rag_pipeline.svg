@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1760" viewBox="0 0 1800 1760" font-family="'Segoe UI', 'Be Vietnam Pro', Arial, sans-serif">
+<defs><filter id="bong" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#1d5bbf" flood-opacity="0.10"/></filter></defs>
+<rect width="1800" height="1760" fill="#ffffff"/>
+<text x="900" y="100" font-size="52" font-weight="700" fill="#0f4aa6" text-anchor="middle">Pipeline RAG – Chatbot Giáo dục</text>
+<text x="900" y="145" font-size="21" font-weight="400" fill="#5a7299" text-anchor="middle">Chạy cục bộ trên CPU · LangChain điều phối · Ollama phục vụ mô hình</text>
+<rect x="70" y="190" width="1660" height="740" rx="32" fill="none" stroke="#9fb9dc" stroke-width="1.8" stroke-dasharray="7 6"/>
+<text x="900" y="252" font-size="30" font-weight="600" fill="#0f4aa6" text-anchor="middle">Lập chỉ mục dữ liệu</text>
+<rect x="205" y="455" width="150" height="150" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(280,530) scale(0.95)"><path d="M-32,-42 h30 l14,14 v56 h-44 z" fill="#c7dbf6"/><circle cx="-26" cy="-34" r="1.5" fill="#1d5bbf"/><circle cx="-26" cy="-28" r="1.5" fill="#1d5bbf"/><circle cx="-26" cy="-22" r="1.5" fill="#1d5bbf"/><circle cx="-26" cy="-16" r="1.5" fill="#1d5bbf"/><circle cx="-26" cy="-10" r="1.5" fill="#1d5bbf"/><circle cx="-26" cy="-4" r="1.5" fill="#1d5bbf"/><circle cx="-26" cy="2" r="1.5" fill="#1d5bbf"/><circle cx="-26" cy="8" r="1.5" fill="#1d5bbf"/><circle cx="-26" cy="14" r="1.5" fill="#1d5bbf"/><circle cx="-26" cy="20" r="1.5" fill="#1d5bbf"/><path d="M-16,-30 h30 l14,14 v58 h-44 z" fill="#eef4fd" stroke="#c7dbf6" stroke-width="1.5"/><path d="M14,-30 l14,14 h-14 z" fill="#1d5bbf"/><rect x="-8" y="-12" width="16" height="3.6" fill="#1d5bbf"/><rect x="-8" y="-4" width="28" height="3.6" fill="#1d5bbf"/><rect x="-8" y="4" width="28" height="3.6" fill="#1d5bbf"/><rect x="-8" y="12" width="28" height="3.6" fill="#1d5bbf"/><rect x="-8" y="20" width="28" height="3.6" fill="#1d5bbf"/><rect x="-8" y="28" width="28" height="3.6" fill="#1d5bbf"/></g>
+<text x="280" y="637" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Nạp tài liệu</text>
+<rect x="196.4" y="651" width="167.1" height="32" rx="16" fill="#1d5bbf"/>
+<text x="280" y="672.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">LangChain Loaders</text>
+<text x="280" y="709" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">PDF · Word · Excel · PowerPoint</text>
+<text x="280" y="731" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">OCR Tesseract cho bản scan</text>
+<path d="M425,530 H537" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M545,530 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<rect x="615" y="455" width="150" height="150" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(690,530) scale(0.95)"><rect x="-40" y="-40" width="80" height="24" rx="5" fill="#dbe8fb"/><rect x="-30" y="-34" width="60" height="4.5" fill="#1d5bbf"/><rect x="-30" y="-26" width="42" height="4.5" fill="#1d5bbf"/><rect x="-40" y="-12" width="80" height="24" rx="5" fill="#dbe8fb"/><rect x="-30" y="-6" width="60" height="4.5" fill="#1d5bbf"/><rect x="-30" y="2" width="42" height="4.5" fill="#1d5bbf"/><rect x="-40" y="16" width="80" height="24" rx="5" fill="#dbe8fb"/><rect x="-30" y="22" width="60" height="4.5" fill="#1d5bbf"/><rect x="-30" y="30" width="42" height="4.5" fill="#1d5bbf"/></g>
+<text x="690" y="637" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Chia đoạn</text>
+<rect x="632.8" y="651" width="114.4" height="32" rx="16" fill="#1d5bbf"/>
+<text x="690" y="672.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">CHUNKING</text>
+<text x="690" y="709" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">Theo Chương – Điều – Khoản</text>
+<text x="690" y="731" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">1.200 ký tự · chồng lấn 150</text>
+<path d="M787,530 H895" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M1003,375 H915 Q895,375 895,395 V665 Q895,685 915,685 H1003" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M1011,375 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<path d="M1011,685 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<circle cx="895" cy="530" r="4.5" fill="#1b4f9c"/>
+<rect x="1025" y="300" width="150" height="150" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(1100,375) scale(0.95)"><rect x="-36" y="-32" width="40" height="64" rx="11" fill="#1d5bbf"/><rect x="-36" y="-12" width="40" height="5" fill="#a9c8f2"/><rect x="-36" y="9" width="40" height="5" fill="#a9c8f2"/><ellipse cx="-16" cy="-24" rx="14" ry="3.5" fill="#4a82d8"/><path d="M14,-26 v52 M14,-26 h8 M14,0 h8 M14,26 h8" stroke="#1d5bbf" stroke-width="3.5" fill="none"/><rect x="25" y="-31" width="11" height="10" fill="#a9c8f2"/><rect x="25" y="-5" width="11" height="10" fill="#a9c8f2"/><rect x="25" y="21" width="11" height="10" fill="#a9c8f2"/></g>
+<text x="1100" y="482" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Nhúng vector</text>
+<rect x="1054.3" y="496" width="91.4" height="32" rx="16" fill="#1d5bbf"/>
+<text x="1100" y="517.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">BGE-M3</text>
+<text x="1100" y="554" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">chạy qua Ollama</text>
+<text x="1100" y="576" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">vector 1024 chiều</text>
+<path d="M1245,375 H1357" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M1365,375 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<rect x="1435" y="300" width="150" height="150" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(1510,375) scale(0.95)"><rect x="-40" y="-34" width="80" height="68" rx="6" fill="#dbe8fb"/><path d="M-36,-11 h72 M-36,11 h72" stroke="#a9c8f2" stroke-width="2"/><circle cx="-30" cy="-22" r="2.8" fill="#1d5bbf"/><circle cx="-21" cy="-22" r="2.8" fill="#1d5bbf"/><rect x="-11" y="-24.5" width="43" height="5" rx="2.5" fill="#1d5bbf"/><circle cx="-30" cy="0" r="2.8" fill="#1d5bbf"/><circle cx="-21" cy="0" r="2.8" fill="#1d5bbf"/><rect x="-11" y="-2.5" width="43" height="5" rx="2.5" fill="#1d5bbf"/><circle cx="-30" cy="22" r="2.8" fill="#1d5bbf"/><circle cx="-21" cy="22" r="2.8" fill="#1d5bbf"/><rect x="-11" y="19.5" width="43" height="5" rx="2.5" fill="#1d5bbf"/></g>
+<text x="1510" y="482" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Lưu chỉ mục vector</text>
+<rect x="1473.2" y="496" width="73.6" height="32" rx="16" fill="#1d5bbf"/>
+<text x="1510" y="517.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">FAISS</text>
+<text x="1510" y="554" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">IndexFlatL2 · 25.761 vector</text>
+<text x="1510" y="576" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">lưu index.faiss / index.pkl</text>
+<rect x="1025" y="610" width="150" height="150" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(1100,685) scale(0.95)"><rect x="-40" y="-30" width="34" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="-33" y="-23" width="20" height="3.5" fill="#1d5bbf"/><rect x="0" y="-30" width="40" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="7" y="-23" width="26" height="3.5" fill="#1d5bbf"/><rect x="-40" y="-8" width="48" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="-33" y="-1" width="34" height="3.5" fill="#1d5bbf"/><rect x="14" y="-8" width="26" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="21" y="-1" width="12" height="3.5" fill="#1d5bbf"/><rect x="-40" y="14" width="22" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="-33" y="21" width="8" height="3.5" fill="#1d5bbf"/><rect x="-12" y="14" width="52" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="-5" y="21" width="38" height="3.5" fill="#1d5bbf"/></g>
+<text x="1100" y="792" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Tách từ tiếng Việt</text>
+<text x="1100" y="822" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">chuẩn hoá Unicode, bỏ từ dừng</text>
+<text x="1100" y="844" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">thêm biến thể không dấu</text>
+<path d="M1245,685 H1357" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M1365,685 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<rect x="1435" y="610" width="150" height="150" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(1510,685) scale(0.95)"><rect x="-38" y="-40" width="76" height="80" rx="6" fill="#dbe8fb"/><rect x="-28" y="-28.25" width="20" height="4.5" rx="1.5" fill="#a9c8f2"/><rect x="-4" y="-29.5" width="32" height="7" rx="1.5" fill="#1d5bbf"/><rect x="-28" y="-14.25" width="40" height="4.5" rx="1.5" fill="#a9c8f2"/><rect x="16" y="-14.25" width="12" height="4.5" rx="1.5" fill="#a9c8f2"/><rect x="-28" y="-1.5" width="14" height="7" rx="1.5" fill="#1d5bbf"/><rect x="-10" y="-0.25" width="38" height="4.5" rx="1.5" fill="#a9c8f2"/><rect x="-28" y="13.75" width="30" height="4.5" rx="1.5" fill="#a9c8f2"/><rect x="6" y="12.5" width="22" height="7" rx="1.5" fill="#1d5bbf"/><rect x="-28" y="27.75" width="24" height="4.5" rx="1.5" fill="#a9c8f2"/></g>
+<text x="1510" y="792" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Chỉ mục từ khoá</text>
+<rect x="1472.5" y="806" width="75.0" height="32" rx="16" fill="#1d5bbf"/>
+<text x="1510" y="827.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">BM25</text>
+<text x="1510" y="864" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">rank-bm25 (Okapi)</text>
+<text x="1510" y="886" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">dựng khi khởi động máy chủ</text>
+<rect x="70" y="965" width="1660" height="750" rx="32" fill="none" stroke="#9fb9dc" stroke-width="1.8" stroke-dasharray="7 6"/>
+<text x="900" y="1027" font-size="30" font-weight="600" fill="#0f4aa6" text-anchor="middle">Truy hồi &amp; Sinh câu trả lời</text>
+<path d="M190,1248 V1090 Q190,1068 212,1068 H1363 Q1385,1068 1385,1090 V1250" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M1385,1258 l-6.5,-13 h13 z" fill="#1b4f9c"/>
+<text x="1270" y="1058" font-size="14.5" font-weight="400" fill="#5a7299" text-anchor="middle" font-style="italic">câu hỏi gốc đưa thẳng vào prompt</text>
+<rect x="120" y="1260" width="140" height="140" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(190,1330) scale(0.82)"><circle cx="-6" cy="-14" r="14" fill="#c7dbf6"/><path d="M-32,34 v-6 a26,22 0 0 1 52,0 v6 z" fill="#1d5bbf"/><circle cx="24" cy="-30" r="12" fill="#1d5bbf"/><text x="24" y="-24" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">?</text></g>
+<text x="190" y="1432" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Câu hỏi</text>
+<rect x="110.4" y="1446" width="159.2" height="32" rx="16" fill="#1d5bbf"/>
+<text x="190" y="1467.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">FastAPI + Uvicorn</text>
+<text x="190" y="1504" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">POST /api/chat/stream</text>
+<path d="M272,1330 H310" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M352,1180 H330 Q310,1180 310,1200 V1460 Q310,1480 330,1480 H352" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M360,1180 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<path d="M360,1480 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<circle cx="310" cy="1330" r="4.5" fill="#1b4f9c"/>
+<rect x="370" y="1110" width="140" height="140" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(440,1180) scale(0.82)"><rect x="-36" y="-32" width="40" height="64" rx="11" fill="#1d5bbf"/><rect x="-36" y="-12" width="40" height="5" fill="#a9c8f2"/><rect x="-36" y="9" width="40" height="5" fill="#a9c8f2"/><ellipse cx="-16" cy="-24" rx="14" ry="3.5" fill="#4a82d8"/><path d="M14,-26 v52 M14,-26 h8 M14,0 h8 M14,26 h8" stroke="#1d5bbf" stroke-width="3.5" fill="none"/><rect x="25" y="-31" width="11" height="10" fill="#a9c8f2"/><rect x="25" y="-5" width="11" height="10" fill="#a9c8f2"/><rect x="25" y="21" width="11" height="10" fill="#a9c8f2"/></g>
+<text x="440" y="1282" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Nhúng câu hỏi</text>
+<rect x="394.3" y="1296" width="91.4" height="32" rx="16" fill="#1d5bbf"/>
+<text x="440" y="1317.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">BGE-M3</text>
+<text x="440" y="1354" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">đã viết đủ từ viết tắt</text>
+<path d="M522,1180 H587" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M595,1180 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<rect x="605" y="1110" width="140" height="140" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(675,1180) scale(0.82)"><rect x="-40" y="-34" width="80" height="68" rx="6" fill="#dbe8fb"/><path d="M-36,-11 h72 M-36,11 h72" stroke="#a9c8f2" stroke-width="2"/><circle cx="-30" cy="-22" r="2.8" fill="#1d5bbf"/><circle cx="-21" cy="-22" r="2.8" fill="#1d5bbf"/><rect x="-11" y="-24.5" width="43" height="5" rx="2.5" fill="#1d5bbf"/><circle cx="-30" cy="0" r="2.8" fill="#1d5bbf"/><circle cx="-21" cy="0" r="2.8" fill="#1d5bbf"/><rect x="-11" y="-2.5" width="43" height="5" rx="2.5" fill="#1d5bbf"/><circle cx="-30" cy="22" r="2.8" fill="#1d5bbf"/><circle cx="-21" cy="22" r="2.8" fill="#1d5bbf"/><rect x="-11" y="19.5" width="43" height="5" rx="2.5" fill="#1d5bbf"/><circle cx="22" cy="22" r="14" fill="#ffffff" fill-opacity="0.9" stroke="#1d5bbf" stroke-width="5"/><path d="M32,32 L44,44" stroke="#1d5bbf" stroke-width="7" stroke-linecap="round"/></g>
+<text x="675" y="1282" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Tìm theo ngữ nghĩa</text>
+<rect x="638.2" y="1296" width="73.6" height="32" rx="16" fill="#1d5bbf"/>
+<text x="675" y="1317.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">FAISS</text>
+<text x="675" y="1354" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">top-15 gần nhất</text>
+<rect x="370" y="1410" width="140" height="140" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(440,1480) scale(0.82)"><rect x="-40" y="-30" width="34" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="-33" y="-23" width="20" height="3.5" fill="#1d5bbf"/><rect x="0" y="-30" width="40" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="7" y="-23" width="26" height="3.5" fill="#1d5bbf"/><rect x="-40" y="-8" width="48" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="-33" y="-1" width="34" height="3.5" fill="#1d5bbf"/><rect x="14" y="-8" width="26" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="21" y="-1" width="12" height="3.5" fill="#1d5bbf"/><rect x="-40" y="14" width="22" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="-33" y="21" width="8" height="3.5" fill="#1d5bbf"/><rect x="-12" y="14" width="52" height="17" rx="4" fill="#dbe8fb" stroke="#1d5bbf" stroke-width="2.2"/><rect x="-5" y="21" width="38" height="3.5" fill="#1d5bbf"/></g>
+<text x="440" y="1582" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Tách từ + mở rộng</text>
+<text x="440" y="1612" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">TKB ↔ thời khoá biểu</text>
+<text x="440" y="1634" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">thêm biến thể không dấu</text>
+<path d="M522,1480 H587" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M595,1480 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<rect x="605" y="1410" width="140" height="140" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(675,1480) scale(0.82)"><rect x="-38" y="-40" width="76" height="80" rx="6" fill="#dbe8fb"/><rect x="-28" y="-28.25" width="20" height="4.5" rx="1.5" fill="#a9c8f2"/><rect x="-4" y="-29.5" width="32" height="7" rx="1.5" fill="#1d5bbf"/><rect x="-28" y="-14.25" width="40" height="4.5" rx="1.5" fill="#a9c8f2"/><rect x="16" y="-14.25" width="12" height="4.5" rx="1.5" fill="#a9c8f2"/><rect x="-28" y="-1.5" width="14" height="7" rx="1.5" fill="#1d5bbf"/><rect x="-10" y="-0.25" width="38" height="4.5" rx="1.5" fill="#a9c8f2"/><rect x="-28" y="13.75" width="30" height="4.5" rx="1.5" fill="#a9c8f2"/><rect x="6" y="12.5" width="22" height="7" rx="1.5" fill="#1d5bbf"/><rect x="-28" y="27.75" width="24" height="4.5" rx="1.5" fill="#a9c8f2"/><circle cx="22" cy="22" r="14" fill="#ffffff" fill-opacity="0.9" stroke="#1d5bbf" stroke-width="5"/><path d="M32,32 L44,44" stroke="#1d5bbf" stroke-width="7" stroke-linecap="round"/></g>
+<text x="675" y="1582" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Tìm theo từ khoá</text>
+<rect x="637.5" y="1596" width="75.0" height="32" rx="16" fill="#1d5bbf"/>
+<text x="675" y="1617.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">BM25</text>
+<text x="675" y="1654" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">top-15 điểm cao nhất</text>
+<path d="M757,1180 H780 Q800,1180 800,1200 V1460 Q800,1480 780,1480 H757" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M800,1330 H842" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M850,1330 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<circle cx="800" cy="1330" r="4.5" fill="#1b4f9c"/>
+<rect x="860" y="1260" width="140" height="140" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(930,1330) scale(0.82)"><rect x="-40" y="-36" width="28" height="5" rx="2.5" fill="#1d5bbf"/><rect x="12" y="-36" width="28" height="5" rx="2.5" fill="#5b8fe0"/><rect x="-40" y="-28" width="23" height="5" rx="2.5" fill="#1d5bbf"/><rect x="12" y="-28" width="23" height="5" rx="2.5" fill="#5b8fe0"/><rect x="-40" y="-20" width="18" height="5" rx="2.5" fill="#1d5bbf"/><rect x="12" y="-20" width="18" height="5" rx="2.5" fill="#5b8fe0"/><path d="M-26,-12 C-26,0 -4,-2 -4,8 M26,-12 C26,0 4,-2 4,8" stroke="#1d5bbf" stroke-width="3" fill="none"/><path d="M-7,6 L0,14 L7,6 z" fill="#1d5bbf"/><rect x="-22" y="18" width="44" height="5" rx="2.5" fill="#1d5bbf"/><rect x="-22" y="26" width="36" height="5" rx="2.5" fill="#5b8fe0"/><rect x="-22" y="34" width="28" height="5" rx="2.5" fill="#a9c8f2"/></g>
+<text x="930" y="1432" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Hợp nhất xếp hạng</text>
+<rect x="871.1" y="1446" width="117.9" height="32" rx="16" fill="#1d5bbf"/>
+<text x="930" y="1467.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">RRF · k = 60</text>
+<text x="930" y="1504" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">điểm = Σ 1 / (60 + hạng)</text>
+<path d="M1012,1330 H1067" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M1075,1330 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<rect x="1085" y="1260" width="140" height="140" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(1155,1330) scale(0.82)"><circle cx="-30" cy="-27" r="8" fill="#1d5bbf"/><text x="-30" y="-23" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">1</text><rect x="-16" y="-31" width="56" height="8" rx="4" fill="#1d5bbf"/><circle cx="-30" cy="-9" r="8" fill="#1d5bbf"/><text x="-30" y="-5" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">2</text><rect x="-16" y="-13" width="50" height="8" rx="4" fill="#5b8fe0"/><circle cx="-30" cy="9" r="8" fill="#1d5bbf"/><text x="-30" y="13" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">3</text><rect x="-16" y="5" width="44" height="8" rx="4" fill="#5b8fe0"/><circle cx="-30" cy="27" r="8" fill="#1d5bbf"/><text x="-30" y="31" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">4</text><rect x="-16" y="23" width="38" height="8" rx="4" fill="#5b8fe0"/></g>
+<text x="1155" y="1432" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Đoạn liên quan</text>
+<rect x="1116.9" y="1446" width="76.2" height="32" rx="16" fill="#1d5bbf"/>
+<text x="1155" y="1467.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">Top-4</text>
+<text x="1155" y="1504" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">đưa vào prompt</text>
+<path d="M1237,1330 H1297" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M1305,1330 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<rect x="1315" y="1260" width="140" height="140" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(1385,1320) scale(0.82)"><path d="M0,-40 L13,-33 L0,-26 L-13,-33 z" fill="#5b8fe0"/><path d="M-13,-33 L0,-26 L0,-11 L-13,-18 z" fill="#1d5bbf"/><path d="M13,-33 L0,-26 L0,-11 L13,-18 z" fill="#3c74d0"/><path d="M0,-11 v7 M-24,-4 h48 M-24,-4 v8 M0,-4 v8 M24,-4 v8" stroke="#1d5bbf" stroke-width="2.4" fill="none"/><rect x="-29" y="4" width="10" height="10" fill="#1d5bbf"/><rect x="-5" y="4" width="10" height="10" fill="#1d5bbf"/><rect x="19" y="4" width="10" height="10" fill="#1d5bbf"/><path d="M-24,14 v6 M-36,20 h24 M-36,20 v5 M-12,20 v5 M24,14 v6 M12,20 h24 M12,20 v5 M36,20 v5" stroke="#1d5bbf" stroke-width="2" fill="none"/><rect x="-41" y="25" width="10" height="9" fill="#a9c8f2"/><rect x="-17" y="25" width="10" height="9" fill="#a9c8f2"/><rect x="7" y="25" width="10" height="9" fill="#a9c8f2"/><rect x="31" y="25" width="10" height="9" fill="#a9c8f2"/></g>
+<text x="1385" y="1380" font-size="15" font-weight="600" fill="#1d5bbf" text-anchor="middle">LLM</text>
+<text x="1385" y="1432" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Sinh câu trả lời</text>
+<rect x="1301.3" y="1446" width="167.4" height="32" rx="16" fill="#1d5bbf"/>
+<text x="1385" y="1467.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">Ollama · 4 mô hình</text>
+<rect x="1295.0" y="1492" width="180.0" height="28" rx="7" fill="#eef4fd" stroke="#b9d0f0" stroke-width="1.4"/>
+<text x="1385" y="1511" font-size="14.5" font-weight="400" fill="#15438f" text-anchor="middle" font-family="Consolas, 'Courier New', monospace">qwen3.5:4b</text>
+<rect x="1295.0" y="1526" width="180.0" height="28" rx="7" fill="#eef4fd" stroke="#b9d0f0" stroke-width="1.4"/>
+<text x="1385" y="1545" font-size="14.5" font-weight="400" fill="#15438f" text-anchor="middle" font-family="Consolas, 'Courier New', monospace">qwen3.5:9b</text>
+<rect x="1295.0" y="1560" width="180.0" height="28" rx="7" fill="#eef4fd" stroke="#b9d0f0" stroke-width="1.4"/>
+<text x="1385" y="1579" font-size="14.5" font-weight="400" fill="#15438f" text-anchor="middle" font-family="Consolas, 'Courier New', monospace">llama3.2:3b</text>
+<rect x="1295.0" y="1594" width="180.0" height="28" rx="7" fill="#eef4fd" stroke="#b9d0f0" stroke-width="1.4"/>
+<text x="1385" y="1613" font-size="14.5" font-weight="400" fill="#15438f" text-anchor="middle" font-family="Consolas, 'Courier New', monospace">qwen2.5:3b-instruct</text>
+<text x="1385" y="1648" font-size="13.5" font-weight="400" fill="#5a7299" text-anchor="middle">temperature 0.15 · ctx 4096</text>
+<path d="M1467,1330 H1522" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+<path d="M1530,1330 l-13,-6.5 v13 z" fill="#1b4f9c"/>
+<rect x="1540" y="1260" width="140" height="140" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
+<g transform="translate(1610,1330) scale(0.82)"><rect x="-4" y="-8" width="44" height="34" rx="5" fill="#1d5bbf"/><path d="M22,26 v12 l-12,-12 z" fill="#1d5bbf"/><rect x="-38" y="-32" width="48" height="34" rx="5" fill="#c7dbf6"/><path d="M-24,2 l-6,11 l15,-11 z" fill="#c7dbf6"/><rect x="-30" y="-24" width="4" height="3" fill="#1d5bbf"/><rect x="-23" y="-24" width="24" height="3" fill="#1d5bbf"/><rect x="-30" y="-17" width="4" height="3" fill="#1d5bbf"/><rect x="-23" y="-17" width="24" height="3" fill="#1d5bbf"/><rect x="-30" y="-10" width="4" height="3" fill="#1d5bbf"/><rect x="-23" y="-10" width="18" height="3" fill="#1d5bbf"/></g>
+<text x="1610" y="1432" font-size="20" font-weight="600" fill="#15438f" text-anchor="middle">Câu trả lời</text>
+<rect x="1556.8" y="1446" width="106.4" height="32" rx="16" fill="#1d5bbf"/>
+<text x="1610" y="1467.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">Streaming</text>
+<text x="1610" y="1504" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">hiện dần từng token</text>
+<text x="1610" y="1526" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">kèm trích dẫn nguồn</text>
+</svg>

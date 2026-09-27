@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="630" viewBox="0 0 1240 630" role="img" aria-label="Pipeline nap va cap nhat kho tri thuc gom nam buoc: tiep nhan tai lieu, trich xuat noi dung, chia doan, tao embedding va cap nhat chi muc; kem vong chay lai dinh ky va bon nhom tep sau khi doi chieu ma bam">
+<defs>
+  <marker id="mb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#2a78d6"/></marker>
+  <marker id="mg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#7d8a97"/></marker>
+</defs>
+<rect width="1240" height="630" fill="#f4f6f8"/>
+
+<g font-family="'Be Vietnam Pro','Segoe UI','Helvetica Neue',Arial,sans-serif">
+  <text x="44" y="42" font-size="11" font-weight="600" fill="#7d8a97" letter-spacing="1.6">CHATBOT RAG GIÁO DỤC · SƠ ĐỒ QUY TRÌNH</text>
+  <text x="44" y="80" font-size="27" font-weight="600" fill="#101720">Nạp và cập nhật kho tri thức</text>
+  <text x="44" y="106" font-size="14" fill="#4d5a68">Năm bước chạy ngoại tuyến, mỗi tệp chỉ đi qua một lần và được ghi sổ theo mã băm nội dung</text>
+  <line x1="44" y1="130" x2="1196" y2="130" stroke="#dfe5ec" stroke-width="1"/>
+
+  <!-- ===== Nam the buoc ===== -->
+  <g>
+    <rect x="44" y="176" width="204" height="250" rx="11" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="281" y="176" width="204" height="250" rx="11" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="518" y="176" width="204" height="250" rx="11" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="755" y="176" width="204" height="250" rx="11" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="992" y="176" width="204" height="250" rx="11" fill="#ffffff" stroke="#dfe5ec"/>
+  </g>
+  <g fill="#eaf2fc">
+    <rect x="60" y="192" width="22" height="22" rx="7"/>
+    <rect x="297" y="192" width="22" height="22" rx="7"/>
+    <rect x="534" y="192" width="22" height="22" rx="7"/>
+    <rect x="771" y="192" width="22" height="22" rx="7"/>
+    <rect x="1008" y="192" width="22" height="22" rx="7"/>
+  </g>
+  <g font-size="12" font-weight="600" fill="#2a78d6" text-anchor="middle">
+    <text x="71" y="207.5">1</text>
+    <text x="308" y="207.5">2</text>
+    <text x="545" y="207.5">3</text>
+    <text x="782" y="207.5">4</text>
+    <text x="1019" y="207.5">5</text>
+  </g>
+  <g font-size="13.5" font-weight="600" fill="#101720">
+    <text x="60" y="234">Tiếp nhận tài liệu</text>
+    <text x="297" y="234">Trích xuất nội dung</text>
+    <text x="534" y="234">Chia đoạn và gắn</text>
+    <text x="534" y="251">siêu dữ liệu</text>
+    <text x="771" y="234">Tạo embedding</text>
+    <text x="1008" y="234">Cập nhật chỉ mục</text>
+  </g>
+  <g font-family="'IBM Plex Mono','Consolas','Courier New',monospace" font-size="10" fill="#7d8a97">
+    <text x="60" y="274">drive_sync.py</text>
+    <text x="60" y="288">capnhat_tailieu_moi.py</text>
+    <text x="297" y="274">document_loaders.py</text>
+    <text x="297" y="288">ocr_pdf.py · media_*</text>
+    <text x="534" y="274">chunking_utils.py</text>
+    <text x="534" y="288">van_ban_meta.py</text>
+    <text x="771" y="274">bge-m3 · Ollama</text>
+    <text x="1008" y="274">FAISS · BM25</text>
+    <text x="1008" y="288">rag_service.py</text>
+  </g>
+  <g stroke="#ecf0f4" stroke-width="1">
+    <line x1="60" y1="300" x2="232" y2="300"/>
+    <line x1="297" y1="300" x2="469" y2="300"/>
+    <line x1="534" y1="300" x2="706" y2="300"/>
+    <line x1="771" y1="300" x2="943" y2="300"/>
+    <line x1="1008" y1="300" x2="1180" y2="300"/>
+  </g>
+  <g font-size="11" fill="#4d5a68">
+    <text x="60" y="320">Thư mục dữ liệu cục bộ hoặc</text>
+    <text x="60" y="335.5">thư mục Google Drive dùng chung</text>
+    <text x="60" y="355">PDF · DOCX · PPTX · XLSX ·</text>
+    <text x="60" y="370.5">TXT · ảnh · video, âm thanh</text>
+    <text x="60" y="390">Băm SHA-256 từng tệp rồi đối</text>
+    <text x="60" y="405.5">chiếu với sổ ghi chép</text>
+
+    <text x="297" y="320">Mỗi định dạng một bộ nạp riêng</text>
+    <text x="297" y="335.5">đã kiểm chứng trên kho thật</text>
+    <text x="297" y="355">PDF chụp ảnh đi qua OCR, video</text>
+    <text x="297" y="370.5">và âm thanh đi qua phiên âm</text>
+    <text x="297" y="390">Kết quả nặng lưu đệm theo mã</text>
+    <text x="297" y="405.5">băm nên chỉ xử lý một lần</text>
+
+    <text x="534" y="320">Tách theo cấu trúc Chương –</text>
+    <text x="534" y="335.5">Điều, giữ trọn một Điều</text>
+    <text x="534" y="355">Chỉ đoạn dài quá 1.200 ký tự</text>
+    <text x="534" y="370.5">mới cắt tiếp, chồng lấn 150</text>
+    <text x="534" y="390">Gắn số hiệu, hiệu lực, môn học</text>
+    <text x="534" y="405.5">và cấp học cho từng đoạn</text>
+
+    <text x="771" y="320">Nhúng mỗi đoạn thành một</text>
+    <text x="771" y="335.5">vector 1.024 chiều</text>
+    <text x="771" y="355">Chạy cục bộ trên CPU theo lô,</text>
+    <text x="771" y="370.5">không gọi dịch vụ bên ngoài</text>
+    <text x="771" y="390">Chính mô hình này sẽ nhúng</text>
+    <text x="771" y="405.5">câu hỏi lúc truy hồi</text>
+
+    <text x="1008" y="320">Ghi vector vào chỉ mục FAISS,</text>
+    <text x="1008" y="335.5">dựng lại chỉ mục từ khóa BM25</text>
+    <text x="1008" y="355">Gỡ vector cũ của tệp đã sửa</text>
+    <text x="1008" y="370.5">hoặc đã xóa trước khi ghi</text>
+    <text x="1008" y="390">Trạng thái chuyển updating →</text>
+    <text x="1008" y="405.5">ready, khóa hỏi trong lúc ghi</text>
+  </g>
+
+  <!-- mui ten giua cac buoc -->
+  <g stroke="#2a78d6" stroke-width="1.6" fill="none" marker-end="url(#mb)">
+    <line x1="254" y1="300" x2="273" y2="300"/>
+    <line x1="491" y1="300" x2="510" y2="300"/>
+    <line x1="728" y1="300" x2="747" y2="300"/>
+    <line x1="965" y1="300" x2="984" y2="300"/>
+  </g>
+
+  <!-- vong chay lai -->
+  <path d="M1094,426 V456 H146 V434" fill="none" stroke="#7d8a97" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#mg)"/>
+  <rect x="390" y="444" width="460" height="24" rx="6" fill="#f4f6f8"/>
+  <text x="620" y="459.5" font-size="11.5" fill="#4d5a68" text-anchor="middle">Chạy lại theo định kỳ — chỉ tệp mới hoặc đã sửa mới đi qua pipeline</text>
+
+  <!-- ===== Bon nhom tep ===== -->
+  <rect x="44" y="486" width="1152" height="120" rx="12" fill="#eef1f5"/>
+  <text x="66" y="514" font-size="10.5" font-weight="600" fill="#7d8a97" letter-spacing="1.2">SAU KHI ĐỐI CHIẾU MÃ BĂM, MỖI TỆP RƠI VÀO MỘT TRONG BỐN NHÓM</text>
+  <g>
+    <rect x="66" y="526" width="262" height="64" rx="9" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="348" y="526" width="262" height="64" rx="9" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="630" y="526" width="262" height="64" rx="9" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="912" y="526" width="262" height="64" rx="9" fill="#ffffff" stroke="#dfe5ec"/>
+    <rect x="66" y="538" width="4" height="40" rx="2" fill="#2a78d6"/>
+    <rect x="348" y="538" width="4" height="40" rx="2" fill="#eb6834"/>
+    <rect x="630" y="538" width="4" height="40" rx="2" fill="#cf4438"/>
+    <rect x="912" y="538" width="4" height="40" rx="2" fill="#1baf7a"/>
+  </g>
+  <g font-size="12.5" font-weight="600" fill="#101720">
+    <text x="84" y="552">Tệp mới</text>
+    <text x="366" y="552">Tệp sửa đổi</text>
+    <text x="648" y="552">Tệp bị xóa</text>
+    <text x="930" y="552">Tệp không đổi</text>
+  </g>
+  <g font-size="11" fill="#4d5a68">
+    <text x="84" y="570">Đi trọn năm bước rồi thêm vector</text>
+    <text x="84" y="584">mới vào chỉ mục</text>
+    <text x="366" y="570">Gỡ hết vector cũ theo tên tệp rồi</text>
+    <text x="366" y="584">nạp lại bản vừa sửa</text>
+    <text x="648" y="570">Gỡ vector khỏi chỉ mục và xóa</text>
+    <text x="648" y="584">dòng tương ứng trong sổ ghi chép</text>
+    <text x="930" y="570">Bỏ qua — không đọc lại, không</text>
+    <text x="930" y="584">nhúng lại, không tốn thời gian</text>
+  </g>
+</g>
+</svg>

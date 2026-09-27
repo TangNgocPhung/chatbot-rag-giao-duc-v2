@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" font-family="'Segoe UI', Arial, sans-serif">
+<defs>
+  <linearGradient id="nen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef5f9"/><stop offset="1" stop-color="#dde9f0"/></linearGradient>
+  <linearGradient id="tieude" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5e4f98"/><stop offset="1" stop-color="#8a7cc0"/></linearGradient>
+  <linearGradient id="bang" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9e0d9"/><stop offset="1" stop-color="#8fc7bd"/></linearGradient>
+  <linearGradient id="muilon" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6f6790"/><stop offset="1" stop-color="#8a82ab"/></linearGradient>
+  <filter id="bong" x="-10%" y="-20%" width="120%" height="150%"><feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#2d3a4a" flood-opacity="0.3"/></filter>
+  <marker id="mui" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3f4a5a"/></marker>
+</defs>
+<rect width="1600" height="900" fill="url(#nen)"/>
+<rect x="0" y="28" width="1600" height="84" fill="url(#tieude)"/>
+<text x="60" y="84" font-size="38" fill="#ffffff">Tác tử AI trong Chatbot RAG Giáo dục</text>
+
+<g filter="url(#bong)">
+<rect x="580" y="150" width="440" height="124" rx="20" fill="#e3eaf4" stroke="#8a9cc0" stroke-width="3"/>
+</g>
+<rect x="588" y="158" width="424" height="108" rx="14" fill="#cdd9ec" stroke="#4c5b82" stroke-width="3"/>
+<line x1="676.8" y1="150" x2="676.8" y2="138" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="676.8" cy="136" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="923.2" y1="150" x2="923.2" y2="138" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="923.2" cy="136" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="800.0" y1="274" x2="800.0" y2="286" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="800.0" cy="288" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="1020" y1="187.2" x2="1032" y2="187.2" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="1034" cy="187.2" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="580" y1="236.8" x2="568" y2="236.8" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="566" cy="236.8" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<text x="800.0" y="193.64" font-size="17" fill="#1f2a3a" text-anchor="middle"><tspan font-weight="700">Lõi suy luận: </tspan>Mô hình ngôn ngữ</text>
+<text x="800.0" y="217.77999999999997" font-size="17" fill="#1f2a3a" text-anchor="middle">chạy cục bộ qua Ollama,</text>
+<text x="800.0" y="241.92" font-size="17" fill="#1f2a3a" text-anchor="middle">chỉ soạn từ đoạn trích được cấp</text>
+<g filter="url(#bong)">
+<rect x="330" y="364" width="940" height="86" rx="43.0" fill="url(#bang)" stroke="#5e9d93" stroke-width="2.5"/>
+</g>
+<text x="430" y="403" font-size="19" font-weight="700" fill="#16323a" text-anchor="middle">Tiếp nhận</text>
+<text x="430" y="427" font-size="16" fill="#1f3d45" text-anchor="middle">câu hỏi</text>
+<text x="640" y="403" font-size="19" font-weight="700" fill="#16323a" text-anchor="middle">Định tuyến</text>
+<text x="640" y="427" font-size="16" fill="#1f3d45" text-anchor="middle">&amp; suy luận</text>
+<text x="880" y="403" font-size="19" font-weight="700" fill="#16323a" text-anchor="middle">Hành động</text>
+<text x="880" y="427" font-size="16" fill="#1f3d45" text-anchor="middle">truy xuất / tính</text>
+<text x="1130" y="403" font-size="19" font-weight="700" fill="#16323a" text-anchor="middle">Trả kết quả</text>
+<text x="1130" y="427" font-size="16" fill="#1f3d45" text-anchor="middle">kèm trích dẫn</text>
+<line x1="490" y1="408" x2="568" y2="408" stroke="#3f4a5a" stroke-width="2" marker-end="url(#mui)"/>
+<line x1="712" y1="408" x2="800" y2="408" stroke="#3f4a5a" stroke-width="2" marker-end="url(#mui)"/>
+<line x1="962" y1="408" x2="1050" y2="408" stroke="#3f4a5a" stroke-width="2" marker-end="url(#mui)"/>
+<polygon points="40,377.0 240,377.0 240,339.0 310,407.0 240,475.0 240,437.0 40,437.0" fill="url(#muilon)" filter="url(#bong)"/>
+<text x="155.0" y="403.0" font-size="19" font-weight="700" fill="#ffffff" text-anchor="middle">Câu hỏi của</text>
+<text x="155.0" y="427.0" font-size="19" font-weight="700" fill="#ffffff" text-anchor="middle">người dùng</text>
+<polygon points="1290,377.0 1490,377.0 1490,339.0 1560,407.0 1490,475.0 1490,437.0 1290,437.0" fill="url(#muilon)" filter="url(#bong)"/>
+<text x="1405.0" y="403.0" font-size="19" font-weight="700" fill="#ffffff" text-anchor="middle">Câu trả lời</text>
+<text x="1405.0" y="427.0" font-size="19" font-weight="700" fill="#ffffff" text-anchor="middle">có căn cứ</text>
+<polyline points="470,364 470,212 574,212" fill="none" stroke="#3f4a5a" stroke-width="2" marker-end="url(#mui)"/>
+<text x="480" y="300" font-size="14.5" font-style="italic" fill="#4a5566" text-anchor="start">ngữ cảnh + câu hỏi</text>
+<polyline points="1026,212 1130,212 1130,360" fill="none" stroke="#3f4a5a" stroke-width="2" marker-end="url(#mui)"/>
+<text x="1120" y="300" font-size="14.5" font-style="italic" fill="#4a5566" text-anchor="end">câu trả lời nháp</text>
+<g filter="url(#bong)">
+<rect x="310" y="530" width="320" height="170" rx="20" fill="#e3eaf4" stroke="#8a9cc0" stroke-width="3"/>
+</g>
+<rect x="318" y="538" width="304" height="154" rx="14" fill="#cdd9ec" stroke="#4c5b82" stroke-width="3"/>
+<line x1="380.4" y1="530" x2="380.4" y2="518" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="380.4" cy="516" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="559.6" y1="530" x2="559.6" y2="518" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="559.6" cy="516" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="470.0" y1="700" x2="470.0" y2="712" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="470.0" cy="714" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="630" y1="581.0" x2="642" y2="581.0" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="644" cy="581.0" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="310" y1="649.0" x2="298" y2="649.0" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="296" cy="649.0" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<text x="470.0" y="585.465" font-size="16.5" fill="#1f2a3a" text-anchor="middle"><tspan font-weight="700">Bộ nhớ: </tspan>lịch sử</text>
+<text x="470.0" y="608.895" font-size="16.5" fill="#1f2a3a" text-anchor="middle">hội thoại (SQLite) và</text>
+<text x="470.0" y="632.325" font-size="16.5" fill="#1f2a3a" text-anchor="middle">cache ngữ nghĩa bge-m3</text>
+<text x="470.0" y="655.755" font-size="16.5" fill="#1f2a3a" text-anchor="middle">cho câu hỏi lặp lại.</text>
+<g filter="url(#bong)">
+<rect x="660" y="530" width="320" height="170" rx="20" fill="#e3eaf4" stroke="#8a9cc0" stroke-width="3"/>
+</g>
+<rect x="668" y="538" width="304" height="154" rx="14" fill="#cdd9ec" stroke="#4c5b82" stroke-width="3"/>
+<line x1="730.4" y1="530" x2="730.4" y2="518" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="730.4" cy="516" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="909.6" y1="530" x2="909.6" y2="518" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="909.6" cy="516" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="820.0" y1="700" x2="820.0" y2="712" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="820.0" cy="714" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="980" y1="581.0" x2="992" y2="581.0" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="994" cy="581.0" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="660" y1="649.0" x2="648" y2="649.0" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="646" cy="649.0" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<text x="820.0" y="585.465" font-size="16.5" fill="#1f2a3a" text-anchor="middle"><tspan font-weight="700">Bộ công cụ: </tspan>truy xuất</text>
+<text x="820.0" y="608.895" font-size="16.5" fill="#1f2a3a" text-anchor="middle">lai FAISS + BM25, đọc</text>
+<text x="820.0" y="632.325" font-size="16.5" fill="#1f2a3a" text-anchor="middle">tệp đính kèm, công cụ tính</text>
+<text x="820.0" y="655.755" font-size="16.5" fill="#1f2a3a" text-anchor="middle">lương và định mức tiết dạy.</text>
+<g filter="url(#bong)">
+<rect x="1010" y="530" width="320" height="170" rx="20" fill="#e3eaf4" stroke="#8a9cc0" stroke-width="3"/>
+</g>
+<rect x="1018" y="538" width="304" height="154" rx="14" fill="#cdd9ec" stroke="#4c5b82" stroke-width="3"/>
+<line x1="1080.4" y1="530" x2="1080.4" y2="518" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="1080.4" cy="516" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="1259.6" y1="530" x2="1259.6" y2="518" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="1259.6" cy="516" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="1170.0" y1="700" x2="1170.0" y2="712" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="1170.0" cy="714" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="1330" y1="581.0" x2="1342" y2="581.0" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="1344" cy="581.0" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<line x1="1010" y1="649.0" x2="998" y2="649.0" stroke="#8a9cc0" stroke-width="1.5"/>
+<circle cx="996" cy="649.0" r="3" fill="#ffffff" stroke="#8a9cc0" stroke-width="1.5"/>
+<text x="1170.0" y="585.465" font-size="16.5" fill="#1f2a3a" text-anchor="middle"><tspan font-weight="700">Kiểm chứng: </tspan>chặn câu</text>
+<text x="1170.0" y="608.895" font-size="16.5" fill="#1f2a3a" text-anchor="middle">hỏi lạc đề, đối chiếu</text>
+<text x="1170.0" y="632.325" font-size="16.5" fill="#1f2a3a" text-anchor="middle">trích dẫn và số liệu,</text>
+<text x="1170.0" y="655.755" font-size="16.5" fill="#1f2a3a" text-anchor="middle">cảnh báo hiệu lực văn bản.</text>
+<polyline points="470,524 470,454" fill="none" stroke="#3f4a5a" stroke-width="2" marker-end="url(#mui)"/>
+<text x="480" y="490" font-size="14.5" font-style="italic" fill="#4a5566" text-anchor="start">ngữ cảnh hội thoại</text>
+<polyline points="820,450 820,510" fill="none" stroke="#3f4a5a" stroke-width="2" marker-end="url(#mui)"/>
+<text x="830" y="490" font-size="14.5" font-style="italic" fill="#4a5566" text-anchor="start">gọi công cụ</text>
+<polyline points="1170,450 1170,510" fill="none" stroke="#3f4a5a" stroke-width="2" marker-end="url(#mui)"/>
+<text x="1180" y="490" font-size="14.5" font-style="italic" fill="#4a5566" text-anchor="start">hậu kiểm</text>
+<polyline points="1170,714 1170,744 470,744 470,720" fill="none" stroke="#3f4a5a" stroke-width="2" marker-end="url(#mui)"/>
+<text x="820" y="770" font-size="15" font-style="italic" fill="#4a5566" text-anchor="middle">chỉ câu trả lời đạt hậu kiểm mới được ghi vào cache</text>
+<rect x="0" y="846" width="1600" height="34" fill="#8577b3" opacity="0.85"/>
+<text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">Chatbot RAG Giáo dục</text>
+</svg>
