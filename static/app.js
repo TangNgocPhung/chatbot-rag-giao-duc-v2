@@ -1515,8 +1515,7 @@ function themChuToSan(container, chu) {
   if (cuoi < chu.length) container.append(document.createTextNode(chu.slice(cuoi)));
 }
 
-// toSan: bảng và tiêu đề thì không - bảng số liệu mà tô mọi con số thì không
-// còn gì nổi bật nữa.
+// toSan: tiêu đề thì không - chữ tiêu đề đã to và đậm sẵn, tô thêm chỉ rối mắt.
 function appendInlineContent(container, text, messageId, sourceCount, toSan = false) {
   const pattern = /(\*\*[^*\n]+\*\*|`[^`\n]+`|\[(\d+)\])/g;
   const themChu = (chu) => {
@@ -1584,7 +1583,7 @@ function dungBang(khoi, messageId, sourceCount) {
   const headRow = document.createElement('tr');
   for (const o of tachO(khoi[0])) {
     const th = document.createElement('th');
-    appendInlineContent(th, o, messageId, sourceCount);
+    appendInlineContent(th, o, messageId, sourceCount, true);
     headRow.append(th);
   }
   thead.append(headRow);
@@ -1593,7 +1592,7 @@ function dungBang(khoi, messageId, sourceCount) {
     const row = document.createElement('tr');
     for (const o of tachO(dong)) {
       const td = document.createElement('td');
-      appendInlineContent(td, o, messageId, sourceCount);
+      appendInlineContent(td, o, messageId, sourceCount, true);
       row.append(td);
     }
     tbody.append(row);
@@ -1626,7 +1625,7 @@ function renderAnswer(container, content, messageId, sourceCount = 0) {
         // Bảng mới gõ được nửa chừng trong lúc chữ đang chạy: hiện tạm thành đoạn văn.
         for (const dong of khoi) {
           const doan = document.createElement('p');
-          appendInlineContent(doan, dong, messageId, sourceCount);
+          appendInlineContent(doan, dong, messageId, sourceCount, true);
           container.append(doan);
         }
       }
