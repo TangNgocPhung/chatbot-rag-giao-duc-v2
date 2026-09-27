@@ -196,6 +196,9 @@ let ketThucTraLoi = [];
 const tepDinhKem = new Map();
 // Mẻ gợi ý kho lấy gần nhất - giữ lại để bỏ tệp đính kèm ra là vẽ lại được ngay.
 let goiYKho = [];
+// Bộ câu tĩnh theo nhóm chủ đề (chế độ mặc định); rỗng khi máy chủ dựng gợi ý
+// từ metadata văn bản.
+let nhomGoiY = [];
 const SO_TEP_TOI_DA = 4;
 
 const assistantIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h10a4 4 0 0 1 4 4v11H9a4 4 0 0 1-4-4V4Z"/><path d="M9 9h6M9 13h4"/></svg>';
@@ -632,14 +635,17 @@ function capNhatGoiYTheoTep() {
   // gợi ý về kho văn bản trên màn hình chào thành lạc đề (đính kèm truyện Sơn
   // Tinh - Thủy Tinh mà gợi ý "chương trình đào tạo đại học"). Đổi sang gợi ý
   // về chính tệp; bỏ tệp ra thì trả lại gợi ý kho như cũ.
+  const theoNhom = !sanSang.length && nhomGoiY.length > 0;
   elements.suggestionGrid?.classList.toggle('hidden', sanSang.length > 0);
-  elements.refreshSuggestions?.classList.toggle('hidden', sanSang.length > 0);
+  // Bộ câu tĩnh lần nào cũng như nhau nên không có mẻ nào khác để đổi.
+  elements.refreshSuggestions?.classList.toggle('hidden', sanSang.length > 0 || theoNhom);
   if (elements.suggestionMoreTitle) {
     elements.suggestionMoreTitle.textContent = sanSang.length
       ? 'Gợi ý hỏi về tệp đã đính kèm'
-      : 'Gợi ý khác từ kho tài liệu';
+      : theoNhom ? 'Câu hỏi gợi ý theo chủ đề' : 'Gợi ý khác từ kho tài liệu';
   }
-  renderGoiYMoDau(sanSang.length ? goiYTheoTep(sanSang) : goiYKho);
+  if (theoNhom) renderNhomGoiY(nhomGoiY);
+  else renderGoiYMoDau(sanSang.length ? goiYTheoTep(sanSang) : goiYKho);
 }
 
 function goiYTheoTep(cacTep) {
@@ -867,10 +873,11 @@ async function newChat() {
 // ============================================================
 // GỢI Ý CÂU HỎI
 // ============================================================
-// Bốn thẻ chủ đề chỉ mở ra bốn hướng và mãi không đổi. Hàng gợi ý này lấy từ
-// máy chủ - dựng theo tên tài liệu đang có trong kho - nên người mới biết hỏi
-// được những gì, kho thêm tài liệu thì gợi ý cũng đổi theo. Cuối mỗi câu trả
-// lời có thêm một hàng gợi ý hỏi tiếp dựng từ chính nguồn vừa trích.
+// Bốn thẻ chủ đề chỉ mở ra bốn hướng. Hàng gợi ý này lấy từ máy chủ: mặc định
+// là bộ câu viết tay chia theo đúng bốn chủ đề đó, câu nào cũng có văn bản trong
+// kho để trả lời; máy chủ đặt RAG_GOI_Y_MO_DAU=metadata thì là câu dựng từ
+// metadata văn bản trong kho, đổi mẻ được. Cuối mỗi câu trả lời có thêm một
+// hàng gợi ý hỏi tiếp dựng từ chính nguồn vừa trích.
 const SO_GOI_Y_MO_DAU = 6;
 
 // Thẻ chủ đề chỉ điền vào khung hỏi để người dùng sửa thành câu của mình; còn
@@ -906,9 +913,30 @@ function taoChipGoiY(cauHoi) {
 function renderGoiYMoDau(danhSach) {
   if (!elements.suggestionChips) return;
   elements.suggestionChips.replaceChildren();
+  elements.suggestionChips.classList.remove('theo-nhom');
   elements.suggestionMore.classList.toggle('hidden', !danhSach?.length);
   for (const cauHoi of danhSach || []) {
     elements.suggestionChips.append(taoChipGoiY(cauHoi));
+  }
+}
+
+// Bộ câu tĩnh hiện đủ cả bộ, mỗi chủ đề một khối có tên nhóm ở đầu.
+function renderNhomGoiY(cacNhom) {
+  if (!elements.suggestionChips) return;
+  elements.suggestionChips.replaceChildren();
+  elements.suggestionChips.classList.add('theo-nhom');
+  elements.suggestionMore.classList.remove('hidden');
+  for (const nhom of cacNhom) {
+    const khoi = document.createElement('div');
+    khoi.className = 'suggestion-group';
+    const tieuDe = document.createElement('div');
+    tieuDe.className = 'suggestion-group-title';
+    tieuDe.textContent = nhom.chu_de;
+    const hang = document.createElement('div');
+    hang.className = 'suggestion-chips';
+    for (const cauHoi of nhom.cau_hoi || []) hang.append(taoChipGoiY(cauHoi));
+    khoi.append(tieuDe, hang);
+    elements.suggestionChips.append(khoi);
   }
 }
 
@@ -922,10 +950,12 @@ async function taiGoiYMoDau() {
     if (!response.ok) throw new Error('goi-y');
     const payload = await response.json();
     goiYKho = payload.goi_y || [];
+    nhomGoiY = (payload.nhom || []).filter((nhom) => nhom.cau_hoi?.length);
   } catch (error) {
     // Không lấy được gợi ý thì ẩn hẳn hàng này: bốn thẻ chủ đề vẫn dùng bình
     // thường, không cần báo lỗi cho một thứ chỉ để bấm cho nhanh.
     goiYKho = [];
+    nhomGoiY = [];
   } finally {
     // Vẽ qua capNhatGoiYTheoTep: đang có tệp đính kèm thì gợi ý về tệp vẫn giữ.
     capNhatGoiYTheoTep();

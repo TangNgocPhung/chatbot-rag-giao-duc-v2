@@ -1,10 +1,13 @@
 """Sinh câu hỏi gợi ý cho giao diện: gợi ý mở đầu và gợi ý hỏi tiếp.
 
 Hai chỗ cần gợi ý: màn hình chào (ngoài bốn thẻ chủ đề cố định) và cuối mỗi câu
-trả lời. Cả hai đều dựng từ dữ liệu có sẵn - tên tài liệu trong kho, số hiệu và
-nhãn hiệu lực của nguồn vừa trích - chứ không gọi thêm mô hình: một lượt sinh
-nữa trên CPU là thêm hàng chục giây chỉ để có một hàng nút bấm, mà câu do mô
-hình tự nghĩ lại hay hỏi sang thứ kho không có tài liệu để trả lời.
+trả lời. Màn hình chào mặc định là bộ 17 câu viết tay chia bốn nhóm chủ đề, lần
+nào mở cũng như nhau. Không dùng bộ tĩnh (RAG_GOI_Y_MO_DAU=metadata) thì màn
+hình chào, cũng như hàng hỏi tiếp, dựng câu từ metadata văn bản - số hiệu, nhãn
+hiệu lực, quan hệ thay thế - đi qua một cây quyết định viết tay
+(_nhanh_theo_nguon). Không chỗ nào gọi thêm mô hình: một lượt sinh nữa trên CPU
+là thêm hàng chục giây chỉ để có một hàng nút bấm, mà câu do mô hình tự nghĩ
+lại hay hỏi sang thứ kho không có tài liệu để trả lời.
 """
 
 from __future__ import annotations
@@ -13,37 +16,51 @@ import os
 import random
 import re
 import unicodedata
+from itertools import zip_longest
+
+import hieu_luc_bo_sung
 
 
 SO_GOI_Y_MO_DAU = 6
 SO_GOI_Y_TIEP = 3
-SO_GOI_Y_TOI_DA = 12
+
+# Hai cách dựng gợi ý cho màn hình chào, chọn bằng RAG_GOI_Y_MO_DAU.
+CHE_DO_TINH = "tinh"
+CHE_DO_METADATA = "metadata"
+CAC_CHE_DO = (CHE_DO_TINH, CHE_DO_METADATA)
 
 # Câu hỏi mở đầu viết tay theo bốn nhóm chủ đề trên màn hình chào. Mỗi câu đều
 # có văn bản tương ứng trong kho để bấm vào là ra được câu trả lời có nguồn.
-GOI_Y_CHU_DE = (
-    # Mầm non & phổ thông
-    "Chương trình giáo dục phổ thông 2018 đặt ra những yêu cầu nào về phẩm chất và năng lực?",
-    "Việc đánh giá học sinh tiểu học được thực hiện theo những hình thức nào?",
-    "Kế hoạch bài dạy theo Công văn 5512 gồm những phần nào?",
-    "Ma trận và bản đặc tả đề kiểm tra được xây dựng theo các bước nào?",
-    "Quy định về dạy thêm, học thêm hiện nay như thế nào?",
-    "Học sinh phổ thông được miễn học phí và sách giáo khoa trong những trường hợp nào?",
-    # Giáo dục nghề nghiệp
-    "Khung trình độ quốc gia Việt Nam gồm những bậc trình độ nào?",
-    "Khung cơ cấu hệ thống giáo dục quốc dân gồm những cấp học và trình độ nào?",
-    "Cơ sở giáo dục nghề nghiệp được tự chủ những nội dung gì?",
-    # Giáo dục đại học
-    "Quy định về tự chủ của cơ sở giáo dục đại học gồm những nội dung nào?",
-    "Việc ứng dụng công nghệ trong giáo dục đại học và giáo dục nghề nghiệp được quy định thế nào?",
-    "Quỹ Học bổng Quốc gia được tổ chức, quản lý và sử dụng ra sao?",
-    "Chương trình xây dựng nguồn tài nguyên giáo dục mở có những mục tiêu nào?",
-    # Chính sách và đội ngũ nhà giáo
-    "Luật Nhà giáo được hướng dẫn thi hành với những nội dung chính nào?",
-    "Nhà giáo và cán bộ quản lý giáo dục được hưởng phụ cấp ưu đãi theo nghề thế nào?",
-    "Lộ trình nâng trình độ chuẩn được đào tạo của giáo viên mầm non, tiểu học, trung học cơ sở ra sao?",
-    "Sở Giáo dục và Đào tạo có những chức năng, nhiệm vụ và quyền hạn nào?",
+NHOM_GOI_Y_CHU_DE = (
+    ("Mầm non & phổ thông", (
+        "Chương trình giáo dục phổ thông 2018 đặt ra những yêu cầu nào về phẩm chất và năng lực?",
+        "Việc đánh giá học sinh tiểu học được thực hiện theo những hình thức nào?",
+        "Kế hoạch bài dạy theo Công văn 5512 gồm những phần nào?",
+        "Ma trận và bản đặc tả đề kiểm tra được xây dựng theo các bước nào?",
+        "Quy định về dạy thêm, học thêm hiện nay như thế nào?",
+        "Học sinh phổ thông được miễn học phí và sách giáo khoa trong những trường hợp nào?",
+    )),
+    ("Giáo dục nghề nghiệp", (
+        "Khung trình độ quốc gia Việt Nam gồm những bậc trình độ nào?",
+        "Khung cơ cấu hệ thống giáo dục quốc dân gồm những cấp học và trình độ nào?",
+        "Cơ sở giáo dục nghề nghiệp được tự chủ những nội dung gì?",
+    )),
+    ("Giáo dục đại học", (
+        "Quy định về tự chủ của cơ sở giáo dục đại học gồm những nội dung nào?",
+        "Việc ứng dụng công nghệ trong giáo dục đại học và giáo dục nghề nghiệp được quy định thế nào?",
+        "Quỹ Học bổng Quốc gia được tổ chức, quản lý và sử dụng ra sao?",
+        "Chương trình xây dựng nguồn tài nguyên giáo dục mở có những mục tiêu nào?",
+    )),
+    ("Chính sách và đội ngũ nhà giáo", (
+        "Luật Nhà giáo được hướng dẫn thi hành với những nội dung chính nào?",
+        "Nhà giáo và cán bộ quản lý giáo dục được hưởng phụ cấp ưu đãi theo nghề thế nào?",
+        "Lộ trình nâng trình độ chuẩn được đào tạo của giáo viên mầm non, tiểu học, trung học cơ sở ra sao?",
+        "Sở Giáo dục và Đào tạo có những chức năng, nhiệm vụ và quyền hạn nào?",
+    )),
 )
+GOI_Y_CHU_DE = tuple(cau for _, cac_cau in NHOM_GOI_Y_CHU_DE for cau in cac_cau)
+# Đủ để một lần gọi API lấy trọn bộ câu tĩnh.
+SO_GOI_Y_TOI_DA = len(GOI_Y_CHU_DE)
 
 # Tên tệp bắt đầu bằng một trong các từ này thì đọc lên đã thành tên văn bản,
 # chỉ cần ghép thêm phần hỏi.
@@ -76,11 +93,17 @@ def _chuan_hoa(cau: str) -> str:
     return _KHONG_PHAI_CHU.sub(" ", str(cau or "").casefold()).strip()
 
 
-def _loc_trung(cac_cau, da_co=()) -> list[str]:
-    """Bỏ câu trùng nhau và câu trùng với những gì đã hỏi/đã có."""
+def _loc_trung(cac_cau, da_co=(), gioi_han: int | None = None) -> list[str]:
+    """Bỏ câu trùng nhau và câu trùng với những gì đã hỏi/đã có.
+
+    Có gioi_han thì dừng ngay khi đủ số câu: ứng viên dựng từ cả kho dài hàng
+    nghìn câu, mà câu nào cũng phải so với mọi câu đã giữ.
+    """
     da_thay = [_chuan_hoa(cau) for cau in da_co if cau]
     ket_qua = []
     for cau in cac_cau:
+        if gioi_han is not None and len(ket_qua) >= gioi_han:
+            break
         khoa = _chuan_hoa(cau)
         if not khoa:
             continue
@@ -124,43 +147,6 @@ def _cau_hoi_tu_tieu_de(tieu_de: str) -> str:
     return f"Nội dung chính của tài liệu \"{tieu_de}\" là gì?"
 
 
-def goi_y_tu_kho(ho_so=None) -> list[str]:
-    """Câu hỏi dựng từ tên tài liệu thật trong kho - gợi ý nào cũng có nguồn."""
-    cau_hoi = []
-    for ten_file in (ho_so or {}):
-        tieu_de = _lam_sach_tieu_de(ten_file)
-        if not tieu_de:
-            continue
-        cau = _cau_hoi_tu_tieu_de(tieu_de)
-        if len(cau) <= _DO_DAI_CAU_HOI_TOI_DA:
-            cau_hoi.append(cau)
-    return _loc_trung(cau_hoi)
-
-
-def goi_y_mo_dau(ho_so=None, so_luong: int = SO_GOI_Y_MO_DAU, bo_ngau_nhien=None) -> list[str]:
-    """Gợi ý cho màn hình chào, đổi mẻ mỗi lần gọi."""
-    bo = bo_ngau_nhien or random
-    try:
-        so_luong = int(so_luong)
-    except (TypeError, ValueError):
-        so_luong = SO_GOI_Y_MO_DAU
-    so_luong = max(1, min(so_luong, SO_GOI_Y_TOI_DA))
-
-    tu_kho = goi_y_tu_kho(ho_so)
-    chu_de = list(GOI_Y_CHU_DE)
-    bo.shuffle(tu_kho)
-    bo.shuffle(chu_de)
-    # Trộn một nửa từ tên tài liệu trong kho, một nửa là câu hỏi chủ đề: chỉ lấy
-    # từ kho thì gợi ý nào cũng dài dòng như tên văn bản, chỉ lấy chủ đề thì kho
-    # thêm tài liệu mới mà gợi ý vẫn y nguyên mấy câu cũ.
-    phan_kho = tu_kho[: so_luong // 2]
-    ket_qua = _loc_trung(phan_kho + chu_de[: so_luong - len(phan_kho)])
-    if len(ket_qua) < so_luong:
-        ket_qua = _loc_trung(ket_qua + tu_kho + chu_de)[:so_luong]
-    bo.shuffle(ket_qua)
-    return ket_qua[:so_luong]
-
-
 def _ten_goi(nguon: dict) -> str:
     """Cách gọi nguồn trong câu gợi ý: ưu tiên số hiệu, sau đó tới tên tài liệu."""
     van_ban = nguon.get("van_ban") or {}
@@ -170,8 +156,34 @@ def _ten_goi(nguon: dict) -> str:
     return _lam_sach_tieu_de(ten_file) or str(ten_file) or "tài liệu này"
 
 
-def _cau_hoi_theo_nguon(nguon: dict, ten: str) -> str | None:
-    """Một câu hỏi tiếp cho đúng nguồn này, theo thứ tự cần biết trước.
+# ============================================================
+# CÂY QUYẾT ĐỊNH: METADATA VĂN BẢN -> CÂU HỎI GỢI Ý
+# ============================================================
+# Cây viết tay theo luật, không học từ dữ liệu. Một nguồn đi từ gốc xuống, dừng
+# ở nút đầu tiên khớp; mỗi lá là một khuôn câu hỏi. Mã hiệu lực do
+# hieu_luc_bo_sung.nhan_hieu_luc chọn sẵn (mỗi nguồn đúng một mã), nên bốn nhánh
+# hiệu lực loại trừ nhau.
+#
+#   nguồn
+#   ├─ bị thay thế?                  -> Văn bản nào đã thay thế X?
+#   ├─ bị sửa đổi (văn bản / đoạn)?  -> X đã được sửa đổi, bổ sung những nội dung nào?
+#   ├─ chưa tới ngày hiệu lực?       -> X có hiệu lực từ ngày nào và áp dụng ra sao?
+#   ├─ dự thảo?                      -> Đã có văn bản chính thức nào thay cho bản dự thảo X chưa?
+#   ├─ trích đúng một Điều?          -> Điều n của X quy định chi tiết những gì?
+#   ├─ thay thế văn bản khác?        -> X thay thế những văn bản nào?
+#   └─ còn lại                       -> hỏi tiếp: không có câu riêng;
+#                                       màn hình chào: X có những nội dung chính nào?
+_NHANH_NOI_DUNG = "noi_dung_chinh"
+# Các lá theo đúng thứ tự trên cây.
+CAC_NHANH = (
+    "bi_thay_the", "bi_sua_doi", "chua_hieu_luc", "du_thao", "trich_dieu",
+    "thay_the_van_ban_khac", _NHANH_NOI_DUNG,
+)
+
+
+def _nhanh_theo_nguon(nguon: dict, ten: str) -> tuple[str, str] | None:
+    """Đi cây quyết định cho một nguồn: (tên lá, câu hỏi), hoặc None khi nguồn
+    không vướng gì để hỏi riêng.
 
     Vướng hiệu lực là thứ phải hỏi trước tiên - đọc tiếp một văn bản đã bị thay
     thế thì càng đọc càng sai. Hết chuyện hiệu lực mới tới đọc sâu vào Điều đang
@@ -179,19 +191,138 @@ def _cau_hoi_theo_nguon(nguon: dict, ten: str) -> str | None:
     """
     ma_hieu_luc = (nguon.get("validity") or {}).get("code")
     if ma_hieu_luc == "bi_thay_the":
-        return f"Văn bản nào đã thay thế {ten}?"
+        return "bi_thay_the", f"Văn bản nào đã thay thế {ten}?"
     if ma_hieu_luc in {"bi_sua_doi", "doan_sua_doi"}:
-        return f"{ten} đã được sửa đổi, bổ sung những nội dung nào?"
+        return "bi_sua_doi", f"{ten} đã được sửa đổi, bổ sung những nội dung nào?"
     if ma_hieu_luc == "chua_hieu_luc":
-        return f"{ten} có hiệu lực từ ngày nào và áp dụng ra sao?"
+        return "chua_hieu_luc", f"{ten} có hiệu lực từ ngày nào và áp dụng ra sao?"
     if ma_hieu_luc == "du_thao":
-        return f"Đã có văn bản chính thức nào ban hành thay cho bản dự thảo {ten} chưa?"
+        return "du_thao", (
+            f"Đã có văn bản chính thức nào ban hành thay cho bản dự thảo {ten} chưa?"
+        )
     khop_dieu = _DIEU_DAU.match(str(nguon.get("article") or ""))
     if khop_dieu:
-        return f"{khop_dieu.group(1)} của {ten} quy định chi tiết những gì?"
+        return "trich_dieu", f"{khop_dieu.group(1)} của {ten} quy định chi tiết những gì?"
     if (nguon.get("van_ban") or {}).get("thay_the"):
-        return f"{ten} thay thế những văn bản nào?"
+        return "thay_the_van_ban_khac", f"{ten} thay thế những văn bản nào?"
     return None
+
+
+def _cau_hoi_theo_nguon(nguon: dict, ten: str) -> str | None:
+    """Câu hỏi tiếp cho đúng nguồn này - lá của cây, bỏ tên lá."""
+    nhanh = _nhanh_theo_nguon(nguon, ten)
+    return nhanh[1] if nhanh else None
+
+
+def _nhanh_theo_van_ban(ten_file: str, muc_ho_so=None, muc_thoi_gian=None) -> tuple[str, str] | None:
+    """Đưa một văn bản trong kho qua cùng cây quyết định với gợi ý hỏi tiếp.
+
+    Dựng từ hồ sơ một "nguồn" cấp văn bản cùng dạng rag_service._sources trả
+    về; nhãn hiệu lực lấy đúng hàm gắn nhãn cho chip nguồn. Ở cấp văn bản
+    không có Điều nào đang được trích, nên văn bản không vướng gì rơi xuống lá
+    "nội dung chính". Không có số hiệu mà tên tệp chỉ là mã số thì bỏ: không
+    gọi được bằng cái tên nào người đọc hiểu.
+    """
+    so_hieu = getattr(muc_ho_so, "so_hieu", None)
+    tieu_de = _lam_sach_tieu_de(ten_file)
+    if not so_hieu and not tieu_de:
+        return None
+    nguon = {
+        "name": ten_file,
+        "van_ban": {
+            "so_hieu": so_hieu,
+            "loai": muc_ho_so.loai,
+            "thay_the": list(muc_ho_so.thay_the or []),
+        } if so_hieu else None,
+        "validity": hieu_luc_bo_sung.nhan_hieu_luc(muc_ho_so, muc_thoi_gian),
+    }
+    ten = _ten_goi(nguon)
+    # Tên tệp tải từ cổng văn bản nói rõ văn bản về gì hơn số hiệu, nên lá
+    # "nội dung chính" ưu tiên tên đó.
+    return _nhanh_theo_nguon(nguon, ten) or (_NHANH_NOI_DUNG, _cau_hoi_tu_tieu_de(tieu_de or ten))
+
+
+# ============================================================
+# GỢI Ý MÀN HÌNH CHÀO
+# ============================================================
+def _chan_so_luong(so_luong) -> int:
+    try:
+        so_luong = int(so_luong)
+    except (TypeError, ValueError):
+        so_luong = SO_GOI_Y_MO_DAU
+    return max(1, min(so_luong, SO_GOI_Y_TOI_DA))
+
+
+def che_do_goi_y_mo_dau(che_do: str | None = None) -> str:
+    """Chế độ gợi ý màn hình chào: theo tham số, không có thì theo biến môi
+    trường RAG_GOI_Y_MO_DAU; giá trị lạ quay về bộ câu tĩnh mặc định."""
+    gia_tri = str(che_do or os.getenv("RAG_GOI_Y_MO_DAU") or CHE_DO_TINH).strip().casefold()
+    return gia_tri if gia_tri in CAC_CHE_DO else CHE_DO_TINH
+
+
+def nhom_goi_y_tinh() -> list[dict]:
+    """Bộ câu tĩnh giữ nguyên bốn nhóm, để giao diện vẽ theo chủ đề."""
+    return [
+        {"chu_de": chu_de, "cau_hoi": list(cac_cau)}
+        for chu_de, cac_cau in NHOM_GOI_Y_CHU_DE
+    ]
+
+
+def goi_y_tinh(so_luong: int | None = None) -> list[str]:
+    """Bộ câu tĩnh, thứ tự cố định: lần lượt mỗi nhóm một câu.
+
+    Xen kẽ các nhóm để khi chỉ cần vài câu (lời từ chối chỉ chừa ba chỗ) vẫn
+    trải đủ các chủ đề thay vì dồn cả vào nhóm đầu.
+    """
+    xen_ke = [
+        cau
+        for vong in zip_longest(*(cac_cau for _, cac_cau in NHOM_GOI_Y_CHU_DE))
+        for cau in vong if cau
+    ]
+    return xen_ke if so_luong is None else xen_ke[:_chan_so_luong(so_luong)]
+
+
+def goi_y_tu_kho(ho_so=None, tinh_trang=None, bo_ngau_nhien=None, gioi_han: int | None = None) -> list[str]:
+    """Câu hỏi dựng từ metadata văn bản trong kho qua cây quyết định - gợi ý
+    nào cũng có nguồn.
+
+    Lấy xen kẽ giữa các lá theo thứ tự trên cây: để nguyên thì lá "nội dung
+    chính" chiếm gần hết kho, một mẻ sáu câu toàn "X có những nội dung chính
+    nào?" và mất hẳn loại câu hỏi về hiệu lực. Có bo_ngau_nhien thì đảo thứ tự
+    trong từng lá để mỗi mẻ một khác.
+    """
+    theo_nhanh: dict[str, list[str]] = {}
+    for ten_file, muc in (ho_so or {}).items():
+        ket_qua = _nhanh_theo_van_ban(ten_file, muc, (tinh_trang or {}).get(ten_file))
+        if ket_qua and len(ket_qua[1]) <= _DO_DAI_CAU_HOI_TOI_DA:
+            theo_nhanh.setdefault(ket_qua[0], []).append(ket_qua[1])
+    cac_nhanh = [theo_nhanh[nhanh] for nhanh in CAC_NHANH if nhanh in theo_nhanh]
+    if bo_ngau_nhien is not None:
+        for cac_cau in cac_nhanh:
+            bo_ngau_nhien.shuffle(cac_cau)
+    xen_ke = (cau for vong in zip_longest(*cac_nhanh) for cau in vong if cau)
+    return _loc_trung(xen_ke, gioi_han=gioi_han)
+
+
+def goi_y_mo_dau(
+    ho_so=None,
+    so_luong: int = SO_GOI_Y_MO_DAU,
+    bo_ngau_nhien=None,
+    che_do: str | None = None,
+    tinh_trang=None,
+) -> list[str]:
+    """Gợi ý cho màn hình chào.
+
+    Mặc định là bộ câu tĩnh, lần nào gọi cũng như nhau. Chế độ "metadata" dựng
+    câu từ hồ sơ văn bản trong kho qua cây quyết định và đổi mẻ mỗi lần gọi;
+    kho có ít văn bản dùng được quá thì bù bằng câu tĩnh để hàng gợi ý không
+    bao giờ trống.
+    """
+    so_luong = _chan_so_luong(so_luong)
+    if che_do_goi_y_mo_dau(che_do) == CHE_DO_TINH:
+        return goi_y_tinh(so_luong)
+    tu_kho = goi_y_tu_kho(ho_so, tinh_trang, bo_ngau_nhien or random, gioi_han=so_luong)
+    return _loc_trung(tu_kho + goi_y_tinh(), gioi_han=so_luong)
 
 
 # Cụm từ rút từ câu trả lời mà đem đi hỏi tiếp thì vô nghĩa: lời dẫn, nhãn vị

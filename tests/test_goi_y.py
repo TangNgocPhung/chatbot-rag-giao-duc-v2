@@ -1,12 +1,21 @@
+import os
 import random
 import unittest
+from unittest import mock
 
 from fastapi.testclient import TestClient
 
 import goi_y_cau_hoi
 from api import app
+from hieu_luc_bo_sung import TinhTrangThoiGian
 from rag_service import service
 from van_ban_meta import HoSoVanBan
+
+
+def bo_bien_che_do():
+    """Chạy test như máy chưa đặt RAG_GOI_Y_MO_DAU, dù máy thật có đặt."""
+    moi_truong = {k: v for k, v in os.environ.items() if k != "RAG_GOI_Y_MO_DAU"}
+    return mock.patch.dict(os.environ, moi_truong, clear=True)
 
 
 class TieuDeTuTenTepTests(unittest.TestCase):
@@ -49,27 +58,121 @@ class TieuDeTuTenTepTests(unittest.TestCase):
         self.assertEqual(goi_y_cau_hoi.goi_y_tu_kho({f"{dai}.pdf": None}), [])
 
 
-class GoiYMoDauTests(unittest.TestCase):
-    def test_khong_co_kho_van_ban_van_co_goi_y_chu_de(self):
-        goi_y = goi_y_cau_hoi.goi_y_mo_dau({}, 6, random.Random(1))
-        self.assertEqual(len(goi_y), 6)
-        self.assertEqual(len(set(goi_y)), 6)
+KHO_MUOI_VAN_BAN = {
+    f"Thông tư quy định nội dung {chu} trong trường phổ thông.pdf": None
+    for chu in "ABCDEFGHIJ"
+}
 
-    def test_tron_ca_goi_y_tu_kho_va_goi_y_chu_de(self):
-        ho_so = {
-            f"Thông tư quy định nội dung {chu} trong trường phổ thông.pdf": None
-            for chu in "ABCDEFGHIJ"
+
+class GoiYMoDauTinhTests(unittest.TestCase):
+    def setUp(self):
+        self.moi_truong = bo_bien_che_do()
+        self.moi_truong.start()
+        self.addCleanup(self.moi_truong.stop)
+
+    def test_bo_cau_tinh_du_17_cau_chia_4_nhom(self):
+        self.assertEqual(
+            [(nhom["chu_de"], len(nhom["cau_hoi"])) for nhom in goi_y_cau_hoi.nhom_goi_y_tinh()],
+            [("Mầm non & phổ thông", 6), ("Giáo dục nghề nghiệp", 3),
+             ("Giáo dục đại học", 4), ("Chính sách và đội ngũ nhà giáo", 4)],
+        )
+        self.assertEqual(len(set(goi_y_cau_hoi.GOI_Y_CHU_DE)), 17)
+
+    def test_mac_dinh_la_bo_cau_tinh_khong_tron_cau_tu_kho(self):
+        lan_mot = goi_y_cau_hoi.goi_y_mo_dau(KHO_MUOI_VAN_BAN, 6, random.Random(1))
+        lan_hai = goi_y_cau_hoi.goi_y_mo_dau(KHO_MUOI_VAN_BAN, 6, random.Random(2))
+        self.assertEqual(lan_mot, lan_hai)
+        self.assertTrue(set(lan_mot) <= set(goi_y_cau_hoi.GOI_Y_CHU_DE))
+
+    def test_lay_it_cau_van_trai_du_cac_chu_de(self):
+        # Lời từ chối chỉ chừa ba chỗ gợi ý; ba câu đó không được dồn cả vào
+        # nhóm mầm non & phổ thông.
+        nhom_cua = {
+            cau: nhom["chu_de"]
+            for nhom in goi_y_cau_hoi.nhom_goi_y_tinh() for cau in nhom["cau_hoi"]
         }
-        goi_y = goi_y_cau_hoi.goi_y_mo_dau(ho_so, 6, random.Random(3))
-        tu_kho = [cau for cau in goi_y if "trong trường phổ thông" in cau]
-        self.assertEqual(len(tu_kho), 3)
-        self.assertEqual(len(goi_y), 6)
+        self.assertEqual(len({nhom_cua[cau] for cau in goi_y_cau_hoi.goi_y_mo_dau({}, 4)}), 4)
+
+    def test_lay_du_bo_thi_ra_dung_17_cau(self):
+        self.assertEqual(
+            sorted(goi_y_cau_hoi.goi_y_mo_dau({}, 17)), sorted(goi_y_cau_hoi.GOI_Y_CHU_DE)
+        )
 
     def test_so_luong_bi_chan_tren_va_chan_duoi(self):
         self.assertEqual(len(goi_y_cau_hoi.goi_y_mo_dau({}, 0)), 1)
         self.assertEqual(
             len(goi_y_cau_hoi.goi_y_mo_dau({}, 999)), goi_y_cau_hoi.SO_GOI_Y_TOI_DA
         )
+
+    def test_che_do_la_quay_ve_bo_cau_tinh(self):
+        self.assertEqual(goi_y_cau_hoi.che_do_goi_y_mo_dau("khong-co"), "tinh")
+        with mock.patch.dict(os.environ, {"RAG_GOI_Y_MO_DAU": "Metadata"}):
+            self.assertEqual(goi_y_cau_hoi.che_do_goi_y_mo_dau(), "metadata")
+
+
+class GoiYMoDauMetadataTests(unittest.TestCase):
+    def goi_y(self, ho_so, so_luong=6, tinh_trang=None, hat_giong=1):
+        return goi_y_cau_hoi.goi_y_mo_dau(
+            ho_so, so_luong, random.Random(hat_giong),
+            che_do="metadata", tinh_trang=tinh_trang,
+        )
+
+    def test_khong_co_kho_van_ban_van_co_goi_y_chu_de(self):
+        goi_y = self.goi_y({})
+        self.assertEqual(len(goi_y), 6)
+        self.assertEqual(len(set(goi_y)), 6)
+
+    def test_kho_du_van_ban_thi_ca_me_lay_tu_kho(self):
+        goi_y = self.goi_y(KHO_MUOI_VAN_BAN)
+        self.assertEqual(len(goi_y), 6)
+        self.assertTrue(all("trong trường phổ thông" in cau for cau in goi_y), goi_y)
+
+    def test_kho_it_van_ban_thi_bu_bang_cau_tinh(self):
+        goi_y = self.goi_y({"Thông tư quy định về dạy thêm, học thêm.pdf": None})
+        self.assertEqual(
+            goi_y[0], "Thông tư quy định về dạy thêm, học thêm có những nội dung chính nào?"
+        )
+        self.assertTrue(set(goi_y[1:]) <= set(goi_y_cau_hoi.GOI_Y_CHU_DE))
+
+    def test_moi_nhanh_cua_cay_quyet_dinh_gop_mot_cau(self):
+        def ho_so(ten, so, **them):
+            return HoSoVanBan(ten_file=ten, so_hieu=so, loai="Thông tư", **them)
+
+        kho = {
+            "a.pdf": ho_so("a.pdf", "1/2020/TT-BGDĐT", bi_thay_the_boi=["b.pdf"]),
+            "b.pdf": ho_so("b.pdf", "2/2024/TT-BGDĐT", thay_the=["1/2020/TT-BGDĐT"]),
+            "c.pdf": ho_so("c.pdf", "3/2021/TT-BGDĐT", bi_sua_doi_boi=["b.pdf"]),
+            "d.pdf": ho_so("d.pdf", "4/2099/TT-BGDĐT"),
+            "e.pdf": ho_so("e.pdf", "5/2025/TT-BGDĐT"),
+        }
+        kho.update({
+            f"Thông tư quy định nội dung {chu} trong trường phổ thông.pdf": None
+            for chu in "ABCDEF"
+        })
+        tinh_trang = {
+            "d.pdf": TinhTrangThoiGian(ten_file="d.pdf", ngay_hieu_luc="2999-01-01"),
+            "e.pdf": TinhTrangThoiGian(ten_file="e.pdf", la_du_thao=True),
+        }
+        goi_y = self.goi_y(kho, 6, tinh_trang)
+        self.assertEqual(goi_y[:5], [
+            "Văn bản nào đã thay thế Thông tư 1/2020/TT-BGDĐT?",
+            "Thông tư 3/2021/TT-BGDĐT đã được sửa đổi, bổ sung những nội dung nào?",
+            "Thông tư 4/2099/TT-BGDĐT có hiệu lực từ ngày nào và áp dụng ra sao?",
+            "Đã có văn bản chính thức nào ban hành thay cho bản dự thảo "
+            "Thông tư 5/2025/TT-BGDĐT chưa?",
+            "Thông tư 2/2024/TT-BGDĐT thay thế những văn bản nào?",
+        ])
+        self.assertIn("trong trường phổ thông có những nội dung chính nào?", goi_y[5])
+
+    def test_ten_tep_ma_hoa_co_so_hieu_thi_goi_bang_so_hieu(self):
+        goi_y = goi_y_cau_hoi.goi_y_tu_kho({
+            "5512_BGDDT-GDTrH_462988.doc": HoSoVanBan(
+                ten_file="5512_BGDDT-GDTrH_462988.doc",
+                so_hieu="5512/BGDĐT-GDTrH", loai="Công văn",
+            ),
+            "PPCT-5.docx": HoSoVanBan(ten_file="PPCT-5.docx"),
+        })
+        self.assertEqual(goi_y, ["Công văn 5512/BGDĐT-GDTrH có những nội dung chính nào?"])
 
 
 class GoiYTiepTheoTests(unittest.TestCase):
@@ -245,11 +348,28 @@ class GoiYApiTests(unittest.TestCase):
         service.ho_so_van_ban = self.ho_so_goc
 
     def test_tra_ve_dung_so_luong_goi_y(self):
-        response = self.client.get("/api/goi-y?so_luong=4")
+        with bo_bien_che_do():
+            response = self.client.get("/api/goi-y?so_luong=4")
         self.assertEqual(response.status_code, 200)
         goi_y = response.json()["goi_y"]
         self.assertEqual(len(goi_y), 4)
         self.assertEqual(len(set(goi_y)), 4)
+
+    def test_mac_dinh_tra_ca_bo_cau_tinh_theo_nhom(self):
+        with bo_bien_che_do():
+            payload = self.client.get("/api/goi-y").json()
+        self.assertEqual(payload["che_do"], "tinh")
+        self.assertEqual(len(payload["nhom"]), 4)
+        self.assertEqual(sum(len(nhom["cau_hoi"]) for nhom in payload["nhom"]), 17)
+
+    def test_che_do_metadata_dung_ho_so_van_ban_trong_kho(self):
+        payload = self.client.get("/api/goi-y?so_luong=3&che_do=metadata").json()
+        self.assertEqual(payload["che_do"], "metadata")
+        self.assertEqual(payload["nhom"], [])
+        self.assertEqual(
+            payload["goi_y"][0],
+            "Thông tư quy định về dạy thêm, học thêm có những nội dung chính nào?",
+        )
 
     def test_goi_y_co_san_khi_kho_tri_thuc_chua_nap(self):
         # Giao diện lấy gợi ý ngay lúc mở trang, trước cả khi Ollama trả lời

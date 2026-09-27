@@ -1270,15 +1270,25 @@ class RAGService:
             sources.append(source)
         return sources
 
-    def goi_y_mo_dau(self, so_luong: int = goi_y_cau_hoi.SO_GOI_Y_MO_DAU) -> list[str]:
-        """Câu hỏi gợi ý cho màn hình chào.
+    def goi_y_mo_dau(
+        self, so_luong: int = goi_y_cau_hoi.SO_GOI_Y_MO_DAU, che_do: str | None = None
+    ) -> list[str]:
+        """Câu hỏi gợi ý cho màn hình chào: bộ câu tĩnh, hoặc metadata văn bản
+        qua cây quyết định (xem goi_y_cau_hoi.goi_y_mo_dau).
 
-        Chưa nạp xong chỉ mục thì đọc hồ sơ văn bản đã lưu trên đĩa: người dùng
-        mở trang lúc Ollama còn chưa chạy vẫn phải thấy gợi ý, không thì hàng
-        gợi ý trống hoác đúng lúc cần biết hỏi được những gì.
+        Chế độ metadata mà chưa nạp xong chỉ mục thì đọc hồ sơ văn bản đã lưu
+        trên đĩa: người dùng mở trang lúc Ollama còn chưa chạy vẫn phải thấy gợi
+        ý, không thì hàng gợi ý trống hoác đúng lúc cần biết hỏi được những gì.
+        Bộ câu tĩnh không cần hồ sơ nên khỏi đọc đĩa.
         """
-        ho_so = self.ho_so_van_ban or van_ban_meta.tai_ho_so()
-        return goi_y_cau_hoi.goi_y_mo_dau(ho_so, so_luong)
+        che_do = goi_y_cau_hoi.che_do_goi_y_mo_dau(che_do)
+        ho_so = tinh_trang = None
+        if che_do == goi_y_cau_hoi.CHE_DO_METADATA:
+            ho_so = self.ho_so_van_ban or van_ban_meta.tai_ho_so()
+            tinh_trang = self.tinh_trang_hieu_luc or hieu_luc_bo_sung.tai()
+        return goi_y_cau_hoi.goi_y_mo_dau(
+            ho_so, so_luong, che_do=che_do, tinh_trang=tinh_trang
+        )
 
     @staticmethod
     def resolve_source_file(source_name: str) -> str | None:

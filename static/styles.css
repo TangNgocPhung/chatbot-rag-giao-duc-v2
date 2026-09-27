@@ -671,6 +671,9 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .suggestion-chip { display: flex; align-items: center; max-width: 100%; padding: 7px 13px; color: var(--ink-body); background: var(--surface); border: 1px solid var(--line); border-radius: 20px; font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; transition: border-color .18s, color .18s, box-shadow .18s, transform .18s; }
 .suggestion-chip:hover { color: var(--blue-ink); border-color: var(--blue-line); box-shadow: 0 3px 10px var(--hover-wash); transform: translateY(-1px); }
 .suggestion-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Bộ câu tĩnh: mỗi chủ đề một khối, tên nhóm nhỏ ở đầu. */
+.suggestion-chips.theo-nhom { flex-direction: column; flex-wrap: nowrap; gap: 14px; }
+.suggestion-group-title { margin-bottom: 7px; color: var(--ink-soft); font-size: 12px; font-weight: 700; }
 
 /* --- Hàng hỏi tiếp dưới câu trả lời --- */
 .goi-y-tiep { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line); }
