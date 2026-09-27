@@ -678,14 +678,26 @@ def _dang_nhap_bat_buoc(request: Request) -> dict:
     return nguoi_dung
 
 
+class GuiMaXacMinh(BaseModel):
+    # True khi hộp xác minh vừa mở (không phải người dùng bấm "Gửi lại mã").
+    tu_dong: bool = False
+
+
 @app.post("/api/tai-khoan/gui-ma-xac-minh")
-def gui_ma_xac_minh(request: Request):
+def gui_ma_xac_minh(request: Request, thong_tin: GuiMaXacMinh | None = None):
     nguoi_dung = _dang_nhap_bat_buoc(request)
     if not gui_thu.da_cau_hinh():
         raise HTTPException(
             status_code=503,
             detail="Máy chủ chưa cấu hình gửi thư. Hãy nhờ quản trị viên xác minh giúp.",
         )
+    # Mở hộp xác minh chỉ tự gửi mã lần đầu. Đã gửi rồi thì chỉ báo mã còn
+    # hạn hay đã hết; mã mới chỉ gửi khi người dùng bấm "Gửi lại mã".
+    if thong_tin is not None and thong_tin.tu_dong:
+        da_gui = tai_khoan.ma_da_gui(nguoi_dung["id"])
+        if da_gui is not None:
+            return {"email": nguoi_dung["email"], "phut": tai_khoan.PHUT_MA_XAC_MINH,
+                    "da_gui": False, **da_gui}
     try:
         nd, ma = tai_khoan.tao_ma_xac_minh(nguoi_dung["id"])
     except tai_khoan.LoiTaiKhoan as exc:
@@ -696,7 +708,10 @@ def gui_ma_xac_minh(request: Request):
         tai_khoan.huy_lan_gui_ma(nguoi_dung["id"])
         print(f"[gui_thu] {exc}", flush=True)
         raise HTTPException(status_code=502, detail="Chưa gửi được thư, hãy thử lại sau ít phút.") from exc
-    return {"email": nd["email"], "phut": tai_khoan.PHUT_MA_XAC_MINH}
+    return {
+        "email": nd["email"], "phut": tai_khoan.PHUT_MA_XAC_MINH, "da_gui": True,
+        "con_giay": tai_khoan.PHUT_MA_XAC_MINH * 60, "cho_giay": tai_khoan.GIAY_GIUA_HAI_LAN_GUI,
+    }
 
 
 @app.post("/api/tai-khoan/xac-minh")
