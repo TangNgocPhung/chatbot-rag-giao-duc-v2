@@ -13,7 +13,7 @@ Chatbot hỏi-đáp dựa trên kho tài liệu bao quát nhiều bậc và lĩn
 - Trả lời câu hỏi dựa **CHỈ trên** nội dung tài liệu đã nạp (không bịa, có cơ chế từ chối khi không tìm thấy thông tin).
 - Đọc trực tiếp 1 URL do người dùng dán trong câu hỏi (đọc ngay, không cần nạp trước vào kho).
 - Trích dẫn nguồn (tên file/Chương/Điều) trong câu trả lời, chỉ đúng dòng được trích trên trang PDF gốc.
-- Công cụ tính bằng Python (lương, định mức tiết dạy, điểm và xếp loại học sinh, số học) thay vì để mô hình làm toán.
+- Công cụ tính bằng Python (lương, định mức tiết dạy, số học) thay vì để mô hình làm toán.
 - Giao diện web: tài khoản, lịch sử, tệp đính kèm và tài liệu riêng, sổ tay có trình đọc tài liệu, dịch, nhận giọng nói (danh sách đầy đủ ở README).
 
 **Phạm vi ĐÃ làm** (mục 8 liệt kê rõ giới hạn CHƯA làm).
@@ -72,7 +72,7 @@ ollama pull qwen3.5:4b
 | `tep_dinh_kem.py`, `tom_tat_tep.py` | Tệp đính kèm và tài liệu riêng (chunk + BM25 riêng từng tệp, không embed vào FAISS); tóm tắt tệp |
 | `quan_ly_kho.py` | Hàng chờ duyệt, gỡ tài liệu và thùng rác của kho chung |
 | `trinh_doc_tai_lieu.py`, `chuyen_pdf.py` | Trình đọc trong sổ tay: render trang, khoanh để hỏi, tô sáng đoạn được trích, xuất PDF kèm đánh dấu; chuyển Word/Excel/PowerPoint/HTML sang PDF bằng LibreOffice |
-| `tinh_luong.py`, `dinh_muc_tiet_day.py`, `danh_gia_hoc_sinh.py`, `tinh_toan.py`, `can_cu_van_ban.py` | Công cụ tính bằng Python (lương, định mức tiết dạy, điểm và xếp loại, số học) kèm căn cứ pháp lý |
+| `tinh_luong.py`, `dinh_muc_tiet_day.py`, `dinh_muc_tiet_day_pho_thong.py`, `tinh_toan.py`, `can_cu_van_ban.py` | Công cụ tính bằng Python (lương, định mức tiết dạy GDTX và phổ thông, số học) kèm căn cứ pháp lý |
 | `hieu_luc_bo_sung.py` | Hiệu lực theo thời gian: dự thảo, văn bản chưa tới ngày áp dụng |
 | `tu_vung_kho.py`, `goi_y_cau_hoi.py` | Từ vựng kho để chặn câu hỏi lạc đề và chấm khớp tên tài liệu theo IDF; gợi ý câu hỏi |
 | `dich_thuat.py`, `giong_noi.py` | Dịch bằng mô hình nhỏ qua Ollama trên máy chủ; nhận giọng nói bằng faster-whisper |
