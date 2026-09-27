@@ -34,12 +34,12 @@
   <g font-size="15" fill="#23303e" text-anchor="middle">
     <rect x="72" y="366" width="266" height="48" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
     <text x="205" y="387" font-weight="600">Tài liệu giáo dục</text>
-    <text x="205" y="405" font-size="13.5">Drive · tải lên web · thư mục kho</text>
+    <text x="205" y="405" font-size="13.5">Drive · thư mục nóng · tải lên</text>
     <use href="#ten-xuong" x="205" y="416" transform="translate(0,0) scale(1)" />
 
     <rect x="72" y="438" width="266" height="48" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
     <text x="205" y="459" font-weight="600">Đọc &amp; nhận dạng chữ</text>
-    <text x="205" y="477" font-size="13.5">PDF · Office · OCR Tesseract</text>
+    <text x="205" y="477" font-size="13.5">PDF · Office · OCR · phiên âm</text>
     <use href="#ten-xuong" x="205" y="488"/>
 
     <rect x="72" y="510" width="266" height="48" rx="9" fill="#f7f5fc" stroke="#b3a7d6" stroke-width="1.5"/>
@@ -66,7 +66,7 @@
     <!-- 2 -->
     <rect x="420" y="238" width="580" height="72" rx="12" fill="#c7daec" stroke="#6f8fb5" stroke-width="2" filter="url(#bong)"/>
     <text x="710" y="268" font-size="20" font-weight="700" fill="#1f2d3d">2. Định tuyến công cụ &amp; tra cache ngữ nghĩa</text>
-    <text x="710" y="295" font-size="16" fill="#2d3b4a">(Tệp đính kèm · công cụ tính lương, tiết dạy bằng Python · cache bge-m3)</text>
+    <text x="710" y="295" font-size="16" fill="#2d3b4a">(Tệp đính kèm · công cụ tính lương, tiết dạy, số học bằng Python · cache)</text>
     <use href="#ten-xuong" x="710" y="313"/>
 
     <!-- 3 -->
@@ -78,7 +78,7 @@
     <!-- 4 -->
     <rect x="420" y="434" width="580" height="72" rx="12" fill="#bfe0d4" stroke="#79ae9a" stroke-width="2.4" filter="url(#bong)"/>
     <text x="710" y="464" font-size="20" font-weight="700" fill="#1f2d3d">4. Truy xuất lai tri thức liên quan</text>
-    <text x="710" y="491" font-size="16" fill="#2d3b4a">(FAISS top-15 + BM25 top-15 → hợp nhất RRF → 4 đoạn tốt nhất)</text>
+    <text x="710" y="491" font-size="16" fill="#2d3b4a">(FAISS top-15 + BM25 top-15 → RRF → xếp hạng lại → 4 đoạn tốt nhất)</text>
     <use href="#ten-xuong" x="710" y="509"/>
 
     <!-- 5 -->
