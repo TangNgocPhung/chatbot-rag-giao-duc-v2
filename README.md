@@ -13,6 +13,8 @@ Giảng viên hướng dẫn: TS. Nguyễn Minh Hải
 
 **Bản chạy trực tuyến:** <https://chatbot.148-113-237-209.sslip.io/>
 
+**Hướng dẫn sử dụng cho người mới:** [HUONG_DAN_SU_DUNG.md](HUONG_DAN_SU_DUNG.md) - cũng mở được ngay trên giao diện bằng nút **Hướng dẫn** ở thanh trên cùng. Nút này đọc thẳng tệp đó qua `GET /api/huong-dan`, nên sửa tệp là giao diện cập nhật theo.
+
 ---
 
 Ứng dụng hỏi đáp tài liệu giáo dục chạy cục bộ bằng FastAPI, Ollama, FAISS và giao diện web tiếng Việt. Hệ thống hỗ trợ:

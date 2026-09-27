@@ -125,6 +125,7 @@ Các endpoint đánh dấu **[QT]** chỉ tài khoản quản trị gọi đư�
 Hỏi đáp và kho tri thức:
 
 - `GET /api/status`: trạng thái model và kho tri thức.
+- `GET /api/huong-dan`: nội dung `HUONG_DAN_SU_DUNG.md` (Markdown) cho nút **Hướng dẫn** trên giao diện.
 - `GET /api/documents`: danh sách tài liệu và tình trạng lập chỉ mục.
 - `GET /api/bo-loc`: các lựa chọn phạm vi (môn, cấp học...) kèm số tài liệu.
 - `GET /api/goi-y?so_luong=6`: câu hỏi gợi ý cho màn hình chào. Trả `che_do`, `goi_y` và, ở chế độ `tinh`, `nhom` (đủ 17 câu theo 4 chủ đề). Thêm `&che_do=metadata` để xem chế độ còn lại mà không đổi biến môi trường.
