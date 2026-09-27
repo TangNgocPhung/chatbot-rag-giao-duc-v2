@@ -133,7 +133,7 @@
     <text x="771" y="710">gợi ý câu hỏi tiếp theo</text>
     <text x="771" y="730">đạt hậu kiểm mới lưu cache</text>
     <text x="1008" y="690">trùng cache (cosine ≥ 0,96)</text>
-    <text x="1008" y="710">câu tính → 5 công cụ Python</text>
+    <text x="1008" y="710">câu tính → công cụ Python</text>
     <text x="1008" y="730">lạc đề → từ chối, không đoán</text>
   </g>
   <g stroke="#2a78d6" stroke-width="1.6" fill="none" marker-end="url(#ab)">

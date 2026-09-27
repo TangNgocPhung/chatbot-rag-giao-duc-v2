@@ -771,7 +771,9 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .cham-so-tay { position: absolute; top: 4px; right: 6px; width: 7px; height: 7px; background: var(--coral); border: 2px solid var(--surface); border-radius: 50%; box-sizing: content-box; }
 
 .workspace { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface-2); border-left: 1px solid var(--line); }
-.ws-resizer { position: absolute; top: 0; bottom: 0; left: -4px; z-index: 6; width: 8px; cursor: col-resize; }
+/* touch-action: none: không thì màn cảm ứng coi thao tác kéo là cuộn trang và
+   phát pointercancel ngay sau vài pixel đầu. */
+.ws-resizer { position: absolute; top: 0; bottom: 0; left: -4px; z-index: 6; width: 8px; cursor: col-resize; touch-action: none; }
 .ws-resizer::after { content: ""; position: absolute; top: 50%; left: 2px; width: 4px; height: 44px; background: var(--line-strong); border-radius: 4px; opacity: 0; transform: translateY(-50%); transition: opacity .15s; }
 .ws-resizer:hover::after, .ws-resizer:focus-visible::after { opacity: 1; }
 .ws-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; height: 68px; flex: 0 0 auto; padding: 0 12px 0 20px; border-bottom: 1px solid var(--line); background: var(--surface); }

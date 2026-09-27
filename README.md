@@ -20,7 +20,7 @@ Giảng viên hướng dẫn: TS. Nguyễn Minh Hải
 - Tìm kiếm lai FAISS + BM25, chặn câu hỏi ngoài phạm vi kho
 - Trích dẫn nguồn chỉ đúng dòng trên trang gốc: tô sáng đoạn được trích ngay trên ảnh trang PDF, kể cả bản scan
 - Hậu kiểm trích dẫn và số liệu; cảnh báo văn bản bị thay thế, sửa đổi, còn là dự thảo hoặc chưa tới ngày áp dụng
-- Công cụ tính bằng Python cho lương nhà giáo, định mức tiết dạy (GDTX, phổ thông), điểm trung bình môn và số học: trả kết quả kèm công thức và văn bản căn cứ, không để mô hình làm toán
+- Công cụ tính bằng Python cho lương nhà giáo, định mức tiết dạy (GDTX, phổ thông) và số học: trả kết quả kèm công thức và văn bản căn cứ, không để mô hình làm toán
 - Câu trả lời dễ đọc lướt: tô sẵn số liệu, số hiệu văn bản, tách câu kết luận; màn hình chào có 17 câu gợi ý theo 4 chủ đề
 - Cập nhật chỉ mục tăng dần (chỉ xử lý tệp thêm, sửa hoặc xóa)
 - Đọc PDF, Word (`.docx`, `.doc`), PowerPoint (`.pptx`), Excel/CSV, TXT, Markdown, HTML, EPUB
