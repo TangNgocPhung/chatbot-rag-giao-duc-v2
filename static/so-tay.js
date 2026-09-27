@@ -313,6 +313,34 @@
   // ------------------------------------------------------------
   const laManHep = () => window.matchMedia('(max-width: 800px)').matches;
 
+  // Màn rộng xếp ba cột: thanh bên (292 px, khớp grid-template-columns trong
+  // styles.css), khung chat, sổ tay. Khung chat hẹp quá thì ô hỏi và thanh
+  // trên tràn ra sau sổ (màn 810 px chỉ còn 158 px), nên giữ cho nó ít nhất
+  // KHUNG_GIUA_TOI_THIEU: kéo sổ không rộng quá mức đó, và không đủ chỗ thì
+  // thanh bên tự gập - đóng sổ hoặc màn rộng ra là mở lại. Gập kiểu này không
+  // ghi vào lựa chọn đã lưu; người dùng tự bấm nút gập thì theo ý người dùng,
+  // trừ khi mở thanh bên ra sẽ ép khung chat dưới mức tối thiểu.
+  const RONG_THANH_BEN = 292;
+  const KHUNG_GIUA_TOI_THIEU = 420;
+  let thanhBenTuGap = false;
+
+  const thanhBenDangGap = () => elements.appShell.classList.contains('sidebar-collapsed');
+  const coSoTay = () => elements.appShell.classList.contains('co-so-tay');
+  const duChoThanhBen = () => window.innerWidth - RONG_THANH_BEN
+    - (coSoTay() ? ws.root.getBoundingClientRect().width : 0) >= KHUNG_GIUA_TOI_THIEU;
+
+  function nhuongChoKhungGiua() {
+    if (laManHep()) return;
+    const duCho = duChoThanhBen();
+    if (coSoTay() && !duCho && !thanhBenDangGap()) {
+      apDungGapThanhBen(true);
+      thanhBenTuGap = true;
+    } else if (thanhBenTuGap && duCho) {
+      if (thanhBenDangGap()) apDungGapThanhBen(false);
+      thanhBenTuGap = false;
+    }
+  }
+
   function moSoTay(the) {
     ws.root.classList.remove('hidden');
     elements.appShell.classList.add('co-so-tay');
@@ -321,6 +349,7 @@
     ghiLuu(KHOA_MO, '1');
     if (the) chonThe(the);
     if (laManHep()) closeSidebar();
+    nhuongChoKhungGiua();
     window.requestAnimationFrame(() => {
       doKichThuocBang();
       capNhatCoTrang();
@@ -333,6 +362,7 @@
     ws.nutMo.setAttribute('aria-expanded', 'false');
     ws.nutMo.classList.remove('active');
     dongMenuTaiVe();
+    nhuongChoKhungGiua();
   }
 
   function dongSoTay() {
@@ -381,7 +411,8 @@
   }
 
   function datDoRong(px) {
-    const lon = Math.max(360, window.innerWidth - 560);
+    const thanhBen = thanhBenDangGap() ? 0 : RONG_THANH_BEN;
+    const lon = Math.max(320, window.innerWidth - thanhBen - KHUNG_GIUA_TOI_THIEU);
     const rong = hepVao(Math.round(px), 320, lon);
     elements.appShell.style.setProperty('--rong-so-tay', `${rong}px`);
     return rong;
@@ -389,6 +420,22 @@
 
   ws.nutMo.addEventListener('click', batTatSoTay);
   ws.dong.addEventListener('click', dongSoTay);
+  window.addEventListener('resize', nhuongChoKhungGiua);
+  // Chặn trước nút gập của app.js (capture chạy trước ở chính nút): sổ đang mở
+  // mà mở thanh bên ra sẽ ép khung chat dưới mức tối thiểu thì báo cách làm.
+  elements.collapseButton?.addEventListener('click', (event) => {
+    if (laManHep() || !coSoTay() || !thanhBenDangGap() || duChoThanhBen()) return;
+    event.stopImmediatePropagation();
+    // Sổ hẹp nhất là 320 px (datDoRong): màn hẹp quá thì thu sổ cũng không đủ.
+    const thuSoLaDu = window.innerWidth - RONG_THANH_BEN - 320 >= KHUNG_GIUA_TOI_THIEU;
+    showToast(thuSoLaDu
+      ? 'Chưa đủ chỗ cho cả thanh bên và sổ tay. Kéo mép trái của sổ cho hẹp lại, hoặc đóng sổ, rồi mở thanh bên.'
+      : 'Màn hình chưa đủ rộng cho cả thanh bên và sổ tay. Đóng sổ tay để mở thanh bên.', 4500);
+  }, { capture: true });
+  // Người dùng tự gập / mở thanh bên thì từ đó không tự mở lại nữa.
+  elements.collapseButton?.addEventListener('click', () => {
+    thanhBenTuGap = false;
+  });
   ws.tabs.forEach((nut, viTri) => {
     nut.addEventListener('click', () => chonThe(nut.dataset.tab));
     nut.addEventListener('keydown', (event) => {

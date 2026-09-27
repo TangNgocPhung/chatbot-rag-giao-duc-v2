@@ -761,13 +761,16 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
   .app-shell.sidebar-collapsed.co-so-tay { grid-template-columns: 0 minmax(0, 1fr) var(--rong-so-tay); }
 }
 
-/* Nút mở sổ ở thanh trên: đứng trước nút sáng/tối, đẩy cả cụm sang phải. */
+/* Nút mở sổ ở thanh trên: đứng trước nút sáng/tối, đẩy cả cụm sang phải.
+   Nút Hướng dẫn đứng trước nó thì nút Hướng dẫn nhận việc đẩy cụm. */
 .topbar .nut-so-tay { margin-left: auto; }
 .topbar .nut-so-tay ~ .theme-toggle { margin-left: 0; }
-.nut-so-tay { position: relative; display: flex; align-items: center; gap: 7px; padding: 7px 12px; color: var(--ink-soft); background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 650; cursor: pointer; }
-.nut-so-tay:hover { color: var(--ink); border-color: var(--line-strong); background: var(--surface-3); }
+.topbar .nut-huong-dan { margin-left: auto; }
+.topbar .nut-huong-dan ~ .nut-so-tay { margin-left: 0; }
+.nut-so-tay, .nut-huong-dan { position: relative; display: flex; align-items: center; gap: 7px; padding: 7px 12px; color: var(--ink-soft); background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 650; cursor: pointer; }
+.nut-so-tay:hover, .nut-huong-dan:hover { color: var(--ink); border-color: var(--line-strong); background: var(--surface-3); }
 .nut-so-tay.active { color: var(--blue-ink); background: var(--blue-soft); border-color: var(--blue-line); }
-.nut-so-tay svg { width: 16px; height: 16px; }
+.nut-so-tay svg, .nut-huong-dan svg { width: 16px; height: 16px; }
 .cham-so-tay { position: absolute; top: 4px; right: 6px; width: 7px; height: 7px; background: var(--coral); border: 2px solid var(--surface); border-radius: 50%; box-sizing: content-box; }
 
 .workspace { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface-2); border-left: 1px solid var(--line); }
@@ -905,17 +908,13 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .thanh-chon button:hover { background: rgba(127, 127, 127, .28); }
 .thanh-chon svg { width: 14px; height: 14px; }
 
-@media (max-width: 1100px) and (min-width: 801px) {
-  /* Ba cột trên màn vừa: chữ "Sổ tay" nhường chỗ cho khung chat. */
-  .app-shell.co-so-tay .nut-so-tay span { display: none; }
-}
 @media (max-width: 800px) {
   .app-shell.co-so-tay { grid-template-columns: 1fr; }
   .workspace { position: fixed; inset: 0; z-index: 25; border-left: 0; }
   .ws-resizer { display: none; }
   .ws-header { height: 58px; padding-left: 16px; }
-  .nut-so-tay span { display: none; }
-  .nut-so-tay { padding: 8px; }
+  .nut-so-tay span, .nut-huong-dan span { display: none; }
+  .nut-so-tay, .nut-huong-dan { padding: 8px; }
   .doc-trang-list { padding: 10px 8px; }
 }
 
@@ -1136,3 +1135,68 @@ body:not([data-so-tay="1"]) .can-so-tay { display: none !important; }
 .model-menu-ghi-chu { margin: 4px 2px 0; padding: 8px 9px 4px; color: var(--ink-mute); border-top: 1px solid var(--line); font-size: 10.5px; line-height: 1.45; }
 .model-mac-dinh { margin: 4px 2px 2px; padding: 8px 9px; color: var(--blue-ink); background: var(--blue-soft); border: 0; border-radius: 9px; font-size: 11.5px; font-weight: 650; text-align: left; cursor: pointer; }
 .model-mac-dinh:hover { background: var(--blue-soft-2); }
+
+/* ============================================================
+   HƯỚNG DẪN SỬ DỤNG
+   ============================================================
+   Nút ở thanh trên (chữ tự ẩn khi chật, xem "THANH TRÊN GỌN LẠI KHI CHẬT")
+   và lời mời trên màn hình chào cho người mới. */
+.welcome-huong-dan { margin: -16px auto 28px; color: var(--ink-soft); font-size: 13px; }
+.welcome-huong-dan button { padding: 0; color: var(--blue-ink); background: none; border: 0; font: inherit; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.welcome-huong-dan button:hover { color: var(--blue); }
+
+/* Hộp thoại dùng khung của Kho tài liệu (.document-dialog); phần dưới chỉ lo
+   trình bày tài liệu Markdown được dựng thành HTML (huong-dan.js). */
+.huong-dan-noi-dung { flex: 1 1 auto; min-height: 0; padding: 4px 28px 32px; overflow-y: auto; color: var(--ink-body); border-top: 1px solid var(--line); font-size: 13.5px; line-height: 1.7; overflow-wrap: break-word; }
+.huong-dan-noi-dung:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ring); }
+.huong-dan-noi-dung > :first-child { margin-top: 18px; }
+.huong-dan-noi-dung h3 { margin: 30px 0 10px; color: var(--ink); font-family: Cambria, "Times New Roman", serif; font-size: 22px; font-weight: 500; line-height: 1.3; scroll-margin-top: 14px; }
+.huong-dan-noi-dung h4 { margin: 22px 0 8px; color: var(--ink); font-size: 14.5px; font-weight: 700; line-height: 1.4; scroll-margin-top: 14px; }
+.huong-dan-noi-dung p { margin: 0 0 12px; }
+.huong-dan-noi-dung ul, .huong-dan-noi-dung ol { margin: 0 0 12px; padding-left: 22px; }
+.huong-dan-noi-dung li { margin: 3px 0; }
+.huong-dan-noi-dung li > ul, .huong-dan-noi-dung li > ol { margin: 4px 0 6px; }
+.huong-dan-noi-dung strong { color: var(--ink); font-weight: 700; }
+.huong-dan-noi-dung a { color: var(--blue-ink); text-underline-offset: 2px; }
+.huong-dan-noi-dung a:hover { color: var(--blue); }
+.huong-dan-noi-dung code { padding: 1px 5px; background: var(--surface-3); border: 1px solid var(--line); border-radius: 5px; font-family: Consolas, "SFMono-Regular", monospace; font-size: .9em; }
+.huong-dan-noi-dung blockquote { margin: 0 0 14px; padding: 11px 15px; background: var(--blue-soft); border-left: 3px solid var(--blue); border-radius: 4px 10px 10px 4px; }
+.huong-dan-noi-dung blockquote > :last-child { margin-bottom: 0; }
+.huong-dan-noi-dung hr { margin: 26px 0; border: 0; border-top: 1px solid var(--line); }
+.hd-bang { margin: 0 0 14px; overflow-x: auto; }
+.hd-bang table { width: 100%; border-collapse: collapse; font-size: 12.5px; line-height: 1.55; }
+.hd-bang th, .hd-bang td { padding: 7px 10px; text-align: left; vertical-align: top; border: 1px solid var(--line); }
+.hd-bang th { color: var(--ink); background: var(--surface-2); font-weight: 700; }
+.hd-bang .hd-giua { text-align: center; }
+.hd-bang .hd-phai { text-align: right; }
+.hd-trang-thai { padding: 48px 12px; color: var(--ink-soft); text-align: center; }
+.hd-thu-lai { margin-top: 12px; padding: 7px 16px; color: var(--blue); background: transparent; border: 1px solid var(--blue-line); border-radius: 20px; font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.hd-thu-lai:hover { background: var(--blue-soft); }
+@media (max-width: 470px) {
+  .huong-dan-dialog .dialog-header h2 { font-size: 23px; }
+  .huong-dan-noi-dung { padding: 4px 17px 24px; font-size: 13px; }
+  .huong-dan-noi-dung h3 { font-size: 20px; }
+}
+
+/* ============================================================
+   THANH TRÊN GỌN LẠI KHI CHẬT
+   ============================================================
+   Cột giữa hẹp lại khi mở sổ tay (và độ rộng sổ còn kéo được), tên mô hình
+   dài ngắn tuỳ lựa chọn, khách có thêm nút Đăng nhập: không bộ ngưỡng @media
+   cố định nào khớp hết, nên app.js đo chỗ cần của từng bậc rồi gắn gon-1 ...
+   gon-6 lên thanh (bậc sau giữ nguyên các bậc trước). Chữ trong thanh không
+   tự xuống dòng để phép đo phản ánh đúng; chỉ bậc 5 mới cho tiêu đề xuống
+   dòng như trước, bậc 6 cắt bằng dấu "…" để thanh luôn nằm gọn trong cột. */
+.topbar { min-width: 0; }
+.topbar-title > span, .topbar-title small, .topbar .nut-huong-dan span, .topbar .nut-so-tay span, .topbar .model-pill span { white-space: nowrap; }
+.topbar.gon-1 .nut-huong-dan span { display: none; }
+.topbar.gon-1 .nut-huong-dan { padding: 8px; }
+.topbar.gon-2 .nut-so-tay span { display: none; }
+.topbar.gon-2 .nut-so-tay { padding: 8px; }
+.topbar.gon-3 .model-pill span { display: none; }
+.topbar.gon-4 { gap: 6px; padding: 0 10px; }
+.topbar.gon-4 .model-pill { gap: 4px; padding: 7px 8px; }
+.topbar.gon-4 .nut-dang-nhap { padding: 7px 9px; }
+.topbar.gon-5 .topbar-title > span, .topbar.gon-5 .topbar-title small { white-space: normal; }
+.topbar.gon-6 .topbar-title, .topbar.gon-6 .topbar-title small { min-width: 0; }
+.topbar.gon-6 .topbar-title > span, .topbar.gon-6 #miniStatus { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
