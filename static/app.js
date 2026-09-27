@@ -53,6 +53,7 @@ const elements = {
   historySearchBox: $('#historySearchBox'),
   historySearch: $('#historySearch'),
   history: $('#historyList'),
+  statusDetails: $('#statusDetails'),
   statusDot: $('#statusDot'),
   statusTitle: $('#statusTitle'),
   statusMessage: $('#statusMessage'),
@@ -3452,11 +3453,32 @@ elements.scrollBottom?.addEventListener('click', () => {
   elements.chatScroll.scrollTo({ top: elements.chatScroll.scrollHeight, behavior: 'smooth' });
 });
 
+// ============================================================
+// THU GỌN THẺ TRẠNG THÁI
+// ============================================================
+// Mặc định gập; nhớ lựa chọn mở/gập cho lần sau. Khi máy chủ lỗi hay đang cập
+// nhật thì tiêu đề đã báo và khung cảnh báo ở trên ô nhập hiện đủ chi tiết,
+// nên gập lại không làm mất thông tin.
+const KHOA_MO_TRANG_THAI = 'rag-mo-trang-thai';
+
+elements.statusDetails?.addEventListener('toggle', () => {
+  try {
+    localStorage.setItem(KHOA_MO_TRANG_THAI, elements.statusDetails.open ? '1' : '0');
+  } catch (error) {
+    /* không lưu được thì thôi, vẫn mở/gập được trong phiên này */
+  }
+});
+
 apDungGiaoDien();
 try {
   apDungGapThanhBen(localStorage.getItem(KHOA_GAP_THANH_BEN) === '1');
 } catch (error) {
   apDungGapThanhBen(false);
+}
+try {
+  if (elements.statusDetails) elements.statusDetails.open = localStorage.getItem(KHOA_MO_TRANG_THAI) === '1';
+} catch (error) {
+  /* không đọc được thì để gập như mặc định */
 }
 
 // Mã nháp đã thành một cuộc trò chuyện thật (đã hỏi) thì không dùng lại: màn

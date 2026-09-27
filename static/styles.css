@@ -212,7 +212,15 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .history-item span { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-footer { flex: 0 0 auto; margin-top: auto; padding-top: 18px; }
 .system-card { padding: 14px; background: var(--wash-strong); border: 1px solid var(--line); border-radius: 13px; }
-.status-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+/* Thẻ trạng thái mặc định gập lại còn một dòng (chấm + tiêu đề) để nhường chỗ
+   cho mục Gần đây; thanh tiến trình và các nút nằm ngoài <details> nên vẫn hiện.
+   Lề âm + đệm để vùng bấm rộng hơn dòng chữ mà thẻ không đổi kích thước. */
+.status-row { display: flex; align-items: center; gap: 8px; margin: -6px; padding: 6px; border-radius: 9px; font-size: 12px; list-style: none; cursor: pointer; }
+.status-row::-webkit-details-marker { display: none; }
+.status-row:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.status-row .chevron { flex: 0 0 auto; width: 13px; height: 13px; margin-left: auto; color: var(--ink-mute); opacity: .7; transition: transform .2s ease; }
+.status-row:hover .chevron { opacity: 1; }
+.status-details[open] > .status-row .chevron { transform: rotate(180deg); }
 .status-dot, .mini-dot { display: inline-block; flex: 0 0 auto; width: 8px; height: 8px; background: var(--warn); border-radius: 50%; box-shadow: 0 0 0 3px rgba(226, 167, 40, .13); }
 .status-dot.ready, .mini-dot.ready { background: var(--ok); box-shadow: 0 0 0 3px rgba(57, 164, 119, .13); }
 .status-dot.error, .mini-dot.error { background: var(--danger); box-shadow: 0 0 0 3px rgba(220, 98, 79, .13); }
