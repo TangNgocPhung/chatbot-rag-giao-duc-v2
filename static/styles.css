@@ -194,6 +194,20 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
    thiếu chỗ thì cả thanh bên cuộn. Ít hơn 6 dòng thì không co để khỏi để trống. */
 .history-list:has(> :nth-child(6)) { min-height: 198px; }
 .history-list:not(:has(> :nth-child(6))) { flex-shrink: 0; }
+/* Thanh kéo đổi chiều cao (app.js). Mức kéo là chiều cao tối thiểu: danh sách
+   vẫn giãn lấp chỗ trống, không co thấp hơn mức đó và không cao hơn nội dung.
+   Có .sidebar ở đầu để thắng hai luật :has() ngay trên. */
+.sidebar .history-list.cao-tu-chon { flex: 1 0 var(--cao-lich-su); min-height: 0; max-height: max-content; }
+.history-resizer { position: relative; flex: 0 0 auto; height: 12px; margin: 2px 0 -6px; border-radius: 6px; cursor: row-resize; touch-action: none; }
+.history-resizer::after { content: ""; position: absolute; top: 50%; left: 50%; width: 36px; height: 4px; background: var(--line-strong); border-radius: 4px; opacity: .55; transform: translate(-50%, -50%); transition: opacity .15s, background .15s; }
+.history-resizer:hover::after, .history-resizer:focus-visible::after, .dang-keo-lich-su .history-resizer::after { background: var(--blue); opacity: 1; }
+.history-resizer:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.history-list:not(:has(.history-row)) + .history-resizer { display: none; }
+.app-shell.dang-keo-lich-su { user-select: none; cursor: row-resize; }
+@media (pointer: coarse) {
+  /* Ngón tay cần vùng chạm lớn hơn con trỏ chuột. */
+  .history-resizer { height: 22px; margin-bottom: -11px; }
+}
 .history-empty { padding: 12px 8px; color: var(--ink-faint); font-size: 13px; line-height: 1.5; }
 .history-item mark { padding: 0 1px; color: inherit; background: var(--warn-line); border-radius: 3px; }
 .history-row { position: relative; }
