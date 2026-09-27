@@ -1403,11 +1403,50 @@ function renderWarning(container, message) {
   container.append(box);
 }
 
-function appendInlineContent(container, text, messageId, sourceCount) {
+// Tô sẵn những gì người đọc lướt cần bắt được ngay, không đợi mô hình nhớ in
+// đậm: con số kèm đơn vị (19 tiết/tuần, 25%, 1.200.000 đồng), ngày tháng, số
+// hiệu văn bản và điều khoản (Thông tư 05/2025/TT-BGDĐT, khoản 2 Điều 5), tên
+// tài liệu trong ngoặc kép. Dùng <strong> có lớp chứ không <mark> để chép
+// sang sổ tay thì vẫn chỉ là chữ đậm.
+const DON_VI_SO = [
+  'tiết', 'tuần', 'tháng', 'năm', 'ngày', 'giờ', 'phút', 'giây', 'học kỳ', 'học kì', 'năm học', 'tín chỉ',
+  'đồng', 'triệu đồng', 'triệu', 'tỷ đồng', 'tỷ', 'tỉ đồng', 'tỉ', 'nghìn đồng', 'nghìn', 'ngàn', 'tuổi',
+  'lần', 'buổi', 'điểm', 'người', 'học sinh', 'sinh viên', 'giáo viên', 'trẻ', 'trường', 'lớp', 'nhóm',
+  'bài', 'câu', 'chủ đề', 'môn', 'hoạt động', 'bước', 'mức', 'bậc', 'hạng',
+].sort((a, b) => b.length - a.length).join('|');
+const HET_TU = String.raw`(?![\p{L}\p{N}])`;
+const MAU_TO_SAN = new RegExp([
+  String.raw`(?<vb>(?:Thông tư(?: liên tịch)?|Nghị định|Quyết định|Công văn|Chỉ thị|Nghị quyết)(?:\s+số)?\s+\d+[\p{L}\p{N}/-]*`,
+  String.raw`(?:[ĐđKk]iều|[Kk]hoản|[Cc]hương|[Pp]hụ lục)\s+(?:\d+[a-zđ]?|[IVXLC]+)${HET_TU})`,
+  String.raw`(?<ten>"[^"\n]{4,90}"|“[^”\n]{4,90}”)`,
+  String.raw`(?<so>(?<![\p{L}\p{N}/.,])(?:\d{1,2}/\d{1,2}/\d{2,4}|(?:ngày\s+)?\d{1,2}\s+tháng\s+\d{1,2}(?:\s+năm\s+\d{4})?`
+    + String.raw`|\d+(?:[.,]\d+)*(?:\s*[-–]\s*\d+(?:[.,]\d+)*)?\s?(?:%|(?:${DON_VI_SO})(?:/(?:${DON_VI_SO}))?${HET_TU})))`,
+].join('|'), 'gu');
+
+function themChuToSan(container, chu) {
+  let cuoi = 0;
+  for (const khop of chu.matchAll(MAU_TO_SAN)) {
+    if (khop.index > cuoi) container.append(document.createTextNode(chu.slice(cuoi, khop.index)));
+    const nhan = document.createElement('strong');
+    nhan.className = khop.groups.so ? 'to-so' : 'to-van-ban';
+    nhan.textContent = khop[0];
+    container.append(nhan);
+    cuoi = khop.index + khop[0].length;
+  }
+  if (cuoi < chu.length) container.append(document.createTextNode(chu.slice(cuoi)));
+}
+
+// toSan: bảng và tiêu đề thì không - bảng số liệu mà tô mọi con số thì không
+// còn gì nổi bật nữa.
+function appendInlineContent(container, text, messageId, sourceCount, toSan = false) {
   const pattern = /(\*\*[^*\n]+\*\*|`[^`\n]+`|\[(\d+)\])/g;
+  const themChu = (chu) => {
+    if (toSan) themChuToSan(container, chu);
+    else container.append(document.createTextNode(chu));
+  };
   let cursor = 0;
   for (const match of text.matchAll(pattern)) {
-    container.append(document.createTextNode(text.slice(cursor, match.index)));
+    themChu(text.slice(cursor, match.index));
     const token = match[0];
     if (token.startsWith('**')) {
       const strong = document.createElement('strong');
@@ -1432,7 +1471,23 @@ function appendInlineContent(container, text, messageId, sourceCount) {
     }
     cursor = match.index + token.length;
   }
-  container.append(document.createTextNode(text.slice(cursor)));
+  themChu(text.slice(cursor));
+}
+
+// Dòng mở bằng nhãn ngắn ("Mục tiêu: ...", "Bước 1: ...", "Lưu ý: ...") thì in
+// đậm nhãn, để đọc lướt theo nhãn là nắm được bố cục.
+const MAU_NHAN_DAU_DONG = /^([^:*[\]`\n]{2,60}):\s+(?=\S)/;
+
+function themDongVanBan(block, noiDung, messageId, sourceCount) {
+  const khop = noiDung.match(MAU_NHAN_DAU_DONG);
+  if (khop && khop[1].trim().split(/\s+/).length <= 8) {
+    const nhan = document.createElement('strong');
+    nhan.className = 'nhan-dau-dong';
+    nhan.textContent = `${khop[1]}:`;
+    block.append(nhan, ' ');
+    noiDung = noiDung.slice(khop[0].length);
+  }
+  appendInlineContent(block, noiDung, messageId, sourceCount, true);
 }
 
 // Bảng markdown: "| Môn | Số tiết |" kèm dòng ngăn cách "| --- | --- |".
@@ -1508,7 +1563,7 @@ function renderAnswer(container, content, messageId, sourceCount = 0) {
         container.append(list);
       }
       const item = document.createElement('li');
-      appendInlineContent(item, (unordered || ordered)[1], messageId, sourceCount);
+      themDongVanBan(item, (unordered || ordered)[1], messageId, sourceCount);
       list.append(item);
       continue;
     }
@@ -1517,8 +1572,18 @@ function renderAnswer(container, content, messageId, sourceCount = 0) {
     if (!line) continue;
     const heading = line.match(/^(#{1,3})\s+(.+)/);
     const block = document.createElement(heading ? `h${Math.min(heading[1].length + 2, 5)}` : 'p');
-    appendInlineContent(block, heading ? heading[2] : line, messageId, sourceCount);
+    if (heading) appendInlineContent(block, heading[2], messageId, sourceCount);
+    else themDongVanBan(block, line, messageId, sourceCount);
     container.append(block);
+  }
+
+  // Prompt bắt mô hình nêu kết luận trước: đoạn mở đầu thành khối nổi bật để
+  // người chỉ đọc lướt cũng nắm được ý chính. Đoạn quá dài (mô hình không
+  // theo) thì để nguyên, tô cả khối lớn chẳng làm gì nổi lên được.
+  const dau = container.firstElementChild;
+  if (dau?.tagName === 'P' && container.childElementCount > 1
+      && dau.textContent.length >= 40 && dau.textContent.length <= 420) {
+    dau.classList.add('ket-luan');
   }
 }
 

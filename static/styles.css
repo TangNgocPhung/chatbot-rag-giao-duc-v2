@@ -35,6 +35,7 @@
   --warn-ink: #8a5a12;
   --warn-soft: #fdf5e6;
   --warn-line: #f0dcae;
+  --to-sang: rgba(255, 210, 60, .5);
   --danger: #dc624f;
   --danger-ink: #8a3a34;
   --danger-soft: #fdeceb;
@@ -92,6 +93,7 @@
     --warn-ink: #f0cc7d;
     --warn-soft: #2c2413;
     --warn-line: #4b3d1c;
+    --to-sang: rgba(230, 180, 85, .32);
     --danger: #ef7c69;
     --danger-ink: #f5aa9e;
     --danger-soft: #2e1b1a;
@@ -147,6 +149,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   --warn-ink: #f0cc7d;
   --warn-soft: #2c2413;
   --warn-line: #4b3d1c;
+  --to-sang: rgba(230, 180, 85, .32);
   --danger: #ef7c69;
   --danger-ink: #f5aa9e;
   --danger-soft: #2e1b1a;
@@ -339,6 +342,18 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .answer-text h3 { font-size: 17px; }
 .answer-text h4 { font-size: 15.5px; }
 .answer-text h5 { font-size: 14.5px; }
+/* Đọc lướt: căn đều hai lề, kết luận thành khối riêng, ý then chốt nổi lên. */
+.answer-text p, .answer-text li { text-align: justify; text-justify: inter-word; }
+.answer-text strong { color: var(--ink); font-weight: 700; }
+/* Cụm mô hình tự in đậm là ý then chốt: tô như bút dạ quang. */
+.answer-text strong:not([class]) { padding: 0 1px; background: linear-gradient(transparent 56%, var(--to-sang) 56%); border-radius: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.answer-text .to-so { color: var(--blue-ink); white-space: nowrap; }
+.answer-text .to-van-ban { font-weight: 650; }
+.answer-text p.ket-luan { margin-bottom: 14px; padding: 10px 14px; color: var(--ink); background: var(--blue-soft); border-left: 3px solid var(--blue); border-radius: 4px 10px 10px 4px; }
+@media (max-width: 470px) {
+  /* Cột hẹp mà căn đều thì hở từng khoảng lớn giữa các chữ. */
+  .answer-text p, .answer-text li { text-align: left; }
+}
 .answer-text code { padding: 2px 5px; background: var(--surface-3); border: 1px solid var(--line); border-radius: 5px; font-family: Consolas, "SFMono-Regular", monospace; font-size: .9em; }
 .citation-link { padding: 1px 4px; color: var(--blue-ink); background: var(--blue-soft); border-radius: 4px; font-size: .86em; font-weight: 700; text-decoration: none; }
 .citation-link:hover { background: var(--blue-soft-2); }
