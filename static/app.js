@@ -1475,8 +1475,10 @@ function renderWarning(container, message) {
 // Tô sẵn những gì người đọc lướt cần bắt được ngay, không đợi mô hình nhớ in
 // đậm: con số, có đơn vị hay không (19 tiết/tuần, 25%, 1.200.000 đồng, lớp 10,
 // năm 2025, 8,5), ngày giờ, số hiệu văn bản và điều khoản (Thông tư
-// 05/2025/TT-BGDĐT, khoản 2 Điều 5), tên tài liệu trong ngoặc kép. Dùng
-// <strong> có lớp chứ không <mark> để chép sang sổ tay thì vẫn chỉ là chữ đậm.
+// 05/2025/TT-BGDĐT, khoản 2 Điều 5), tên tài liệu trong ngoặc kép. Số sau
+// Bảng, Mục, Phần, Chương... chỉ là nhãn chứ không phải số liệu nên đi cùng
+// nhóm điều khoản: in đậm nhẹ, không tô vàng. Dùng <strong> có lớp chứ không
+// <mark> để chép sang sổ tay thì vẫn chỉ là chữ đậm.
 const DON_VI_SO = [
   'tiết', 'tuần', 'tháng', 'năm', 'ngày', 'giờ', 'phút', 'giây', 'học kỳ', 'học kì', 'năm học', 'tín chỉ',
   'đồng', 'triệu đồng', 'triệu', 'tỷ đồng', 'tỷ', 'tỉ đồng', 'tỉ', 'nghìn đồng', 'nghìn', 'ngàn', 'tuổi',
@@ -1492,7 +1494,7 @@ const MAU_TO_SAN = new RegExp([
   // Chú thích gộp "[1, 2]", "[1-3]": khớp để giữ nguyên, không tô số bên trong.
   String.raw`(?<bo>\[\d+(?:\s*[,–-]\s*\d+)*\])`,
   String.raw`(?<vb>(?:Thông tư(?: liên tịch)?|Nghị định|Quyết định|Công văn|Chỉ thị|Nghị quyết)(?:\s+số)?\s+\d+[\p{L}\p{N}/-]*`,
-  String.raw`(?:[ĐđKk]iều|[Kk]hoản|[Cc]hương|[Pp]hụ lục)\s+(?:\d+[a-zđ]?|[IVXLC]+)${HET_TU})`,
+  String.raw`(?:[ĐđKk]iều|[Kk]hoản|[Cc]hương|[Pp]hụ lục|[Bb]ảng|[Mm]ục|[Pp]hần)\s+(?:\d+(?:\.\d+)*[a-zđ]?|[IVXLC]+)${HET_TU})`,
   String.raw`(?<ten>"[^"\n]{4,90}"|“[^”\n]{4,90}”)`,
   String.raw`(?<so>${TRUOC_SO}(?:\d{1,2}/\d{1,2}/\d{2,4}|(?:ngày\s+)?\d{1,2}\s+tháng\s+\d{1,2}(?:\s+năm\s+\d{4})?`
     // Giờ và tỉ lệ (10:30, 1:2, 7h30), phân số và ngày/tháng (8,5/10, 2024/2025, 5/9).
