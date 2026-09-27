@@ -9,8 +9,10 @@
      - Tài liệu: đọc thẳng PDF hay ảnh chụp trang sách, khoanh chỗ chưa hiểu
        rồi bấm "Giải thích" - máy chủ đọc chữ trong vùng khoanh (OCR nếu là
        bản scan) và gửi thành câu hỏi.
-   Sổ lưu trong IndexedDB của trình duyệt (localStorage chỉ có vài MB, không đủ
-   chứa ảnh vùng khoanh), khoá theo mã cuộc trò chuyện, và tải về được dạng
+   Chỉ tài khoản đã xác minh email mới có sổ (coQuyen('so_tay')); sổ nằm trên
+   máy chủ theo tài khoản. Máy tắt khoá quản trị thì khách cũng có sổ, lưu
+   trong IndexedDB của trình duyệt (localStorage chỉ có vài MB, không đủ chứa
+   ảnh vùng khoanh). Sổ khoá theo mã cuộc trò chuyện, và tải về được dạng
    Word, bản in PDF hoặc ảnh bảng vẽ.
 
    Tệp này nạp SAU app.js và dùng lại các hàm chung của nó (showToast,
@@ -184,7 +186,7 @@
   async function luuNgay() {
     window.clearTimeout(henLuu);
     henLuu = 0;
-    if (!so || daXoa.has(so.id)) return;
+    if (!so || daXoa.has(so.id) || !coQuyen('so_tay')) return;
     so.capNhat = Date.now();
     try {
       if (coNoiDung(so)) await khoSo.ghi(structuredClone(so));
@@ -245,10 +247,13 @@
     // Gán sổ trống ngay để thao tác trong lúc chờ IndexedDB không rơi vào sổ cũ.
     so = soTrong(id);
     let ban = null;
-    try {
-      ban = await khoSo.lay(id);
-    } catch {
-      /* đọc hỏng thì coi như sổ mới */
+    // Tài khoản chưa xác minh email không có sổ trên máy chủ: khỏi hỏi để nhận 403.
+    if (!nguoiDung || coQuyen('so_tay')) {
+      try {
+        ban = await khoSo.lay(id);
+      } catch {
+        /* đọc hỏng thì coi như sổ mới */
+      }
     }
     if (phien !== phienNap) return;
     if (ban) so = Object.assign(soTrong(id), ban);
@@ -322,14 +327,38 @@
     });
   }
 
-  function dongSoTay() {
+  function anSoTay() {
     ws.root.classList.add('hidden');
     elements.appShell.classList.remove('co-so-tay');
     ws.nutMo.setAttribute('aria-expanded', 'false');
     ws.nutMo.classList.remove('active');
-    ghiLuu(KHOA_MO, '0');
     dongMenuTaiVe();
+  }
+
+  function dongSoTay() {
+    anSoTay();
+    ghiLuu(KHOA_MO, '0');
     luuNgay();
+  }
+
+  function batTatSoTay() {
+    if (!coQuyen('so_tay')) window.taiKhoanGiaoDien?.moiMoKhoa('so_tay');
+    else if (ws.root.classList.contains('hidden')) moSoTay();
+    else dongSoTay();
+  }
+
+  // Gọi mỗi khi quyền đổi (tải trang, đăng nhập / đăng xuất, xác minh email).
+  // Mất quyền thì cất sổ đi nhưng không quên là người dùng đang để sổ mở, để
+  // có quyền lại (vd. vừa xác minh email) là sổ mở ra như cũ.
+  const NHAN_NUT_SO_TAY = ws.nutMo.title;
+
+  function apDungQuyen() {
+    datNutKhoa(ws.nutMo, 'so_tay', NHAN_NUT_SO_TAY);
+    if (!coQuyen('so_tay')) {
+      if (!ws.root.classList.contains('hidden')) anSoTay();
+      return;
+    }
+    if (docLuu(KHOA_MO) === '1' && !laManHep() && ws.root.classList.contains('hidden')) moSoTay();
   }
 
   function chonThe(the) {
@@ -358,10 +387,7 @@
     return rong;
   }
 
-  ws.nutMo.addEventListener('click', () => {
-    if (ws.root.classList.contains('hidden')) moSoTay();
-    else dongSoTay();
-  });
+  ws.nutMo.addEventListener('click', batTatSoTay);
   ws.dong.addEventListener('click', dongSoTay);
   ws.tabs.forEach((nut, viTri) => {
     nut.addEventListener('click', () => chonThe(nut.dataset.tab));
@@ -403,8 +429,7 @@
   document.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === '/') {
       event.preventDefault();
-      if (ws.root.classList.contains('hidden')) moSoTay();
-      else dongSoTay();
+      batTatSoTay();
     } else if (event.key === 'Escape') {
       if (!ws.taiVeMenu.classList.contains('hidden')) dongMenuTaiVe();
       else if (document.querySelector('.hoi-vung')) dongHoiVung();
@@ -559,6 +584,10 @@
   // phía sau để người dùng gõ tiếp ngay dưới đoạn vừa chép.
   function ghiVaoSo(khoi, { mo = true, thongBao = 'Đã ghi vào sổ tay' } = {}) {
     if (!so) return;
+    if (!coQuyen('so_tay')) {
+      window.taiKhoanGiaoDien?.moiMoKhoa('so_tay');
+      return;
+    }
     const tam = document.createElement('div');
     tam.innerHTML = lamSach(khoi.outerHTML);
     const dongTrong = document.createElement('p');
@@ -1164,7 +1193,7 @@
   let lanMo = 0;
 
   async function moTaiLieu(thongTin, { chuyenTab = true } = {}) {
-    if (!so) return;
+    if (!so || !coQuyen('so_tay')) return;
     if (chuyenTab) moSoTay('tai-lieu');
     const khoa = khoaTaiLieu(thongTin);
     if (docDangMo?.khoa === khoa) {
@@ -1952,7 +1981,9 @@ ${bang ? `<h2>Bảng vẽ</h2><p><img src="${bang}" width="600" alt="Bảng vẽ
   if (rongDaLuu) datDoRong(rongDaLuu);
   const theDaLuu = docLuu(KHOA_TAB);
   chonThe(['ghi-chu', 'bang-ve', 'tai-lieu'].includes(theDaLuu) ? theDaLuu : 'ghi-chu');
-  if (docLuu(KHOA_MO) === '1' && !laManHep()) moSoTay();
+  // Lúc này chưa biết ai đang xem nên sổ còn đóng; tai-khoan.js hỏi máy chủ
+  // xong sẽ gọi lại apDungQuyen để mở sổ nếu người đó được dùng.
+  apDungQuyen();
 
   window.khongGianHoc = {
     doiCuocTroChuyen,
@@ -1967,6 +1998,7 @@ ${bang ? `<h2>Bảng vẽ</h2><p><img src="${bang}" width="600" alt="Bảng vẽ
     ghiBanDich,
     // Đăng nhập / đăng xuất: lưu nốt sổ đang mở vào kho cũ trước khi đổi kho.
     truocKhiDoiNguoiDung: luuNgay,
+    apDungQuyen,
     napLai: async () => {
       window.clearTimeout(henLuu);
       so = null;

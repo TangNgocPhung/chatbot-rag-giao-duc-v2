@@ -6,23 +6,25 @@ gom lịch sử - không phải đăng nhập thật: đổi máy là mất lị
 người khác là đọc được hội thoại của họ, và mọi người đều bấm được "cập nhật
 kho", "đổi mô hình".
 
-Giống ChatGPT: không bắt buộc đăng nhập - khách vẫn hỏi được như cũ. Đăng nhập
-thì lịch sử và sổ tay nằm trên máy chủ theo tài khoản, mở máy khác vẫn thấy;
-tài khoản quản trị mới được làm các thao tác đụng tới cả hệ thống.
+Không bắt buộc đăng nhập, nhưng mỗi bậc được làm nhiều hơn bậc trước (quyen_cua):
+  - Khách: chỉ hỏi. Không xem kho tài liệu chung, không tải tệp, không có sổ tay.
+  - Tài khoản chưa xác minh email: thêm xem kho chung; lịch sử theo tài khoản.
+  - Tài khoản đã xác minh email: thêm sổ tay và tải tệp lên để hỏi.
+  - Quản trị viên: mọi quyền, kể cả các thao tác đụng tới cả hệ thống.
 
 Chỉ dùng thư viện chuẩn: mật khẩu băm bằng scrypt (hashlib), phiên đăng nhập là
 chuỗi ngẫu nhiên 256 bit trong cookie HttpOnly, máy chủ chỉ giữ bản băm SHA-256
 của nó - lộ tệp cơ sở dữ liệu cũng không dùng lại được phiên của ai.
 
-Xác minh email: gửi mã 6 số qua thư (gui_thu.py, cần cấu hình SMTP). Chưa xác
-minh vẫn dùng bình thường, chỉ là email chỉ định trong RAG_EMAIL_QUAN_TRI chưa
-thành quản trị viên - kẻ lạ đăng ký trước bằng email của quản trị viên không
-chiếm được quyền. Máy chủ chưa cấu hình thư thì bỏ qua điều kiện này (không có
-cách nào xác minh), giữ đúng hành vi cũ.
+Xác minh email: gửi mã 6 số qua thư (gui_thu.py, cần cấu hình SMTP). Email chỉ
+định trong RAG_EMAIL_QUAN_TRI cũng chỉ thành quản trị viên sau khi xác minh -
+kẻ lạ đăng ký trước bằng email của quản trị viên không chiếm được quyền. Máy
+chủ chưa cấu hình thư thì bỏ qua điều kiện này cho email chỉ định (không có
+cách nào xác minh); người dùng thường thì nhờ quản trị viên xác minh hộ.
 
-Quản trị viên xem mọi tài khoản, khoá hoặc xoá tài khoản ngay trên giao diện
-(menu tài khoản > Quản lý tài khoản). Tài khoản quản trị thì không khoá/xoá ở
-đó được, phải thu quyền bằng dòng lệnh trước.
+Quản trị viên xem mọi tài khoản, xác minh hộ, khoá hoặc xoá tài khoản ngay trên
+giao diện (menu tài khoản > Quản lý tài khoản). Tài khoản quản trị thì không
+khoá/xoá ở đó được, phải thu quyền bằng dòng lệnh trước.
 
 Quên mật khẩu: quản trị viên đặt lại bằng dòng lệnh
     python tai_khoan.py dat-lai-mat-khau email@truong.edu.vn
@@ -115,6 +117,24 @@ def email_quan_tri() -> set[str]:
         for e in os.getenv("RAG_EMAIL_QUAN_TRI", "").split(",")
         if e.strip()
     }
+
+
+QUYEN = ("xem_kho", "so_tay", "tai_tep")
+
+
+def quyen_cua(nguoi_dung: dict | None) -> dict[str, bool]:
+    """Người này (None = khách) được làm gì ngoài hỏi đáp.
+
+    Máy chủ chặn theo đây và giao diện ẩn/khoá nút cũng theo đây, nên luật
+    phân quyền chỉ nằm ở một chỗ. Sổ tay và tệp tải lên đều ghi dữ liệu lên máy
+    chủ nên đòi email đã xác minh, không phải một địa chỉ bịa ra lúc đăng ký.
+    """
+    if not bat_khoa_quan_tri() or (nguoi_dung is not None and nguoi_dung["quan_tri"]):
+        return dict.fromkeys(QUYEN, True)
+    if nguoi_dung is None:
+        return dict.fromkeys(QUYEN, False)
+    da_xac_minh = bool(nguoi_dung["da_xac_minh"])
+    return {"xem_kho": True, "so_tay": da_xac_minh, "tai_tep": da_xac_minh}
 
 
 # ------------------------------------------------------------
@@ -270,7 +290,7 @@ def _cong_khai(dong: sqlite3.Row) -> dict:
     theo_chi_dinh = dong["email"] in email_quan_tri() and (
         da_xac_minh or not gui_thu.da_cau_hinh()
     )
-    return {
+    nd = {
         "id": dong["id"],
         "email": dong["email"],
         "ten": dong["ten"],
@@ -281,6 +301,8 @@ def _cong_khai(dong: sqlite3.Row) -> dict:
             if dong["anh_cap_nhat"] else None
         ),
     }
+    nd["quyen"] = quyen_cua(nd)
+    return nd
 
 
 def lay_nguoi_dung(nguoi_dung_id: str) -> dict | None:
@@ -642,6 +664,31 @@ def dat_cam(nguoi_dung_id: str, cam: bool, nguoi_lam: dict) -> dict:
             raise LoiTaiKhoan("Tài khoản không còn tồn tại.", 404)
         if cam:
             conn.execute("DELETE FROM phien WHERE nguoi_dung_id = ?", (nguoi_dung_id,))
+        conn.commit()
+        return _cho_quan_tri(conn.execute("SELECT * FROM nguoi_dung WHERE id = ?", (nguoi_dung_id,)).fetchone())
+
+
+def xac_minh_ho(nguoi_dung_id: str) -> dict:
+    """Quản trị viên xác minh email giúp người không nhận được mã (thư lọt Spam,
+    máy chủ chưa cấu hình gửi thư) - chưa xác minh thì không có sổ tay, không
+    tải tệp lên hỏi được.
+
+    Không làm hộ cho email chỉ định trong RAG_EMAIL_QUAN_TRI: xác minh email đó
+    là trao luôn quyền quản trị, mà người đăng ký có thể là kẻ lạ đã giành
+    trước. Chủ email phải tự nhận mã, hoặc dùng dòng lệnh trên máy chủ.
+    """
+    dong = _connect().execute("SELECT * FROM nguoi_dung WHERE id = ?", (nguoi_dung_id,)).fetchone()
+    if dong is None:
+        raise LoiTaiKhoan("Tài khoản không còn tồn tại.", 404)
+    if dong["email"] in email_quan_tri() and not dong["da_xac_minh"]:
+        raise LoiTaiKhoan(
+            "Email này được chỉ định làm quản trị viên nên chủ email phải tự xác minh bằng mã gửi qua thư.",
+            409,
+        )
+    with _khoa_ghi:
+        conn = _connect()
+        conn.execute("UPDATE nguoi_dung SET da_xac_minh = 1 WHERE id = ?", (nguoi_dung_id,))
+        conn.execute("DELETE FROM ma_xac_minh WHERE nguoi_dung_id = ?", (nguoi_dung_id,))
         conn.commit()
         return _cho_quan_tri(conn.execute("SELECT * FROM nguoi_dung WHERE id = ?", (nguoi_dung_id,)).fetchone())
 

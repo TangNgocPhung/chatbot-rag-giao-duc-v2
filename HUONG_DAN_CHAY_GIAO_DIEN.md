@@ -25,7 +25,8 @@
 
 4. Lần đầu mở, bấm **Đăng ký** để tạo tài khoản. Nếu không đặt `RAG_EMAIL_QUAN_TRI`
    thì tài khoản đầu tiên là quản trị viên (xem [Tài khoản và quyền quản trị](#tài-khoản-và-quyền-quản-trị)).
-   Khách không đăng nhập vẫn hỏi đáp được.
+   Khách không đăng nhập vẫn hỏi đáp được; kho tài liệu, sổ tay và tải tệp cần tài khoản
+   (xem bảng quyền ở mục đó).
 
 Nếu chưa có `.venv`, tạo môi trường và cài thư viện một lần:
 
@@ -144,19 +145,25 @@ Tài khoản, lịch sử và sổ tay:
 - `POST /api/tai-khoan/gui-ma-xac-minh`, `POST /api/tai-khoan/xac-minh`: gửi mã 6 số qua thư và nhập mã (mã sống 15 phút, sai 5 lần là huỷ).
 - `PUT|DELETE /api/tai-khoan/anh-dai-dien` (byte ảnh trong body, tiêu đề `X-RAG-Action: avatar`), `GET /api/tai-khoan/anh-dai-dien/{nguoi_dung_id}`.
 - `GET /api/hoi-thoai`, `GET|DELETE /api/hoi-thoai/{id}`, `DELETE /api/hoi-thoai`: lịch sử hội thoại.
-- `GET|PUT|DELETE /api/so-tay/{hoi_thoai_id}`: sổ tay của một cuộc trò chuyện (cần đăng nhập).
+- `GET|PUT|DELETE /api/so-tay/{hoi_thoai_id}`: sổ tay của một cuộc trò chuyện (đọc/ghi cần email đã xác minh; xoá chỉ cần đăng nhập).
+
+Quyền ngoài hỏi đáp (`tai_khoan.quyen_cua`, gửi kèm tài khoản trong trường `quyen`): thiếu quyền thì khách nhận 401, tài khoản chưa xác minh nhận 403, kèm lời báo cần làm gì.
+
+- `xem_kho` (mọi tài khoản): `GET /api/documents`, `GET /api/source`, `/api/doc/*` theo `nguon`.
+- `so_tay` (email đã xác minh): `GET|PUT /api/so-tay/{id}`, `POST /api/doc/vung`, `POST /api/doc/tai-ve`.
+- `tai_tep` (email đã xác minh): `POST /api/tep`, `POST /api/kho/tep`, `POST /api/tep/{id}/de-xuat`, `POST /api/chat/stream` có `tep_ids`.
 
 Tệp đính kèm, trình đọc tài liệu và quản lý kho:
 
 - `POST /api/tep?ten=...`: tải tệp đính kèm (byte thô trong body, tiêu đề `X-RAG-Action: upload-file`); tệp là tài liệu riêng của người tải lên. `GET /api/tep` chỉ trả tệp của chính người hỏi (kể cả quản trị viên); `GET|DELETE /api/tep/{id}`, `GET /api/tep/{id}/noi-dung` (tệp HTML/SVG trả kèm CSP `sandbox`).
 - `POST /api/tep/{id}/de-xuat` (tiêu đề `X-RAG-Action: de-xuat-kho`): chủ tài liệu riêng đề xuất vào kho chung; quản trị viên thì vào thẳng kho, người khác vào hàng chờ duyệt.
-- `POST /api/kho/tep?ten=...` (tiêu đề `X-RAG-Action: upload-library`): nút `+` trong Kho tài liệu. Quản trị viên: vào thẳng kho chung rồi hẹn lập chỉ mục; người đã đăng nhập: lưu thành tài liệu riêng; khách: 401.
+- `POST /api/kho/tep?ten=...` (tiêu đề `X-RAG-Action: upload-library`): nút `+` trong Kho tài liệu. Quản trị viên: vào thẳng kho chung rồi hẹn lập chỉ mục; người đã xác minh email: lưu thành tài liệu riêng; chưa xác minh: 403; khách: 401.
 - `GET /api/doc/thong-tin`, `GET /api/doc/trang`: số trang và ảnh từng trang (theo `tep` hoặc `nguon`). PDF và ảnh đọc thẳng; Word, Excel, PowerPoint, HTML được LibreOffice chuyển sang PDF trước (có nhớ).
 - `POST /api/doc/vung`: chữ nằm trong vùng khoanh `{so, x0, y0, x1, y1}` (toạ độ 0..1 theo trang).
 - `POST /api/doc/dinh-vi`: `{nguon|tep, doan, trong_tam, trang}` → `{trang, danh_dau: {số trang: {vung, chinh}}}` - trang và các hình chữ nhật (toạ độ 0..1) của đoạn bằng chứng trên trang gốc, để tô sáng nguồn trích dẫn. Trang scan chưa có hộp chữ mà máy đang sinh câu trả lời thì trả thêm `cho_ocr: true` (hỏi lại sau).
 - `POST /api/doc/tai-ve`: `{nguon|tep, ten, net}` → PDF của tài liệu kèm các nét bút, tô sáng, khoanh của sổ tay.
 - `GET /api/quan-ly/tai-len`, `GET /api/quan-ly/tai-len/{ma}/tep`, `POST /api/quan-ly/tai-len/{ma}/duyet|tu-choi`, `POST /api/quan-ly/kho/go`, `GET /api/quan-ly/thung-rac`, `POST /api/quan-ly/thung-rac/{ma}/khoi-phuc`: hàng chờ duyệt, gỡ và khôi phục tài liệu (quản trị).
-- `GET /api/quan-ly/tai-khoan`, `POST /api/quan-ly/tai-khoan/{ma}/khoa` (`{khoa: true|false}`, tiêu đề `X-RAG-Action: khoa-tai-khoan`), `DELETE /api/quan-ly/tai-khoan/{ma}` (tiêu đề `X-RAG-Action: xoa-tai-khoan`): quản lý tài khoản (quản trị).
+- `GET /api/quan-ly/tai-khoan`, `POST /api/quan-ly/tai-khoan/{ma}/xac-minh` (tiêu đề `X-RAG-Action: xac-minh-ho`), `POST /api/quan-ly/tai-khoan/{ma}/khoa` (`{khoa: true|false}`, tiêu đề `X-RAG-Action: khoa-tai-khoan`), `DELETE /api/quan-ly/tai-khoan/{ma}` (tiêu đề `X-RAG-Action: xoa-tai-khoan`): quản lý tài khoản (quản trị).
 
 Dịch và giọng nói:
 
@@ -223,17 +230,26 @@ Vài điểm cần biết:
 
 ## Tài khoản và quyền quản trị
 
-Không bắt buộc đăng nhập: khách vẫn hỏi đáp như thường. Đăng nhập thì lịch sử và sổ tay nằm trên máy chủ theo tài khoản, mở máy khác vẫn thấy. Chỉ tài khoản quản trị mới được làm các thao tác đụng tới cả hệ thống: cập nhật chỉ mục, đổi mô hình mặc định, đồng bộ Drive, xem thống kê, duyệt và gỡ tài liệu, quản lý tài khoản.
+Không bắt buộc đăng nhập. Quyền tăng dần theo bốn bậc:
+
+| Vai | Hỏi đáp | Xem kho tài liệu chung | Sổ tay | Tải tệp lên để hỏi |
+|---|---|---|---|---|
+| Khách (chưa đăng nhập) | ✓ | — | — | — |
+| Tài khoản chưa xác minh email | ✓ | ✓ | — | — |
+| Tài khoản đã xác minh email | ✓ | ✓ | ✓ | ✓ |
+| Quản trị viên | ✓ | ✓ | ✓ | ✓ |
+
+Nút của tính năng chưa có quyền vẫn hiện nhưng mờ; bấm vào thì khách được mời đăng nhập, tài khoản chưa xác minh được mời xác minh email. Khách vẫn thấy tên nguồn và đoạn trích dưới câu trả lời nhưng không mở được tệp gốc. Đăng nhập thì lịch sử (và sổ tay, nếu đã xác minh) nằm trên máy chủ theo tài khoản, mở máy khác vẫn thấy. Chỉ tài khoản quản trị mới được làm các thao tác đụng tới cả hệ thống: cập nhật chỉ mục, đổi mô hình mặc định, đồng bộ Drive, xem thống kê, duyệt và gỡ tài liệu, quản lý tài khoản.
 
 - Mật khẩu băm bằng scrypt; phiên đăng nhập là chuỗi ngẫu nhiên 256 bit trong cookie HttpOnly `rag_phien`, máy chủ chỉ giữ bản băm SHA-256 của nó. Đăng nhập sai 10 lần liên tiếp thì bị khoá tạm 15 phút theo cả IP lẫn email.
 - Quản trị viên là các email trong `RAG_EMAIL_QUAN_TRI`; để trống thì tài khoản đăng ký đầu tiên là quản trị.
-- Máy cá nhân chỉ một người dùng có thể tắt khóa quản trị bằng `RAG_KHOA_QUAN_TRI=0`.
+- Máy cá nhân chỉ một người dùng có thể tắt khóa quản trị bằng `RAG_KHOA_QUAN_TRI=0`; khi đó ai cũng đủ mọi quyền trong bảng trên.
 
 Trong menu tài khoản (bấm vào tên ở góc trên):
 
-- **Xác minh email**: máy chủ gửi mã 6 số qua thư, mã sống 15 phút, nhập sai 5 lần là huỷ, mỗi giờ xin được tối đa 5 mã. Chưa xác minh vẫn dùng bình thường; riêng email trong `RAG_EMAIL_QUAN_TRI` phải xác minh mới thành quản trị viên, nên người lạ đăng ký trước bằng email của quản trị viên không chiếm được quyền. Máy chủ chưa cấu hình gửi thư thì nút này ẩn và điều kiện trên được bỏ qua.
+- **Xác minh email**: máy chủ gửi mã 6 số qua thư, mã sống 15 phút, nhập sai 5 lần là huỷ, mỗi giờ xin được tối đa 5 mã. Chưa xác minh thì không có sổ tay và không tải tệp lên được; email trong `RAG_EMAIL_QUAN_TRI` cũng phải xác minh mới thành quản trị viên, nên người lạ đăng ký trước bằng email của quản trị viên không chiếm được quyền. Máy chủ chưa cấu hình gửi thư thì nút này ẩn, điều kiện với email chỉ định được bỏ qua, còn người dùng thường nhờ quản trị viên xác minh hộ.
 - **Thông tin cá nhân**: đổi tên hiển thị, ảnh đại diện (ảnh tới 8 MB được cắt vuông, nén còn 256×256), email (phải nhập mật khẩu hiện tại và xác minh lại email mới) và mật khẩu (các máy khác bị đăng xuất).
-- **Quản lý tài khoản** (chỉ quản trị viên): xem mọi tài khoản, lọc chưa xác minh hoặc bị khoá, khoá / mở khoá, xoá tài khoản. Xoá tài khoản thì xoá luôn phiên đăng nhập, sổ tay, ảnh, lịch sử trò chuyện và tài liệu riêng của người đó. Không khoá hay xoá được chính mình và quản trị viên khác.
+- **Quản lý tài khoản** (chỉ quản trị viên): xem mọi tài khoản, lọc chưa xác minh hoặc bị khoá, xác minh hộ (không làm được với email trong `RAG_EMAIL_QUAN_TRI`), khoá / mở khoá, xoá tài khoản. Xoá tài khoản thì xoá luôn phiên đăng nhập, sổ tay, ảnh, lịch sử trò chuyện và tài liệu riêng của người đó. Không khoá hay xoá được chính mình và quản trị viên khác.
 
 Cấu hình gửi thư bằng Gmail: bật xác minh 2 bước cho hộp thư gửi đi, tạo **Mật khẩu ứng dụng** ở <https://myaccount.google.com/apppasswords>, rồi đặt trong `khoa_api.bat`:
 

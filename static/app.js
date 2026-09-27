@@ -219,19 +219,51 @@ function laQuanTri() {
   return !khoaQuanTri || Boolean(nguoiDung?.quan_tri);
 }
 
+// Quyền ngoài hỏi đáp, do máy chủ tính (tai_khoan.quyen_cua) và gửi kèm tài
+// khoản: khách chỉ hỏi; chưa xác minh email thì xem được kho chung; xác minh
+// rồi mới có sổ tay và tải tệp lên hỏi. Máy chủ vẫn tự chặn, ở đây chỉ để
+// giao diện không mời bấm những nút sẽ bị từ chối.
+const VIEC_CAN_QUYEN = { xem_kho: 'xem kho tài liệu', so_tay: 'dùng sổ tay', tai_tep: 'tải tệp lên hỏi' };
+
+function coQuyen(ten) {
+  return !khoaQuanTri || Boolean(nguoiDung?.quyen?.[ten]);
+}
+
+// Cùng lời với kiem_tra_quyen phía máy chủ.
+function loiThieuQuyen(ten) {
+  const viec = VIEC_CAN_QUYEN[ten];
+  if (nguoiDung) return `Xác minh email để ${viec}`;
+  return ten === 'xem_kho' ? `Đăng nhập để ${viec}` : `Đăng nhập và xác minh email để ${viec}`;
+}
+
+// Nút chưa có quyền vẫn hiện (mờ đi) để người dùng biết có tính năng đó; bấm
+// vào là được mời đăng nhập hoặc xác minh email (moiMoKhoa trong tai-khoan.js).
+function datNutKhoa(nut, ten, nhanKhiMo) {
+  const mo = coQuyen(ten);
+  nut.classList.toggle('chua-mo', !mo);
+  if (nhanKhiMo) nut.title = mo ? nhanKhiMo : loiThieuQuyen(ten);
+}
+
+const NHAN_DINH_KEM = elements.attachButton.title;
+
 function capNhatQuyenQuanTri() {
   document.body.dataset.quanTri = laQuanTri() ? '1' : '0';
   document.body.dataset.dangNhap = nguoiDung ? '1' : '0';
-  // Khách chỉ có kho chung nên không cần thanh thẻ.
+  document.body.dataset.soTay = coQuyen('so_tay') ? '1' : '0';
+  // Khách không mở được kho nên không cần thanh thẻ.
   document.getElementById('khoTabs')?.classList.toggle('hidden', !nguoiDung && !laQuanTri());
   if (!nguoiDung && cheDoKho === 'cua-toi') cheDoKho = 'tai-lieu';
-  // Nút "+" của kho mở cho mọi người: quản trị viên thêm thẳng vào kho chung,
-  // người khác lưu thành tài liệu riêng, khách được mời đăng nhập trước.
+  datNutKhoa(elements.libraryButton, 'xem_kho');
+  datNutKhoa(elements.attachButton, 'tai_tep', NHAN_DINH_KEM);
+  // Nút "+" của kho: quản trị viên thêm thẳng vào kho chung, người đã xác
+  // minh email lưu thành tài liệu riêng, người chưa xác minh được mời xác minh.
   const nhan = laQuanTri() ? 'Thêm tài liệu vào kho chung'
-    : nguoiDung ? 'Thêm vào Tài liệu của tôi (chỉ bạn thấy)'
-      : 'Đăng nhập để thêm tài liệu';
+    : coQuyen('tai_tep') ? 'Thêm vào Tài liệu của tôi (chỉ bạn thấy)'
+      : loiThieuQuyen('tai_tep');
   elements.uploadLibraryButton.title = nhan;
   elements.uploadLibraryButton.setAttribute('aria-label', nhan);
+  elements.uploadLibraryButton.classList.toggle('chua-mo', !coQuyen('tai_tep'));
+  window.khongGianHoc?.apDungQuyen();
 }
 
 async function taiLichSuTaiKhoan() {
@@ -563,7 +595,7 @@ function renderAttachments() {
     // Trang PDF/ảnh render thẳng từ tệp gốc nên đọc được ngay khi tải lên
     // xong, không phải đợi máy chủ đọc chữ (OCR có thể mất vài phút).
     if (!tep.id.startsWith('tam-') && tep.trang_thai !== 'loi'
-        && window.khongGianHoc?.docDuoc(tep.ten)) {
+        && coQuyen('so_tay') && window.khongGianHoc?.docDuoc(tep.ten)) {
       const doc = document.createElement('button');
       doc.type = 'button';
       doc.className = 'attachment-action';
@@ -693,6 +725,10 @@ async function themTepDinhKem(fileList) {
   const files = [...(fileList || [])];
   const daTai = [];
   if (!files.length) return daTai;
+  if (!coQuyen('tai_tep')) {
+    window.taiKhoanGiaoDien?.moiMoKhoa('tai_tep');
+    return daTai;
+  }
   if (tepDinhKem.size + files.length > SO_TEP_TOI_DA) {
     showToast(`Chỉ đính kèm tối đa ${SO_TEP_TOI_DA} tệp cùng lúc`);
     return daTai;
@@ -1032,12 +1068,17 @@ function renderSources(container, sourceList) {
   const messageId = container.closest('.message')?.dataset.messageId || 'answer';
   const cacNhan = [];
   sourceList.forEach((source, index) => {
+    // Khách không xem được kho chung: nguồn trong kho chỉ hiện tên và đoạn
+    // trích, không mở được tệp gốc.
+    const moDuoc = Boolean(source.url) && (source.external || coQuyen('xem_kho'));
     const isMedia = !source.external
       && (source.kind === 'video' || source.kind === 'am_thanh');
-    const chip = document.createElement(source.url && !isMedia ? 'a' : 'div');
+    const chip = document.createElement(moDuoc && !isMedia ? 'a' : 'div');
     chip.className = `source-chip kind-${source.kind || 'van_ban'}`;
     chip.id = `${messageId}-source-${index + 1}`;
-    if (source.url && !isMedia) {
+    if (!moDuoc) {
+      chip.title = source.excerpt || '';
+    } else if (!isMedia) {
       chip.href = source.url;
       chip.target = '_blank';
       chip.rel = 'noopener noreferrer';
@@ -1045,7 +1086,9 @@ function renderSources(container, sourceList) {
       chip.title = source.excerpt ? `${action}\n${source.excerpt}` : action;
       // PDF/ảnh trong kho mở ngay bên cạnh khung chat, đúng trang được trích,
       // để khoanh chỗ chưa hiểu mà hỏi tiếp. Ctrl/giữa chuột vẫn mở tab mới.
-      const taiLieu = !source.external && window.khongGianHoc?.tuDuongDan(source.url, source.name);
+      // Chưa có sổ tay thì mở tab mới như liên kết thường.
+      const taiLieu = !source.external && coQuyen('so_tay')
+        && window.khongGianHoc?.tuDuongDan(source.url, source.name);
       if (taiLieu) {
         chip.title = source.excerpt
           ? `Mở trong trình đọc bên cạnh\n${source.excerpt}`
@@ -1056,7 +1099,7 @@ function renderSources(container, sourceList) {
           moNguonTrongTrinhDoc(source, taiLieu);
         });
       }
-    } else if (isMedia) {
+    } else {
       chip.classList.add('playable');
       chip.tabIndex = 0;
       chip.title = 'Phát từ đúng đoạn được trích dẫn';
@@ -1205,6 +1248,7 @@ const TI_LE_KHUNG_TRANG = 1.414; // khớp aspect-ratio của .source-page-hinh
 const DUOI_ANH_TRANG = /\.(pdf|png|jpe?g|webp|bmp|tiff?)$/i;
 
 function renderTrangGoc(container, sourceList, cacNhan = []) {
+  if (!coQuyen('xem_kho')) return;
   const ungVien = [];
   sourceList.forEach((source, index) => {
     if (source.external) return;
@@ -1274,11 +1318,14 @@ function taoTheTrang(dai, source, taiLieu, trang) {
   the.target = '_blank';
   the.rel = 'noopener noreferrer';
   the.title = `Mở ${source.name} - trang ${trang}, đúng đoạn được trích`;
-  the.addEventListener('click', (event) => {
-    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
-    event.preventDefault();
-    moNguonTrongTrinhDoc(source, taiLieu, { trang, danh_dau: danhDau });
-  });
+  // Chưa có sổ tay: để liên kết mở tệp gốc ở tab mới.
+  if (coQuyen('so_tay')) {
+    the.addEventListener('click', (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+      event.preventDefault();
+      moNguonTrongTrinhDoc(source, taiLieu, { trang, danh_dau: danhDau });
+    });
+  }
   const hinh = document.createElement('div');
   hinh.className = 'source-page-hinh';
   const khung = document.createElement('div');
@@ -1606,7 +1653,8 @@ function renderCompletedActions(ui, content, elapsed, tuCache = null) {
   if (window.khongGianHoc) {
     const ghi = document.createElement('button');
     ghi.type = 'button';
-    ghi.className = 'action-button';
+    // Ẩn bằng CSS chứ không bỏ hẳn: xác minh email xong là hiện lại ngay.
+    ghi.className = 'action-button can-so-tay';
     ghi.innerHTML = `${soTayIcon}<span>Ghi vào sổ</span>`;
     ghi.title = 'Chép câu hỏi và câu trả lời này vào sổ tay của cuộc trò chuyện';
     ghi.addEventListener('click', () => {
@@ -2621,7 +2669,9 @@ function renderCuaToi(query) {
     trong.className = 'document-empty';
     trong.textContent = tuKhoa
       ? 'Không tìm thấy tài liệu phù hợp.'
-      : 'Chưa có tài liệu riêng nào. Tệp bạn đính kèm trong chat hoặc thêm bằng nút + sẽ nằm ở đây - chỉ bạn thấy.';
+      : coQuyen('tai_tep')
+        ? 'Chưa có tài liệu riêng nào. Tệp bạn đính kèm trong chat hoặc thêm bằng nút + sẽ nằm ở đây - chỉ bạn thấy.'
+        : 'Xác minh email để tải tài liệu lên. Tài liệu ở đây chỉ bạn thấy.';
     elements.documentList.append(trong);
     return;
   }
@@ -2648,7 +2698,7 @@ function renderCuaToi(query) {
     nut.className = 'kho-hanh-dong';
     // PDF / ảnh / Word / Excel / PowerPoint / HTML mở trong trình đọc của sổ tay; loại khác (video...) trình
     // đọc chưa hiển thị được nên mở ở tab mới như tài liệu trong kho chung.
-    const docTrongSoTay = window.khongGianHoc?.docDuoc(tep.ten);
+    const docTrongSoTay = coQuyen('so_tay') && window.khongGianHoc?.docDuoc(tep.ten);
     const moTep = () => {
       if (docTrongSoTay) {
         elements.documentDialog.close();
@@ -2661,7 +2711,9 @@ function renderCuaToi(query) {
     info.classList.add('bam-duoc');
     info.title = docTrongSoTay ? 'Mở trong sổ tay' : 'Mở ở tab mới (sổ tay chưa đọc được loại tệp này)';
     info.addEventListener('click', moTep);
-    if (tep.trang_thai === 'san_sang') {
+    // Hỏi và đề xuất đều cần quyền tải tệp - tài khoản đổi email chưa xác
+    // minh lại thì chỉ còn mở và xoá tệp cũ của mình.
+    if (tep.trang_thai === 'san_sang' && coQuyen('tai_tep')) {
       nut.append(taoNutKho('Hỏi', '', async () => hoiVeTaiLieuRieng(tep)));
       if (tep.luu_kho === 'rieng' || tep.luu_kho === 'loi') {
         nut.append(taoNutKho(laQuanTri() ? 'Đưa vào kho chung' : 'Đề xuất', 'chinh', () => deXuatVaoKhoChung(tep)));
@@ -2717,7 +2769,7 @@ function renderDocuments(query = '') {
       item.href = document.url;
       item.target = '_blank';
       item.rel = 'noopener noreferrer';
-      const taiLieu = window.khongGianHoc?.tuDuongDan(document.url, document.name);
+      const taiLieu = coQuyen('so_tay') && window.khongGianHoc?.tuDuongDan(document.url, document.name);
       if (taiLieu) {
         item.title = 'Mở trong trình đọc bên cạnh khung chat (Ctrl + bấm để mở tab mới)';
         item.addEventListener('click', (event) => {
@@ -2971,7 +3023,10 @@ elements.input.addEventListener('keydown', (event) => {
   }
 });
 elements.newChat.addEventListener('click', newChat);
-elements.attachButton.addEventListener('click', () => elements.fileInput.click());
+elements.attachButton.addEventListener('click', () => {
+  if (coQuyen('tai_tep')) elements.fileInput.click();
+  else window.taiKhoanGiaoDien?.moiMoKhoa('tai_tep');
+});
 elements.fileInput.addEventListener('change', async () => {
   // Phải sao chép trước: gán value = '' sẽ xóa luôn FileList đang tham chiếu.
   const danh_sach = [...elements.fileInput.files];
@@ -3010,12 +3065,15 @@ window.addEventListener('drop', (event) => {
   themTepDinhKem(event.dataTransfer.files);
 });
 elements.refreshSuggestions?.addEventListener('click', taiGoiYMoDau);
-elements.libraryButton.addEventListener('click', openDocumentLibrary);
+elements.libraryButton.addEventListener('click', () => {
+  if (coQuyen('xem_kho')) openDocumentLibrary();
+  else window.taiKhoanGiaoDien?.moiMoKhoa('xem_kho');
+});
 elements.closeDocumentDialog.addEventListener('click', () => elements.documentDialog.close());
 elements.uploadLibraryButton.addEventListener('click', () => {
-  if (khoaQuanTri && !nguoiDung) {
+  if (!coQuyen('tai_tep')) {
     elements.documentDialog.close();
-    document.getElementById('topDangNhap')?.click();
+    window.taiKhoanGiaoDien?.moiMoKhoa('tai_tep');
     return;
   }
   elements.libraryFileInput.click();

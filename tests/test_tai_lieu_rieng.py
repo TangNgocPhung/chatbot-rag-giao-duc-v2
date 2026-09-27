@@ -11,7 +11,7 @@ import quan_ly_kho
 import tai_khoan
 from api import app
 from rag_service import service
-from tep_dinh_kem import kho_tep
+from tep_dinh_kem import chu_cua, kho_tep
 
 MAT_KHAU = "matkhau-rat-dai-1"
 NOI_DUNG = (
@@ -36,9 +36,12 @@ def cho_doc_xong(tep_id, giay=20.0):
         time.sleep(0.05)
 
 
-def dang_ky(email):
+def dang_ky(email, xac_minh=True):
+    """Tải tệp lên cần email đã xác minh, nên mặc định xác minh luôn."""
     client = TestClient(app)
     nd = client.post("/api/tai-khoan/dang-ky", json={"email": email, "mat_khau": MAT_KHAU}).json()
+    if xac_minh:
+        tai_khoan.xac_minh_ho(nd["nguoi_dung"]["id"])
     return client, nd["nguoi_dung"]
 
 
@@ -101,9 +104,21 @@ class TaiLieuRiengTests(unittest.TestCase):
 
 
 class KhachTests(unittest.TestCase):
+    def test_khach_va_tai_khoan_chua_xac_minh_khong_tai_tep_len_duoc(self):
+        dang_ky("qt@x.vn")  # tài khoản đầu tiên là quản trị, được mọi quyền
+        chua_xac_minh, _ = dang_ky("chua@x.vn", xac_minh=False)
+        for client, ma in ((TestClient(app), 401), (chua_xac_minh, 403)):
+            phan_hoi = client.post("/api/tep?ten=a.txt", content=NOI_DUNG,
+                                   headers={"X-RAG-Action": "upload-file", "X-RAG-Client": "trinh-duyet-1"})
+            self.assertEqual(phan_hoi.status_code, ma)
+            self.assertIn("xác minh email", phan_hoi.json()["detail"])
+
     def test_khach_dang_ky_thi_tep_di_theo_sang_tai_khoan(self):
+        # Khách không tải tệp lên được nữa, nhưng tệp đã tải từ trước vẫn phải
+        # đi theo sang tài khoản khi họ đăng ký.
         khach = TestClient(app)
-        tep = tai_len(khach, khach="trinh-duyet-1")
+        tep = kho_tep.them("bai-tap-lon.txt", NOI_DUNG, chu=chu_cua(None, "trinh-duyet-1")).cong_khai()
+        cho_doc_xong(tep["id"])
         self.addCleanup(kho_tep.xoa, tep["id"], kiem_chu=False)
         # Khách mở lại tệp của mình bằng mã tệp (ảnh trang không gửi được mã trình duyệt).
         self.assertEqual(khach.get(f"/api/tep/{tep['id']}").status_code, 200)

@@ -2,8 +2,9 @@
    QUẢN LÝ TÀI KHOẢN (chỉ quản trị viên)
    ============================================================
    Xem mọi tài khoản, lọc tài khoản chưa xác minh email hay đang bị khoá,
-   khoá / mở khoá và xoá hẳn. Máy chủ tự chặn việc khoá hay xoá chính mình
-   và tài khoản quản trị khác; ở đây chỉ ẩn nút cho khỏi bấm nhầm.
+   xác minh hộ (chưa xác minh thì không có sổ tay, không tải tệp lên hỏi
+   được), khoá / mở khoá và xoá hẳn. Máy chủ tự chặn việc khoá hay xoá chính
+   mình và tài khoản quản trị khác; ở đây chỉ ẩn nút cho khỏi bấm nhầm.
    ============================================================ */
 (() => {
   const $id = (id) => document.getElementById(id);
@@ -135,6 +136,11 @@
 
     const nut = document.createElement('span');
     nut.className = 'kho-hanh-dong';
+    if (!tk.da_xac_minh && !tk.bi_cam) {
+      const xacMinh = taoNut('Xác minh', '', () => xacMinhHo(tk));
+      xacMinh.title = 'Xác minh hộ khi chắc email này đúng là của người đó (vd. họ không nhận được thư chứa mã)';
+      nut.append(xacMinh);
+    }
     if (!tk.la_toi && !tk.quan_tri) {
       nut.append(
         tk.bi_cam
@@ -150,6 +156,14 @@
   function thay(tkMoi) {
     taiKhoan = taiKhoan.map((tk) => (tk.id === tkMoi.id ? { ...tkMoi, la_toi: tk.la_toi } : tk));
     ve();
+  }
+
+  async function xacMinhHo(tk) {
+    const { tai_khoan: moi } = await goi(`/api/quan-ly/tai-khoan/${encodeURIComponent(tk.id)}/xac-minh`, {
+      method: 'POST', hanhDong: 'xac-minh-ho',
+    });
+    thay(moi);
+    showToast(`Đã xác minh ${tk.email}`, 2600);
   }
 
   async function khoa(tk, khoaLai) {

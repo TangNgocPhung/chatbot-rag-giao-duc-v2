@@ -860,6 +860,11 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
    viên, để khách không thấy nháy lên rồi biến mất. */
 body:not([data-quan-tri="1"]) .chi-quan-tri { display: none !important; }
 body:not([data-dang-nhap="1"]) .chi-dang-nhap { display: none !important; }
+body:not([data-so-tay="1"]) .can-so-tay { display: none !important; }
+/* Tính năng chưa có quyền: nút vẫn hiện nhưng mờ, bấm vào là được mời đăng
+   nhập / xác minh email (moiMoKhoa trong tai-khoan.js). */
+.chua-mo { opacity: .55; }
+.chua-mo:hover { opacity: .8; }
 .document-info.bam-duoc { cursor: pointer; }
 .document-info.bam-duoc:hover strong { color: var(--blue); text-decoration: underline; }
 

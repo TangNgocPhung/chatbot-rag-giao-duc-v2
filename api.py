@@ -160,6 +160,32 @@ def _la_quan_tri(request: Request) -> bool:
     return bool(nguoi_dung and nguoi_dung["quan_tri"])
 
 
+_VIEC_CAN_QUYEN = {
+    "xem_kho": "xem kho tài liệu",
+    "so_tay": "dùng sổ tay",
+    "tai_tep": "tải tệp lên hỏi",
+}
+
+
+def kiem_tra_quyen(request: Request | None, ten: str) -> None:
+    """Chặn theo tai_khoan.quyen_cua. Lời báo nói rõ cần làm gì để có quyền:
+    khách thì đăng nhập, tài khoản chưa xác minh thì xác minh email."""
+    nguoi_dung = nguoi_dung_hien_tai(request)
+    if tai_khoan.quyen_cua(nguoi_dung)[ten]:
+        return
+    viec = _VIEC_CAN_QUYEN[ten]
+    if nguoi_dung is not None:
+        raise HTTPException(status_code=403, detail=f"Hãy xác minh email để {viec}.")
+    can = "đăng nhập" if ten == "xem_kho" else "đăng nhập và xác minh email"
+    raise HTTPException(status_code=401, detail=f"Hãy {can} để {viec}.")
+
+
+def yeu_cau_quyen(ten: str):
+    def phu_thuoc(request: Request) -> None:
+        kiem_tra_quyen(request, ten)
+    return phu_thuoc
+
+
 def _dia_chi_ip(request: Request) -> str:
     # Sau Caddy/đường hầm thì địa chỉ thật nằm ở X-Forwarded-For; chỉ dùng để
     # đếm số lần đăng nhập sai nên lấy nhầm cũng không mở ra lỗ hổng nào.
@@ -172,7 +198,7 @@ def get_status():
     return service.status_dict()
 
 
-@app.get("/api/documents")
+@app.get("/api/documents", dependencies=[Depends(yeu_cau_quyen("xem_kho"))])
 def get_documents(request: Request):
     kho = service.document_inventory()
     if _la_quan_tri(request):
@@ -310,6 +336,8 @@ def chat_stream(
     x_rag_client: str | None = Header(default=None),
     http: Request = None,
 ):
+    if request.tep_ids:
+        kiem_tra_quyen(http, "tai_tep")
     # Kho đang cập nhật vẫn hỏi được: câu hỏi cả kho dùng chỉ mục cũ còn trong
     # bộ nhớ, câu hỏi về tệp đính kèm không cần chỉ mục. Chỉ lúc nạp lại mới đợi.
     if not service.hoi_kho_duoc() and not (request.tep_ids and service.hoi_tep_duoc()):
@@ -712,12 +740,19 @@ def xem_anh_dai_dien(nguoi_dung_id: str, request: Request):
 
 
 # ------------------------------------------------------------
-# SỔ TAY THEO TÀI KHOẢN (khách thì sổ nằm trong trình duyệt)
+# SỔ TAY THEO TÀI KHOẢN (chỉ tài khoản đã xác minh email; máy tắt khoá quản trị
+# thì khách vẫn có sổ, nằm trong trình duyệt)
 # ------------------------------------------------------------
 def _nguoi_dung_bat_buoc(request: Request) -> dict:
     nguoi_dung = nguoi_dung_hien_tai(request)
     if nguoi_dung is None:
         raise HTTPException(status_code=401, detail="Hãy đăng nhập để lưu sổ tay trên máy chủ.")
+    return nguoi_dung
+
+
+def _chu_so_tay(request: Request) -> dict:
+    nguoi_dung = _nguoi_dung_bat_buoc(request)
+    kiem_tra_quyen(request, "so_tay")
     return nguoi_dung
 
 
@@ -729,13 +764,13 @@ def _ma_hoi_thoai(ma: str) -> str:
 
 @app.get("/api/so-tay/{hoi_thoai_id}")
 def lay_so_tay(hoi_thoai_id: str, request: Request):
-    nguoi_dung = _nguoi_dung_bat_buoc(request)
+    nguoi_dung = _chu_so_tay(request)
     return {"so_tay": tai_khoan.lay_so_tay(nguoi_dung["id"], _ma_hoi_thoai(hoi_thoai_id))}
 
 
 @app.put("/api/so-tay/{hoi_thoai_id}")
 async def ghi_so_tay(hoi_thoai_id: str, request: Request):
-    nguoi_dung = _nguoi_dung_bat_buoc(request)
+    nguoi_dung = _chu_so_tay(request)
     ma = _ma_hoi_thoai(hoi_thoai_id)
     du_lieu = await request.body()
     if len(du_lieu) > tai_khoan.SO_TAY_TOI_DA_BYTE:
@@ -777,7 +812,7 @@ def xoa_cache(x_rag_action: str | None = Header(default=None)):
     return {"da_xoa": cache_ngu_nghia.cache.xoa_het()}
 
 
-@app.post("/api/tep")
+@app.post("/api/tep", dependencies=[Depends(yeu_cau_quyen("tai_tep"))])
 async def tai_len_tep(
     request: Request,
     ten: str,
@@ -807,14 +842,13 @@ async def tai_tep_vao_kho(
     x_rag_action: str | None = Header(default=None),
 ):
     """Nút "+" trong Kho tài liệu. Quản trị viên: lưu thẳng vào kho chung rồi
-    hẹn lập chỉ mục. Người dùng đã đăng nhập: lưu thành tài liệu RIÊNG (chỉ họ
-    thấy, trong thẻ "Của tôi"), muốn chia sẻ thì tự bấm "Đề xuất vào kho chung".
-    Khách phải đăng nhập trước - tài liệu riêng cần một tài khoản để gắn vào."""
+    hẹn lập chỉ mục. Người dùng đã xác minh email: lưu thành tài liệu RIÊNG
+    (chỉ họ thấy, trong thẻ "Của tôi"), muốn chia sẻ thì tự bấm "Đề xuất vào
+    kho chung". Khách và tài khoản chưa xác minh không tải tệp lên được."""
     if x_rag_action != "upload-library":
         raise HTTPException(status_code=403, detail="Yêu cầu tải tệp không hợp lệ.")
+    kiem_tra_quyen(request, "tai_tep")
     nguoi = nguoi_dung_hien_tai(request)
-    if tai_khoan.bat_khoa_quan_tri() and nguoi is None:
-        raise HTTPException(status_code=401, detail="Hãy đăng nhập để thêm tài liệu.")
     do_dai = request.headers.get("content-length")
     if do_dai and do_dai.isdigit() and int(do_dai) > GIOI_HAN_BYTE:
         raise HTTPException(
@@ -888,9 +922,8 @@ def de_xuat_vao_kho_chung(tep_id: str, request: Request, x_rag_action: str | Non
     người khác thì vào hàng chờ duyệt (ghi rõ ai đề xuất)."""
     if x_rag_action != "de-xuat-kho":
         raise HTTPException(status_code=403, detail="Yêu cầu không hợp lệ.")
+    kiem_tra_quyen(request, "tai_tep")
     nguoi = nguoi_dung_hien_tai(request)
-    if nguoi is None and tai_khoan.bat_khoa_quan_tri():
-        raise HTTPException(status_code=401, detail="Hãy đăng nhập để đề xuất tài liệu vào kho chung.")
     tep = _tep_cua_toi(tep_id, request)
     try:
         kho_tep.de_xuat(tep, tinh_hash_file(tep.duong_dan), nguoi)
@@ -931,7 +964,7 @@ def mo_tep_dinh_kem(tep_id: str, request: Request):
     )
 
 
-@app.get("/api/source")
+@app.get("/api/source", dependencies=[Depends(yeu_cau_quyen("xem_kho"))])
 def open_source(name: str):
     source_path = service.resolve_source_file(name)
     if source_path is None:
@@ -960,17 +993,20 @@ def open_source(name: str):
 # có tệp: tep = id tệp đính kèm, nguon = tên tệp trong kho (giống /api/source).
 # Mỗi trang là một ảnh riêng nên resolve_source_file bị gọi hàng chục lần khi
 # cuộn một tệp dày; nó duyệt cả cây thư mục kho nên nhớ kết quả ít phút.
+# Ảnh trang và định vị đoạn trích cũng hiện ngay trong câu trả lời, nên chỉ đòi
+# quyền xem kho; khoanh vùng và tải bản đánh dấu là việc của sổ tay.
 _GIAY_NHO_NGUON = 300.0
 _nguon_da_tim: dict[str, tuple[float, str]] = {}
 
 
-def _tai_lieu_can_doc(tep: str | None, nguon: str | None, chu: str | None = None) -> str:
+def _tai_lieu_can_doc(tep: str | None, nguon: str | None, request: Request | None = None) -> str:
     if tep:
-        tep_dinh_kem = kho_tep.cua(tep, chu)
+        tep_dinh_kem = kho_tep.cua(tep, _chu_tep(request))
         if tep_dinh_kem is None:
             raise HTTPException(status_code=404, detail="Tệp đính kèm không còn trên máy chủ.")
         duong_dan = tep_dinh_kem.duong_dan
     elif nguon:
+        kiem_tra_quyen(request, "xem_kho")
         da_tim = _nguon_da_tim.get(nguon)
         if da_tim and time.monotonic() - da_tim[0] < _GIAY_NHO_NGUON and Path(da_tim[1]).is_file():
             duong_dan = da_tim[1]
@@ -994,7 +1030,7 @@ def _tai_lieu_can_doc(tep: str | None, nguon: str | None, chu: str | None = None
 
 @app.get("/api/doc/thong-tin")
 def thong_tin_tai_lieu(request: Request, tep: str | None = None, nguon: str | None = None):
-    duong_dan = _tai_lieu_can_doc(tep, nguon, _chu_tep(request))
+    duong_dan = _tai_lieu_can_doc(tep, nguon, request)
     try:
         return trinh_doc_tai_lieu.thong_tin(duong_dan)
     except trinh_doc_tai_lieu.LoiDocTaiLieu as exc:
@@ -1007,7 +1043,7 @@ def thong_tin_tai_lieu(request: Request, tep: str | None = None, nguon: str | No
 def anh_trang_tai_lieu(
     request: Request, so: int, rong: int = 1000, tep: str | None = None, nguon: str | None = None
 ):
-    duong_dan = _tai_lieu_can_doc(tep, nguon, _chu_tep(request))
+    duong_dan = _tai_lieu_can_doc(tep, nguon, request)
     try:
         du_lieu, kieu = trinh_doc_tai_lieu.render_trang(duong_dan, so, rong)
     except trinh_doc_tai_lieu.LoiDocTaiLieu as exc:
@@ -1031,10 +1067,10 @@ class VungKhoanh(BaseModel):
     y1: float = Field(ge=0, le=1)
 
 
-@app.post("/api/doc/vung")
+@app.post("/api/doc/vung", dependencies=[Depends(yeu_cau_quyen("so_tay"))])
 def chu_trong_vung_khoanh(vung: VungKhoanh, request: Request):
     """Chữ nằm trong vùng người dùng vừa khoanh trên trang."""
-    duong_dan = _tai_lieu_can_doc(vung.tep, vung.nguon, _chu_tep(request))
+    duong_dan = _tai_lieu_can_doc(vung.tep, vung.nguon, request)
     try:
         return trinh_doc_tai_lieu.chu_trong_vung(
             duong_dan, vung.so, (vung.x0, vung.y0, vung.x1, vung.y1)
@@ -1056,7 +1092,7 @@ class DoanCanDinhVi(BaseModel):
 @app.post("/api/doc/dinh-vi")
 def dinh_vi_doan_trich(yeu_cau: DoanCanDinhVi, request: Request):
     """Trang và các dòng chứa đoạn bằng chứng, để tô sáng đúng chỗ được trích."""
-    duong_dan = _tai_lieu_can_doc(yeu_cau.tep, yeu_cau.nguon, _chu_tep(request))
+    duong_dan = _tai_lieu_can_doc(yeu_cau.tep, yeu_cau.nguon, request)
     try:
         # Đang sinh câu trả lời thì không OCR trang scan (xem dinh_vi_doan):
         # giao diện hiện ảnh trang trước, lát nữa hỏi lại để tô.
@@ -1087,13 +1123,13 @@ class TaiVeDanhDau(BaseModel):
     net: dict[int, list[NetDanhDau]] = Field(default_factory=dict)
 
 
-@app.post("/api/doc/tai-ve")
+@app.post("/api/doc/tai-ve", dependencies=[Depends(yeu_cau_quyen("so_tay"))])
 def tai_ve_ban_danh_dau(yeu_cau: TaiVeDanhDau, request: Request):
     """PDF của tài liệu kèm mọi nét bút, tô sáng, khoanh người dùng đã vẽ."""
     so_net = sum(len(ds) for ds in yeu_cau.net.values())
     if so_net > 5000 or sum(len(n.p) for ds in yeu_cau.net.values() for n in ds) > 400000:
         raise HTTPException(status_code=413, detail="Quá nhiều nét vẽ để ghép vào tài liệu.")
-    duong_dan = _tai_lieu_can_doc(yeu_cau.tep, yeu_cau.nguon, _chu_tep(request))
+    duong_dan = _tai_lieu_can_doc(yeu_cau.tep, yeu_cau.nguon, request)
     try:
         du_lieu = trinh_doc_tai_lieu.xuat_pdf_danh_dau(
             duong_dan,
@@ -1222,6 +1258,17 @@ def danh_sach_tai_khoan(request: Request):
     for nd in ds:
         nd["la_toi"] = nd["id"] == nguoi.get("id")
     return {"tai_khoan": ds, "gui_thu": gui_thu.da_cau_hinh()}
+
+
+@app.post("/api/quan-ly/tai-khoan/{ma}/xac-minh")
+def xac_minh_ho(ma: str, request: Request, x_rag_action: str | None = Header(default=None)):
+    _nguoi_quan_tri(request)
+    if x_rag_action != "xac-minh-ho":
+        raise HTTPException(status_code=403, detail="Yêu cầu không hợp lệ.")
+    try:
+        return {"tai_khoan": tai_khoan.xac_minh_ho(ma)}
+    except tai_khoan.LoiTaiKhoan as exc:
+        raise _loi_tai_khoan(exc) from exc
 
 
 class KhoaTaiKhoan(BaseModel):

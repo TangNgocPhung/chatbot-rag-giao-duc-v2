@@ -86,7 +86,8 @@ class ApiQuanLyKhoTests(KhoTamTests):
         self.quan_tri = TestClient(app)
         self.quan_tri.post("/api/tai-khoan/dang-ky", json={"email": "lan@x.vn", "mat_khau": MAT_KHAU})
         self.hoc_sinh = TestClient(app)
-        self.hoc_sinh.post("/api/tai-khoan/dang-ky", json={"email": "hs@x.vn", "mat_khau": MAT_KHAU})
+        hs = self.hoc_sinh.post("/api/tai-khoan/dang-ky", json={"email": "hs@x.vn", "mat_khau": MAT_KHAU})
+        tai_khoan.xac_minh_ho(hs.json()["nguoi_dung"]["id"])  # tải tệp lên cần email đã xác minh
 
     def _tra_db(self):
         tai_khoan.dong_ket_noi()

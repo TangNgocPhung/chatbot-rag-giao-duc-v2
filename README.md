@@ -92,11 +92,20 @@ PDF scan chỉ định vị được khi đã có bản OCR trong `ocr_cache` (t
 
 ### Tài khoản và quyền quản trị
 
-Không bắt buộc đăng nhập: khách vẫn hỏi đáp như thường. Khi đăng nhập, lịch sử chat và sổ tay được lưu trên máy chủ theo tài khoản nên mở ở máy khác vẫn thấy. Chỉ tài khoản quản trị mới được cập nhật chỉ mục, đổi mô hình mặc định, đồng bộ Drive và quản lý kho.
+Không bắt buộc đăng nhập. Quyền tăng dần theo bốn bậc (`tai_khoan.quyen_cua`; máy chủ chặn theo đó, giao diện làm mờ nút theo đó và bấm vào thì mời đăng nhập hoặc xác minh email):
 
-- **Xác minh email**: máy chủ gửi mã 6 số qua thư (`gui_thu.py`, mặc định Gmail với mật khẩu ứng dụng). Mã sống 15 phút, nhập sai 5 lần là huỷ, mỗi giờ chỉ xin được vài mã. Chưa xác minh vẫn dùng bình thường; riêng email trong `RAG_EMAIL_QUAN_TRI` phải xác minh mới thành quản trị viên, nên người lạ đăng ký trước bằng email của quản trị viên không chiếm được quyền. Máy chủ chưa cấu hình gửi thư thì giao diện ẩn nút xác minh và bỏ qua điều kiện này.
+| Vai | Hỏi đáp | Xem kho tài liệu chung | Sổ tay | Tải tệp lên để hỏi |
+|---|---|---|---|---|
+| Khách (chưa đăng nhập) | ✓ | — | — | — |
+| Tài khoản chưa xác minh email | ✓ | ✓ | — | — |
+| Tài khoản đã xác minh email | ✓ | ✓ | ✓ | ✓ |
+| Quản trị viên | ✓ | ✓ | ✓ | ✓ |
+
+Khách vẫn thấy tên nguồn và đoạn trích dưới câu trả lời nhưng không mở được tệp gốc. Đăng nhập thì lịch sử chat (và sổ tay, nếu đã xác minh) lưu trên máy chủ theo tài khoản nên mở ở máy khác vẫn thấy. Chỉ tài khoản quản trị mới được cập nhật chỉ mục, đổi mô hình mặc định, đồng bộ Drive và quản lý kho. Đặt `RAG_KHOA_QUAN_TRI=0` (máy cá nhân một người dùng) thì ai cũng đủ mọi quyền như trước.
+
+- **Xác minh email**: máy chủ gửi mã 6 số qua thư (`gui_thu.py`, mặc định Gmail với mật khẩu ứng dụng). Mã sống 15 phút, nhập sai 5 lần là huỷ, mỗi giờ chỉ xin được vài mã. Chưa xác minh thì không có sổ tay và không tải tệp lên được; email trong `RAG_EMAIL_QUAN_TRI` cũng phải xác minh mới thành quản trị viên, nên người lạ đăng ký trước bằng email của quản trị viên không chiếm được quyền. Máy chủ chưa cấu hình gửi thư thì bỏ qua điều kiện này cho email chỉ định; người dùng thường nhờ quản trị viên xác minh hộ.
 - **Thông tin cá nhân**: tự đổi tên hiển thị và ảnh đại diện (ảnh tới 8 MB được cắt vuông, nén còn 256×256). Đổi email phải nhập mật khẩu hiện tại và xác minh lại email mới. Đổi mật khẩu thì các phiên đăng nhập ở máy khác bị đăng xuất.
-- **Quản lý tài khoản** (menu tài khoản > Quản lý tài khoản, chỉ quản trị viên): xem mọi tài khoản, lọc tài khoản chưa xác minh hoặc bị khoá, khoá / mở khoá, xoá tài khoản. Xoá tài khoản thì xoá luôn phiên đăng nhập, sổ tay, ảnh, lịch sử trò chuyện và tài liệu riêng của người đó. Không khoá hay xoá được chính mình và quản trị viên khác; muốn thì thu quyền bằng dòng lệnh trước.
+- **Quản lý tài khoản** (menu tài khoản > Quản lý tài khoản, chỉ quản trị viên): xem mọi tài khoản, lọc tài khoản chưa xác minh hoặc bị khoá, xác minh hộ (khi người dùng không nhận được thư; không làm được với email trong `RAG_EMAIL_QUAN_TRI`), khoá / mở khoá, xoá tài khoản. Xoá tài khoản thì xoá luôn phiên đăng nhập, sổ tay, ảnh, lịch sử trò chuyện và tài liệu riêng của người đó. Không khoá hay xoá được chính mình và quản trị viên khác; muốn thì thu quyền bằng dòng lệnh trước.
 
 Mật khẩu băm bằng scrypt; phiên đăng nhập là chuỗi ngẫu nhiên trong cookie HttpOnly, máy chủ chỉ giữ bản băm nên lộ tệp cơ sở dữ liệu cũng không dùng lại được phiên của ai. Đăng nhập sai 10 lần liên tiếp thì bị khoá tạm 15 phút theo cả địa chỉ IP lẫn email. Nếu không đặt `RAG_EMAIL_QUAN_TRI` thì tài khoản đăng ký đầu tiên là quản trị viên.
 
@@ -113,9 +122,9 @@ Cấu hình gửi thư bằng Gmail: bật xác minh 2 bước cho hộp thư g�
 
 ### Quản lý kho tài liệu
 
-Hộp thoại **Kho tài liệu** có các thẻ: kho chung (ai cũng xem), **Của tôi** (khi đăng nhập), **Chờ duyệt** và **Thùng rác** (chỉ quản trị viên).
+Hộp thoại **Kho tài liệu** (cần đăng nhập) có các thẻ: kho chung, **Của tôi**, **Chờ duyệt** và **Thùng rác** (chỉ quản trị viên).
 
-- **Tài liệu riêng**: tệp người dùng đính kèm trong chat hoặc tải lên bằng nút `+` là tài liệu riêng, nằm trong thẻ **Của tôi** và chỉ chủ tệp thấy — kể cả quản trị viên cũng không xem được tài liệu riêng của người khác. Tài liệu riêng hỏi đáp được ngay (nút **Hỏi**) và mở được trong sổ tay, không cần đợi lập chỉ mục. Mỗi tài khoản giữ tối đa 100 tài liệu riêng; tệp khách đính kèm không cần đăng nhập thì giữ 30 ngày.
+- **Tài liệu riêng**: tệp người dùng (đã xác minh email) đính kèm trong chat hoặc tải lên bằng nút `+` là tài liệu riêng, nằm trong thẻ **Của tôi** và chỉ chủ tệp thấy — kể cả quản trị viên cũng không xem được tài liệu riêng của người khác. Tài liệu riêng hỏi đáp được ngay (nút **Hỏi**) và mở được trong sổ tay, không cần đợi lập chỉ mục. Mỗi tài khoản giữ tối đa 100 tài liệu riêng.
 - **Đề xuất vào kho chung**: tài liệu riêng không tự vào kho chung. Chủ tệp bấm **Đề xuất** thì tệp vào hàng chờ, ghi rõ ai đề xuất; thẻ **Của tôi** hiện trạng thái (chờ duyệt, đã vào kho chung, kho chung đã có, không được duyệt). Quản trị viên đề xuất tệp của mình (**Đưa vào kho chung**) hoặc tải lên bằng nút `+` thì tệp vào thẳng kho chung, có ghi tên người đưa vào.
 - **Duyệt**: quản trị viên duyệt hoặc từ chối trong thẻ **Chờ duyệt**. Tệp đề xuất dạng HTML/SVG được mở kèm CSP `sandbox` nên script trong tệp không chạy được với phiên đăng nhập của quản trị viên.
 - **Thùng rác**: tệp bị từ chối và tài liệu bị gỡ khỏi kho chung đều chuyển vào đây. Khôi phục tài liệu đã gỡ thì nó về lại kho; khôi phục tệp bị từ chối thì nó về lại hàng chờ duyệt.

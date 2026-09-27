@@ -1,9 +1,10 @@
 /* ============================================================
    ĐĂNG NHẬP / ĐĂNG KÝ
    ============================================================
-   Giống ChatGPT: không bắt buộc đăng nhập. Khách vẫn hỏi được, lịch sử nằm
-   trong trình duyệt; đăng nhập thì lịch sử và sổ tay theo tài khoản, máy nào
-   cũng thấy. Tệp này chỉ lo phần giao diện; việc đổi nguồn lịch sử nằm ở
+   Không bắt buộc đăng nhập: khách vẫn hỏi được, lịch sử nằm trong trình
+   duyệt. Đăng nhập thì lịch sử theo tài khoản, máy nào cũng thấy, và xem được
+   kho tài liệu; xác minh email thêm sổ tay và tải tệp lên hỏi (coQuyen trong
+   app.js). Tệp này chỉ lo phần giao diện; việc đổi nguồn lịch sử nằm ở
    doiNguoiDung() trong app.js, việc đổi kho sổ tay nằm trong so-tay.js.
    ============================================================ */
 (() => {
@@ -52,7 +53,7 @@
   const CHE_DO = {
     'dang-nhap': {
       tieuDe: 'Chào mừng trở lại',
-      moTa: 'Đăng nhập để lưu lịch sử trò chuyện và sổ tay trên mọi thiết bị.',
+      moTa: 'Đăng nhập để xem kho tài liệu và giữ lịch sử trò chuyện trên mọi thiết bị.',
       gui: 'Đăng nhập',
       chuyenChu: 'Chưa có tài khoản?',
       chuyenNut: 'Đăng ký',
@@ -62,7 +63,7 @@
     },
     'dang-ky': {
       tieuDe: 'Tạo tài khoản',
-      moTa: 'Lịch sử trò chuyện và sổ tay sẽ lưu theo tài khoản - mở máy nào cũng thấy. Những gì bạn vừa hỏi cũng được giữ lại.',
+      moTa: 'Lịch sử trò chuyện sẽ lưu theo tài khoản - mở máy nào cũng thấy. Xác minh email xong là dùng được sổ tay và tải tệp lên hỏi.',
       gui: 'Tạo tài khoản',
       chuyenChu: 'Đã có tài khoản?',
       chuyenNut: 'Đăng nhập',
@@ -172,12 +173,14 @@
     tk.loi.classList.toggle('hidden', !thongBao);
   }
 
-  function moHop(moi = 'dang-nhap') {
+  // tieuDe: thay tiêu đề mặc định, để hộp nói rõ vì sao nó hiện ra (moiMoKhoa).
+  function moHop(moi = 'dang-nhap', tieuDe = '') {
     dongMenu();
     closeSidebar();
     tk.form.reset();
     datMatKhauHien(false);
     datCheDo(moi);
+    if (tieuDe) tk.tieuDe.textContent = tieuDe;
     if (moi === 'sua-thong-tin' && nguoiDung) {
       tk.ten.value = nguoiDung.ten || '';
       tk.email.value = nguoiDung.email || '';
@@ -245,7 +248,7 @@
     const { nguoi_dung: nd } = await goi('/api/tai-khoan/xac-minh', { ma });
     tk.hop.close();
     await capNhatNguoiDung(nd);
-    showToast('Đã xác minh email');
+    showToast(coQuyen('so_tay') ? 'Đã xác minh email - giờ bạn dùng được sổ tay và tải tệp lên hỏi' : 'Đã xác minh email', 3200);
   }
 
   // Nhập sai email lúc đăng ký thì sửa được ngay, rồi xác minh email mới.
@@ -340,8 +343,9 @@
       await doiNguoiDung(nd);
       if (dangKy) {
         // Máy chủ đã chuyển hội thoại của khách sang tài khoản; chuyển nốt sổ
-        // tay rồi bỏ bản trong trình duyệt để khỏi thấy hai lần.
-        await window.khongGianHoc?.chuyenSoKhachLenTaiKhoan();
+        // tay rồi bỏ bản trong trình duyệt để khỏi thấy hai lần. Tài khoản mới
+        // chưa xác minh email thì chưa có sổ: sổ khách cũ nằm yên trong trình duyệt.
+        if (coQuyen('so_tay')) await window.khongGianHoc?.chuyenSoKhachLenTaiKhoan();
         try {
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(LEGACY_STORAGE_KEY);
@@ -388,7 +392,7 @@
     if (!nguoiDung) {
       const moi = document.createElement('p');
       moi.className = 'tai-khoan-moi';
-      moi.textContent = 'Đăng nhập để lưu lịch sử và sổ tay trên mọi thiết bị.';
+      moi.textContent = 'Đăng nhập để xem kho tài liệu, dùng sổ tay và hỏi về tệp của bạn.';
       const hang = document.createElement('div');
       hang.className = 'tai-khoan-nut';
       hang.append(
@@ -455,9 +459,11 @@
   }
 
   // Cập nhật thông tin tài khoản mà không đổi người dùng (xác minh, đổi ảnh).
-  // Xác minh có thể mở quyền quản trị: khi đó nạp lại như lúc đăng nhập.
+  // Xác minh (hay đổi email phải xác minh lại) làm đổi quyền: khi đó nạp lại
+  // như lúc đăng nhập để sổ tay, nút đính kèm... theo quyền mới.
   async function capNhatNguoiDung(nd) {
-    if (Boolean(nd.quan_tri) !== Boolean(nguoiDung?.quan_tri)) {
+    if (Boolean(nd.quan_tri) !== Boolean(nguoiDung?.quan_tri)
+        || JSON.stringify(nd.quyen) !== JSON.stringify(nguoiDung?.quyen)) {
       await doiNguoiDung(nd, { lamMoi: false });
       return;
     }
@@ -577,7 +583,19 @@
   });
   tk.nutTren.addEventListener('click', () => moHop('dang-nhap'));
 
-  window.taiKhoanGiaoDien = { ve, moHop };
+  // Bấm vào tính năng chưa có quyền: khách được mời đăng nhập, tài khoản chưa
+  // xác minh được mời xác minh email (hộp xác minh tự gửi mã).
+  function moiMoKhoa(ten) {
+    if (!nguoiDung) {
+      moHop('dang-nhap', loiThieuQuyen(ten));
+    } else if (guiThu) {
+      moHop('xac-minh', loiThieuQuyen(ten));
+    } else {
+      showToast(`${loiThieuQuyen(ten)} - hãy nhờ quản trị viên xác minh giúp`, 4000);
+    }
+  }
+
+  window.taiKhoanGiaoDien = { ve, moHop, moiMoKhoa };
 
   // Khởi động: hỏi máy chủ xem trình duyệt này đang đăng nhập ai.
   (async () => {
