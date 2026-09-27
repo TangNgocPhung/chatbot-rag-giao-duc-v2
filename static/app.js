@@ -920,12 +920,27 @@ function renderGoiYMoDau(danhSach) {
   }
 }
 
-// Bộ câu tĩnh hiện đủ cả bộ, mỗi chủ đề một khối có tên nhóm ở đầu.
+// Bộ câu tĩnh hiện đủ cả bộ, mỗi chủ đề một khối có tên nhóm ở đầu. Màn hẹp
+// thì đủ bộ xếp một cột dài hơn cả màn hình, nên chỉ hiện SO_GOI_Y_MO_DAU câu
+// đầu - lấy xen kẽ mỗi nhóm một câu, cùng thứ tự máy chủ dùng khi cần ít câu -
+// kèm nút "Xem thêm". Ẩn/hiện theo cỡ màn hình để CSS lo, nên xoay ngang hay
+// đổi cỡ cửa sổ không phải vẽ lại.
 function renderNhomGoiY(cacNhom) {
-  if (!elements.suggestionChips) return;
-  elements.suggestionChips.replaceChildren();
-  elements.suggestionChips.classList.add('theo-nhom');
+  const khung = elements.suggestionChips;
+  if (!khung) return;
+  khung.replaceChildren();
+  khung.classList.remove('mo-rong');
+  khung.classList.add('theo-nhom');
   elements.suggestionMore.classList.remove('hidden');
+
+  const xenKe = [];
+  const dai = Math.max(...cacNhom.map((nhom) => nhom.cau_hoi.length));
+  for (let i = 0; i < dai; i += 1) {
+    for (const nhom of cacNhom) if (i < nhom.cau_hoi.length) xenKe.push(nhom.cau_hoi[i]);
+  }
+  const hienSan = new Set(xenKe.slice(0, SO_GOI_Y_MO_DAU));
+
+  let soAn = 0;
   for (const nhom of cacNhom) {
     const khoi = document.createElement('div');
     khoi.className = 'suggestion-group';
@@ -934,10 +949,32 @@ function renderNhomGoiY(cacNhom) {
     tieuDe.textContent = nhom.chu_de;
     const hang = document.createElement('div');
     hang.className = 'suggestion-chips';
-    for (const cauHoi of nhom.cau_hoi || []) hang.append(taoChipGoiY(cauHoi));
+    for (const cauHoi of nhom.cau_hoi) {
+      const chip = taoChipGoiY(cauHoi);
+      if (!hienSan.has(cauHoi)) {
+        chip.classList.add('goi-y-phu');
+        soAn += 1;
+      }
+      hang.append(chip);
+    }
+    // Nhóm không còn câu nào hiện sẵn thì ẩn luôn tên nhóm.
+    if (!nhom.cau_hoi.some((cauHoi) => hienSan.has(cauHoi))) khoi.classList.add('goi-y-phu');
     khoi.append(tieuDe, hang);
-    elements.suggestionChips.append(khoi);
+    khung.append(khoi);
   }
+
+  if (!soAn) return;
+  const nut = document.createElement('button');
+  nut.type = 'button';
+  nut.className = 'suggestion-toggle';
+  nut.setAttribute('aria-expanded', 'false');
+  nut.textContent = `Xem thêm ${soAn} câu`;
+  nut.addEventListener('click', () => {
+    const moRong = khung.classList.toggle('mo-rong');
+    nut.setAttribute('aria-expanded', String(moRong));
+    nut.textContent = moRong ? 'Thu gọn' : `Xem thêm ${soAn} câu`;
+  });
+  khung.append(nut);
 }
 
 async function taiGoiYMoDau() {
