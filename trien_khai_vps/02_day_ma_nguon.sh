@@ -290,7 +290,13 @@ buoc "Doi duong dan trong so ghi chep tu Windows sang Linux"
 # data_giao_duc_da_xu_ly.json khoa theo duong dan TUYET DOI. Giu nguyen dang
 # "D:\Mr_Hai\..." thi tren VPS moi tep deu trong nhu tep moi, va lan cap nhat
 # chi muc dau tien se embed lai TOAN BO kho - nhieu gio CPU khong can thiet.
-$SSH "$NHU_ROOT python3 - <<'PYEOF'
+# Python PHAI di qua heredoc nhay don o CHINH MAY NAY. Truoc 27/9/2026 no nam
+# trong chuoi nhay kep cua $SSH: bash o day bien '\\' thanh '\' truoc khi gui,
+# Python tren VPS chet vi SyntaxError, con ma thoat cua ssh lai la cua chown
+# dung cuoi nen set -e khong bat - buoc nay hong im lang tu dau.
+$SSH "$NHU_ROOT bash -s" <<'REMOTE' || { echo "[DUNG] Khong doi duoc duong dan trong so ghi chep - KHONG khoi dong lai dich vu."; exit 1; }
+set -eu
+python3 - <<'PYEOF'
 import json, pathlib, shutil, datetime, sys
 p = pathlib.Path('/opt/chatbot-rag/data_giao_duc_da_xu_ly.json')
 if not p.exists():
@@ -312,7 +318,11 @@ if doi:
 tep = {str(x) for x in pathlib.Path(GOC).rglob('*') if x.is_file()} if pathlib.Path(GOC).exists() else set()
 print(f'Da doi {doi} duong dan. Tep tren dia: {len(tep)}, khop so ghi chep: {len(tep & set(moi))}, chua co chi muc: {len(tep - set(moi))}')
 PYEOF
-$NHU_ROOT chown rag:rag /opt/chatbot-rag/data_giao_duc_da_xu_ly.json*"
+# Chua co so ghi chep thi glob khong khop va chown bao loi - khong co gi de chown.
+if [ -e /opt/chatbot-rag/data_giao_duc_da_xu_ly.json ]; then
+  chown rag:rag /opt/chatbot-rag/data_giao_duc_da_xu_ly.json*
+fi
+REMOTE
 
 # ---------------------------------------------------------------------
 buoc "Cai thu vien Python theo requirements.txt (lan dau mat vai phut)"
