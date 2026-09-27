@@ -60,16 +60,14 @@
 <text x="615.7" y="626.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Gợi ý hỏi tiếp</text>
 <rect x="714" y="494" width="320" height="160" rx="8" fill="#7a4414" fill-opacity="0.35" stroke="#ffd59c" stroke-width="1.6"/>
 <text x="874.0" y="517" font-size="16.5" font-weight="700" fill="#fff4e3" text-anchor="middle">Công cụ tính (Python)</text>
-<rect x="726.0" y="530" width="144.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
-<text x="798.0" y="550.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Tính lương</text>
-<rect x="878.0" y="530" width="144.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
-<text x="950.0" y="550.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Số học</text>
+<rect x="726.0" y="530" width="296.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
+<text x="874.0" y="550.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Tính lương, phụ cấp nhà giáo</text>
 <rect x="726.0" y="568" width="144.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
 <text x="798.0" y="588.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Định mức GDTX</text>
 <rect x="878.0" y="568" width="144.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
 <text x="950.0" y="588.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Định mức phổ thông</text>
 <rect x="726.0" y="606" width="296.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
-<text x="874.0" y="626.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Điểm trung bình, xếp loại học sinh</text>
+<text x="874.0" y="626.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Số học: phần trăm, biểu thức</text>
 <rect x="1046" y="494" width="338" height="160" rx="8" fill="#7a4414" fill-opacity="0.35" stroke="#ffd59c" stroke-width="1.6"/>
 <text x="1215.0" y="517" font-size="16.5" font-weight="700" fill="#fff4e3" text-anchor="middle">Ngôn ngữ &amp; đọc tài liệu</text>
 <rect x="1058.0" y="530" width="153.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
