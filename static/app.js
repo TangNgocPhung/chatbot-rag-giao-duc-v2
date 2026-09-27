@@ -1473,10 +1473,10 @@ function renderWarning(container, message) {
 }
 
 // Tô sẵn những gì người đọc lướt cần bắt được ngay, không đợi mô hình nhớ in
-// đậm: con số kèm đơn vị (19 tiết/tuần, 25%, 1.200.000 đồng), ngày tháng, số
-// hiệu văn bản và điều khoản (Thông tư 05/2025/TT-BGDĐT, khoản 2 Điều 5), tên
-// tài liệu trong ngoặc kép. Dùng <strong> có lớp chứ không <mark> để chép
-// sang sổ tay thì vẫn chỉ là chữ đậm.
+// đậm: con số, có đơn vị hay không (19 tiết/tuần, 25%, 1.200.000 đồng, lớp 10,
+// năm 2025, 8,5), ngày giờ, số hiệu văn bản và điều khoản (Thông tư
+// 05/2025/TT-BGDĐT, khoản 2 Điều 5), tên tài liệu trong ngoặc kép. Dùng
+// <strong> có lớp chứ không <mark> để chép sang sổ tay thì vẫn chỉ là chữ đậm.
 const DON_VI_SO = [
   'tiết', 'tuần', 'tháng', 'năm', 'ngày', 'giờ', 'phút', 'giây', 'học kỳ', 'học kì', 'năm học', 'tín chỉ',
   'đồng', 'triệu đồng', 'triệu', 'tỷ đồng', 'tỷ', 'tỉ đồng', 'tỉ', 'nghìn đồng', 'nghìn', 'ngàn', 'tuổi',
@@ -1484,17 +1484,27 @@ const DON_VI_SO = [
   'bài', 'câu', 'chủ đề', 'môn', 'hoạt động', 'bước', 'mức', 'bậc', 'hạng',
 ].sort((a, b) => b.length - a.length).join('|');
 const HET_TU = String.raw`(?![\p{L}\p{N}])`;
+// Số không đơn vị chỉ tô khi đứng riêng: không dính chữ (GPT-4, COVID-19,
+// 10A1, CO2) và không là mẩu của số hiệu văn bản (05/2025/TT-BGDĐT, 1234/QĐ-UBND).
+const TRUOC_SO = String.raw`(?<![\p{L}\p{N}/.,]|\p{L}[-–]|\d:)`;
+const HET_SO = String.raw`(?![\p{L}\p{N}]|[.,:]\d|/[\p{L}\p{N}])`;
 const MAU_TO_SAN = new RegExp([
+  // Chú thích gộp "[1, 2]", "[1-3]": khớp để giữ nguyên, không tô số bên trong.
+  String.raw`(?<bo>\[\d+(?:\s*[,–-]\s*\d+)*\])`,
   String.raw`(?<vb>(?:Thông tư(?: liên tịch)?|Nghị định|Quyết định|Công văn|Chỉ thị|Nghị quyết)(?:\s+số)?\s+\d+[\p{L}\p{N}/-]*`,
   String.raw`(?:[ĐđKk]iều|[Kk]hoản|[Cc]hương|[Pp]hụ lục)\s+(?:\d+[a-zđ]?|[IVXLC]+)${HET_TU})`,
   String.raw`(?<ten>"[^"\n]{4,90}"|“[^”\n]{4,90}”)`,
-  String.raw`(?<so>(?<![\p{L}\p{N}/.,])(?:\d{1,2}/\d{1,2}/\d{2,4}|(?:ngày\s+)?\d{1,2}\s+tháng\s+\d{1,2}(?:\s+năm\s+\d{4})?`
-    + String.raw`|\d+(?:[.,]\d+)*(?:\s*[-–]\s*\d+(?:[.,]\d+)*)?\s?(?:%|(?:${DON_VI_SO})(?:/(?:${DON_VI_SO}))?${HET_TU})))`,
+  String.raw`(?<so>${TRUOC_SO}(?:\d{1,2}/\d{1,2}/\d{2,4}|(?:ngày\s+)?\d{1,2}\s+tháng\s+\d{1,2}(?:\s+năm\s+\d{4})?`
+    // Giờ và tỉ lệ (10:30, 1:2, 7h30), phân số và ngày/tháng (8,5/10, 2024/2025, 5/9).
+    + String.raw`|\d+(?::\d+)+${HET_SO}|\d{1,2}h(?:\d{2})?${HET_TU}|\d+(?:[.,]\d+)?/\d+(?:[.,]\d+)?${HET_SO}`
+    + String.raw`|\d+(?:[.,]\d+)*(?:\s*[-–]\s*\d+(?:[.,]\d+)*)?(?:\s?(?:%|(?:${DON_VI_SO})(?:/(?:${DON_VI_SO}))?${HET_TU})|${HET_SO})))`,
 ].join('|'), 'gu');
 
 function themChuToSan(container, chu) {
   let cuoi = 0;
   for (const khop of chu.matchAll(MAU_TO_SAN)) {
+    // Không dời `cuoi`: chú thích gộp rơi vào đoạn chữ thường ở lượt sau.
+    if (khop.groups.bo) continue;
     if (khop.index > cuoi) container.append(document.createTextNode(chu.slice(cuoi, khop.index)));
     const nhan = document.createElement('strong');
     nhan.className = khop.groups.so ? 'to-so' : 'to-van-ban';
