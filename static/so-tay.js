@@ -405,16 +405,20 @@
     ws.resizer.setPointerCapture(event.pointerId);
     elements.appShell.classList.add('dang-keo-so-tay');
     const keo = (e) => datDoRong(window.innerWidth - e.clientX);
+    // Gỡ cả hai trình nghe kết thúc: dùng { once: true } thì cái không chạy sẽ
+    // còn treo lại, tích dần qua mỗi lần kéo và cùng chạy ở lần pointercancel sau.
     const tha = () => {
       ws.resizer.removeEventListener('pointermove', keo);
+      ws.resizer.removeEventListener('pointerup', tha);
+      ws.resizer.removeEventListener('pointercancel', tha);
       elements.appShell.classList.remove('dang-keo-so-tay');
       ghiLuu(KHOA_RONG, String(ws.root.getBoundingClientRect().width | 0));
       doKichThuocBang();
       capNhatCoTrang();
     };
     ws.resizer.addEventListener('pointermove', keo);
-    ws.resizer.addEventListener('pointerup', tha, { once: true });
-    ws.resizer.addEventListener('pointercancel', tha, { once: true });
+    ws.resizer.addEventListener('pointerup', tha);
+    ws.resizer.addEventListener('pointercancel', tha);
   });
   ws.resizer.addEventListener('keydown', (event) => {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;

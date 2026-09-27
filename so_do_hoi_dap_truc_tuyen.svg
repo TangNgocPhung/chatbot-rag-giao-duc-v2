@@ -72,7 +72,7 @@
 
     <text x="297" y="320">Có tệp đính kèm → hỏi đáp</text>
     <text x="297" y="335.5">ngay trên chính tệp đó</text>
-    <text x="297" y="355">Câu tính toán → 5 công cụ</text>
+    <text x="297" y="355">Câu tính toán → công cụ</text>
     <text x="297" y="370.5">Python, trả kết quả ngay</text>
     <text x="297" y="390">Trùng cache ngữ nghĩa (cosine</text>
     <text x="297" y="405.5">≥ 0,96) → phát lại ngay</text>
@@ -146,8 +146,8 @@
     <text x="84" y="578">Tài liệu riêng của người hỏi (email</text>
     <text x="84" y="592">đã xác minh): truy hồi ngay trong tệp,</text>
     <text x="84" y="606">không trộn với kho chung</text>
-    <text x="366" y="578">Lương, định mức tiết dạy, điểm trung</text>
-    <text x="366" y="592">bình môn, số học: Python tính, in kèm</text>
+    <text x="366" y="578">Lương, định mức tiết dạy (GDTX, phổ</text>
+    <text x="366" y="592">thông), số học: Python tính, in kèm</text>
     <text x="366" y="606">công thức, không qua mô hình</text>
     <text x="648" y="578">Câu gần trùng câu đã trả lời được</text>
     <text x="648" y="592">phát lại ngay, bỏ qua truy hồi và bỏ</text>

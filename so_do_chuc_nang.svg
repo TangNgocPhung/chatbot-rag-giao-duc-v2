@@ -63,15 +63,13 @@
 <circle cx="1095" cy="291" r="4" fill="#a67b2c"/>
 <text x="1109" y="296" font-size="16" fill="#27313d">Mức giảm tiết khi chủ nhiệm, kiêm nhiệm</text>
 <circle cx="1095" cy="326" r="4" fill="#a67b2c"/>
-<text x="1109" y="331" font-size="16" fill="#27313d">Điểm trung bình môn, xếp loại kết quả học tập</text>
+<text x="1109" y="331" font-size="16" fill="#27313d">Số học: phần trăm, tăng giảm theo tỉ lệ, biểu thức</text>
 <circle cx="1095" cy="361" r="4" fill="#a67b2c"/>
-<text x="1109" y="366" font-size="16" fill="#27313d">Số học: phần trăm, tăng giảm theo tỉ lệ, biểu thức</text>
+<text x="1109" y="366" font-size="16" fill="#27313d">In kèm công thức đã thay số và văn bản căn cứ</text>
 <circle cx="1095" cy="396" r="4" fill="#a67b2c"/>
-<text x="1109" y="401" font-size="16" fill="#27313d">In kèm công thức đã thay số và văn bản căn cứ</text>
+<text x="1109" y="401" font-size="16" fill="#27313d">Nhận cả câu hỏi gõ không dấu</text>
 <circle cx="1095" cy="431" r="4" fill="#a67b2c"/>
-<text x="1109" y="436" font-size="16" fill="#27313d">Nhận cả câu hỏi gõ không dấu</text>
-<circle cx="1095" cy="466" r="4" fill="#a67b2c"/>
-<text x="1109" y="471" font-size="16" fill="#27313d">Trả kết quả ngay, không qua mô hình ngôn ngữ</text>
+<text x="1109" y="436" font-size="16" fill="#27313d">Trả kết quả ngay, không qua mô hình ngôn ngữ</text>
 <g filter="url(#bong)"><rect x="45" y="533" width="490" height="375" rx="14" fill="#ffffff" fill-opacity="0.92" stroke="#7a64b0" stroke-opacity="0.55" stroke-width="1.6"/></g>
 <path d="M45,547 a14,14 0 0 1 14,-14 h462 a14,14 0 0 1 14,14 v40 h-490 z" fill="#e6e0f3"/>
 <line x1="45" y1="587" x2="535" y2="587" stroke="#7a64b0" stroke-opacity="0.45" stroke-width="1.4"/>
