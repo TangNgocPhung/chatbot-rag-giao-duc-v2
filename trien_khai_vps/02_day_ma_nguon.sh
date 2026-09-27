@@ -37,8 +37,9 @@ cd "$(dirname "$0")/.."
 [ -f mat_khau.bat ] || { echo "[LOI] Khong thay mat_khau.bat - can co de khoa cac nut quan tri."; exit 1; }
 [ -f "$KHOA" ] || { echo "[LOI] Khong thay khoa SSH $KHOA"; exit 1; }
 
-SSH="ssh -i $KHOA -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 $NGUOI_SSH@$MAY_CHU"
-SCP="scp -i $KHOA -o StrictHostKeyChecking=accept-new"
+# SSH, SCP va ket noi chung (ControlMaster): go mat khau toi da MOT lan.
+# shellcheck source=trien_khai_vps/_ket_noi_chung.sh
+. trien_khai_vps/_ket_noi_chung.sh
 NHU_ROOT="sudo"
 NHU_RAG="sudo -u rag"
 
@@ -157,6 +158,8 @@ else
 fi
 
 buoc "Kiem tra ket noi toi $NGUOI_SSH@$MAY_CHU"
+trap dong_ket_noi_chung EXIT
+mo_ket_noi_chung
 $SSH 'echo "Dang nhap OK voi $(id -un)"
       . /etc/os-release 2>/dev/null && echo "He dieu hanh: $PRETTY_NAME"
       sudo -n true 2>/dev/null || { echo "[LOI] Tai khoan nay khong co quyen sudo khong mat khau."; exit 1; }
@@ -183,7 +186,7 @@ fi
 
 umask 077
 TEP_TAM="$(mktemp)"; TEP_MK="$(mktemp)"
-trap 'rm -f "$TEP_TAM" "$TEP_MK"' EXIT
+trap 'rm -f "$TEP_TAM" "$TEP_MK"; dong_ket_noi_chung' EXIT
 printf '%s' "$MAT_KHAU" > "$TEP_MK"
 {
   echo "# Sinh tu 02_day_ma_nguon.sh - sua mat_khau.bat roi chay lai, dung sua tay."
@@ -368,5 +371,5 @@ REMOTE
 echo
 echo "=============================================================="
 echo " XONG PHAN MA NGUON."
-echo " Tiep theo: bash trien_khai_vps/03_day_tai_lieu.sh <IP_VPS> root"
+echo " Tiep theo: bash trien_khai_vps/03_day_tai_lieu.sh <IP_VPS> debian"
 echo "=============================================================="

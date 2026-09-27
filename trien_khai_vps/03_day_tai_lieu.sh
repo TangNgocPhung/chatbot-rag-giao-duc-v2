@@ -28,10 +28,15 @@ cd "$(dirname "$0")/.."
 THU_MUC_CUC_BO="$PWD/ollama-rag-desktop/data_giao_duc"
 [ -d "$THU_MUC_CUC_BO" ] || { echo "[LOI] Khong thay kho tai lieu $THU_MUC_CUC_BO"; exit 1; }
 
-SSH="ssh -i $KHOA -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=20 -o ServerAliveCountMax=3 $NGUOI_SSH@$MAY_CHU"
+# SSH va ket noi chung (ControlMaster): go mat khau toi da MOT lan cho ca chuc me.
+# shellcheck source=trien_khai_vps/_ket_noi_chung.sh
+. trien_khai_vps/_ket_noi_chung.sh
 
 TAM="$(mktemp -d)"
-trap 'rm -rf "$TAM"' EXIT
+trap 'rm -rf "$TAM"; dong_ket_noi_chung' EXIT
+
+echo "--- Ket noi toi $NGUOI_SSH@$MAY_CHU"
+mo_ket_noi_chung
 
 echo "--- Lay danh sach file dang co tren VPS"
 $SSH "mkdir -p '$THU_MUC_XA' 2>/dev/null; cd '$THU_MUC_XA' && find . -type f -printf '%s\t%P\n' 2>/dev/null" > "$TAM/xa.txt" || true
