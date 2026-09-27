@@ -194,6 +194,26 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .history-search svg { flex: 0 0 auto; width: 15px; height: 15px; color: var(--ink-mute); }
 .history-search input { width: 100%; min-width: 0; color: var(--ink); background: transparent; border: 0; outline: 0; font: inherit; font-size: 12.5px; }
 .history-list { flex: 1 1 auto; min-height: 40px; overflow: auto; }
+/* Chân thanh bên (thẻ trạng thái, Drive, nhóm thực hiện...) cao cố định nên
+   màn thấp hoặc phóng to trình duyệt sẽ ép danh sách xuống còn 1-2 dòng. Giữ
+   tối thiểu 5,5 dòng (mỗi dòng ~36px, nửa dòng cuối báo còn cuộn được); phần
+   thiếu chỗ thì cả thanh bên cuộn. Ít hơn 6 dòng thì không co để khỏi để trống. */
+.history-list:has(> :nth-child(6)) { min-height: 198px; }
+.history-list:not(:has(> :nth-child(6))) { flex-shrink: 0; }
+/* Thanh kéo đổi chiều cao (app.js). Mức kéo là chiều cao tối thiểu: danh sách
+   vẫn giãn lấp chỗ trống, không co thấp hơn mức đó và không cao hơn nội dung.
+   Có .sidebar ở đầu để thắng hai luật :has() ngay trên. */
+.sidebar .history-list.cao-tu-chon { flex: 1 0 var(--cao-lich-su); min-height: 0; max-height: max-content; }
+.history-resizer { position: relative; flex: 0 0 auto; height: 12px; margin: 2px 0 -6px; border-radius: 6px; cursor: row-resize; touch-action: none; }
+.history-resizer::after { content: ""; position: absolute; top: 50%; left: 50%; width: 36px; height: 4px; background: var(--line-strong); border-radius: 4px; opacity: .55; transform: translate(-50%, -50%); transition: opacity .15s, background .15s; }
+.history-resizer:hover::after, .history-resizer:focus-visible::after, .dang-keo-lich-su .history-resizer::after { background: var(--blue); opacity: 1; }
+.history-resizer:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.history-list:not(:has(.history-row)) + .history-resizer { display: none; }
+.app-shell.dang-keo-lich-su { user-select: none; cursor: row-resize; }
+@media (pointer: coarse) {
+  /* Ngón tay cần vùng chạm lớn hơn con trỏ chuột. */
+  .history-resizer { height: 22px; margin-bottom: -11px; }
+}
 .history-empty { padding: 12px 8px; color: var(--ink-faint); font-size: 13px; line-height: 1.5; }
 .history-item mark { padding: 0 1px; color: inherit; background: var(--warn-line); border-radius: 3px; }
 .history-row { position: relative; }
@@ -212,7 +232,15 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .history-item span { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-footer { flex: 0 0 auto; margin-top: auto; padding-top: 18px; }
 .system-card { padding: 14px; background: var(--wash-strong); border: 1px solid var(--line); border-radius: 13px; }
-.status-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+/* Thẻ trạng thái mặc định gập lại còn một dòng (chấm + tiêu đề) để nhường chỗ
+   cho mục Gần đây; thanh tiến trình và các nút nằm ngoài <details> nên vẫn hiện.
+   Lề âm + đệm để vùng bấm rộng hơn dòng chữ mà thẻ không đổi kích thước. */
+.status-row { display: flex; align-items: center; gap: 8px; margin: -6px; padding: 6px; border-radius: 9px; font-size: 12px; list-style: none; cursor: pointer; }
+.status-row::-webkit-details-marker { display: none; }
+.status-row:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.status-row .chevron { flex: 0 0 auto; width: 13px; height: 13px; margin-left: auto; color: var(--ink-mute); opacity: .7; transition: transform .2s ease; }
+.status-row:hover .chevron { opacity: 1; }
+.status-details[open] > .status-row .chevron { transform: rotate(180deg); }
 .status-dot, .mini-dot { display: inline-block; flex: 0 0 auto; width: 8px; height: 8px; background: var(--warn); border-radius: 50%; box-shadow: 0 0 0 3px rgba(226, 167, 40, .13); }
 .status-dot.ready, .mini-dot.ready { background: var(--ok); box-shadow: 0 0 0 3px rgba(57, 164, 119, .13); }
 .status-dot.error, .mini-dot.error { background: var(--danger); box-shadow: 0 0 0 3px rgba(220, 98, 79, .13); }

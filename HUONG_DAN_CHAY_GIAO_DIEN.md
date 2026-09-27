@@ -142,7 +142,7 @@ Tài khoản, lịch sử và sổ tay:
 
 - `GET /api/tai-khoan/toi`, `POST /api/tai-khoan/dang-ky`, `/dang-nhap`, `/dang-xuat`, `/doi-mat-khau` (đăng xuất các máy khác, giữ máy đang dùng).
 - `POST /api/tai-khoan/thong-tin`: đổi tên hiển thị và/hoặc email `{ten, email, mat_khau}`; đổi email cần mật khẩu hiện tại và phải xác minh lại.
-- `POST /api/tai-khoan/gui-ma-xac-minh`, `POST /api/tai-khoan/xac-minh`: gửi mã 6 số qua thư và nhập mã (mã sống 15 phút, sai 5 lần là huỷ).
+- `POST /api/tai-khoan/gui-ma-xac-minh`, `POST /api/tai-khoan/xac-minh`: gửi mã 6 số qua thư và nhập mã (mã sống 15 phút, sai 5 lần là huỷ). Gửi kèm `{"tu_dong": true}` (hộp xác minh vừa mở) thì chỉ gửi nếu email chưa được gửi mã lần nào; đã gửi rồi thì trả `da_gui: false` cùng `con_giay` (mã còn bao lâu, 0 là đã hết) mà không gửi thư mới.
 - `PUT|DELETE /api/tai-khoan/anh-dai-dien` (byte ảnh trong body, tiêu đề `X-RAG-Action: avatar`), `GET /api/tai-khoan/anh-dai-dien/{nguoi_dung_id}`.
 - `GET /api/hoi-thoai`, `GET|DELETE /api/hoi-thoai/{id}`, `DELETE /api/hoi-thoai`: lịch sử hội thoại.
 - `GET|PUT|DELETE /api/so-tay/{hoi_thoai_id}`: sổ tay của một cuộc trò chuyện (đọc/ghi cần email đã xác minh; xoá chỉ cần đăng nhập).

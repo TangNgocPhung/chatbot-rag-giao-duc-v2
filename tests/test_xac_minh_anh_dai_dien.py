@@ -84,6 +84,35 @@ class XacMinhTests(unittest.TestCase):
         tai_khoan.huy_lan_gui_ma(self.nd["id"])
         tai_khoan.tao_ma_xac_minh(self.nd["id"])
 
+    def test_ma_da_gui_giu_dau_ca_khi_het_han(self):
+        # Chưa gửi lần nào: hộp xác minh được tự gửi.
+        self.assertIsNone(tai_khoan.ma_da_gui(self.nd["id"]))
+        _, ma = tai_khoan.tao_ma_xac_minh(self.nd["id"])
+        da_gui = tai_khoan.ma_da_gui(self.nd["id"])
+        self.assertGreater(da_gui["con_giay"], 14 * 60)
+        self.assertGreater(da_gui["cho_giay"], 0)
+        # Quá 15 phút không nhập: mã hết hạn nhưng vẫn nhớ là đã gửi.
+        with patch("tai_khoan.time.time", return_value=tai_khoan.time.time() + 16 * 60):
+            with self.assertRaises(tai_khoan.LoiTaiKhoan):
+                tai_khoan.xac_minh(self.nd["id"], ma)
+            self.assertEqual(tai_khoan.ma_da_gui(self.nd["id"]), {"con_giay": 0, "cho_giay": 0})
+
+    def test_ma_bi_huy_van_tinh_la_da_gui(self):
+        _, ma = tai_khoan.tao_ma_xac_minh(self.nd["id"])
+        sai = "000000" if ma != "000000" else "111111"
+        for _ in range(tai_khoan.SO_LAN_NHAP_SAI_MA):
+            with self.assertRaises(tai_khoan.LoiTaiKhoan):
+                tai_khoan.xac_minh(self.nd["id"], sai)
+        self.assertEqual(tai_khoan.ma_da_gui(self.nd["id"])["con_giay"], 0)
+
+    def test_thu_loi_hay_doi_email_thi_coi_nhu_chua_gui(self):
+        tai_khoan.tao_ma_xac_minh(self.nd["id"])
+        tai_khoan.huy_lan_gui_ma(self.nd["id"])
+        self.assertIsNone(tai_khoan.ma_da_gui(self.nd["id"]))
+        tai_khoan.tao_ma_xac_minh(self.nd["id"])
+        tai_khoan.doi_thong_tin(self.nd["id"], "Cô A", "moi@x.vn", MAT_KHAU)
+        self.assertIsNone(tai_khoan.ma_da_gui(self.nd["id"]))
+
     def test_email_chi_dinh_chi_la_quan_tri_sau_khi_xac_minh(self):
         with patch.dict("os.environ", {"RAG_EMAIL_QUAN_TRI": "admin@x.vn", **CO_THU}):
             # Kẻ lạ đăng ký trước bằng email của quản trị viên: chưa có quyền gì.
@@ -174,6 +203,33 @@ class ApiTests(unittest.TestCase):
             dung = self.client.post("/api/tai-khoan/xac-minh", json={"ma": da_gui["ma"]})
             self.assertEqual(dung.status_code, 200)
             self.assertTrue(dung.json()["nguoi_dung"]["da_xac_minh"])
+
+    def test_mo_hop_chi_tu_gui_ma_lan_dau(self):
+        lan_gui = []
+        with patch.dict("os.environ", CO_THU), patch.object(
+            gui_thu, "gui_ma_xac_minh", side_effect=lambda den, ten, ma, phut: lan_gui.append(ma)
+        ):
+            dau = self.client.post("/api/tai-khoan/gui-ma-xac-minh", json={"tu_dong": True}).json()
+            self.assertTrue(dau["da_gui"])
+            self.assertEqual(len(lan_gui), 1)
+            # Mở lại hộp (bấm lại nút tải tệp...): không gửi thêm, mã cũ vẫn dùng được.
+            lai = self.client.post("/api/tai-khoan/gui-ma-xac-minh", json={"tu_dong": True}).json()
+            self.assertFalse(lai["da_gui"])
+            self.assertGreater(lai["con_giay"], 0)
+            self.assertEqual(lai["email"], "a@x.vn")
+            self.assertEqual(len(lan_gui), 1)
+            # Quá 15 phút không nhập: vẫn không tự gửi, chỉ báo mã hết hiệu lực.
+            with patch("tai_khoan.time.time", return_value=tai_khoan.time.time() + 16 * 60):
+                het = self.client.post("/api/tai-khoan/gui-ma-xac-minh", json={"tu_dong": True}).json()
+                self.assertFalse(het["da_gui"])
+                self.assertEqual(het["con_giay"], 0)
+                self.assertEqual(len(lan_gui), 1)
+                # Bấm "Gửi lại mã" thì mới gửi mã mới, và mã mới dùng được.
+                moi = self.client.post("/api/tai-khoan/gui-ma-xac-minh", json={"tu_dong": False}).json()
+                self.assertTrue(moi["da_gui"])
+                self.assertEqual(len(lan_gui), 2)
+                dung = self.client.post("/api/tai-khoan/xac-minh", json={"ma": lan_gui[-1]})
+                self.assertEqual(dung.status_code, 200)
 
     def test_thu_loi_thi_tra_lai_luot_gui(self):
         with patch.dict("os.environ", CO_THU), patch.object(
