@@ -1515,7 +1515,8 @@ function themChuToSan(container, chu) {
   if (cuoi < chu.length) container.append(document.createTextNode(chu.slice(cuoi)));
 }
 
-// toSan: tiêu đề thì không - chữ tiêu đề đã to và đậm sẵn, tô thêm chỉ rối mắt.
+// toSan: tô sẵn con số, số hiệu văn bản... (themChuToSan). Chỉ tắt ở cột STT
+// của bảng, nơi số chỉ để đếm hàng (xem dungBang).
 function appendInlineContent(container, text, messageId, sourceCount, toSan = false) {
   const pattern = /(\*\*[^*\n]+\*\*|`[^`\n]+`|\[(\d+)\])/g;
   const themChu = (chu) => {
@@ -1656,7 +1657,7 @@ function renderAnswer(container, content, messageId, sourceCount = 0) {
     if (!line) continue;
     const heading = line.match(/^(#{1,3})\s+(.+)/);
     const block = document.createElement(heading ? `h${Math.min(heading[1].length + 2, 5)}` : 'p');
-    if (heading) appendInlineContent(block, heading[2], messageId, sourceCount);
+    if (heading) appendInlineContent(block, heading[2], messageId, sourceCount, true);
     else themDongVanBan(block, line, messageId, sourceCount);
     container.append(block);
   }
