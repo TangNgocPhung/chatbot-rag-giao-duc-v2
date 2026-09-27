@@ -908,17 +908,13 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .thanh-chon button:hover { background: rgba(127, 127, 127, .28); }
 .thanh-chon svg { width: 14px; height: 14px; }
 
-@media (max-width: 1100px) and (min-width: 801px) {
-  /* Ba cột trên màn vừa: chữ "Sổ tay" nhường chỗ cho khung chat. */
-  .app-shell.co-so-tay .nut-so-tay span { display: none; }
-}
 @media (max-width: 800px) {
   .app-shell.co-so-tay { grid-template-columns: 1fr; }
   .workspace { position: fixed; inset: 0; z-index: 25; border-left: 0; }
   .ws-resizer { display: none; }
   .ws-header { height: 58px; padding-left: 16px; }
-  .nut-so-tay span { display: none; }
-  .nut-so-tay { padding: 8px; }
+  .nut-so-tay span, .nut-huong-dan span { display: none; }
+  .nut-so-tay, .nut-huong-dan { padding: 8px; }
   .doc-trang-list { padding: 10px 8px; }
 }
 
@@ -1143,23 +1139,8 @@ body:not([data-so-tay="1"]) .can-so-tay { display: none !important; }
 /* ============================================================
    HƯỚNG DẪN SỬ DỤNG
    ============================================================
-   Thanh trên gần như đã kín chỗ (màn 810 px vừa khít, mở sổ tay ở màn vừa
-   còn tràn sẵn), nên nút Hướng dẫn mặc định chỉ là biểu tượng dấu hỏi; chữ
-   chỉ hiện ở màn rộng khi sổ tay đang đóng. Để bù chỗ cho biểu tượng, tên mô
-   hình ẩn sớm hơn (như màn hẹp đã làm): cả thanh luôn gọn hơn hoặc bằng lúc
-   chưa có nút. Người mới còn có lối vào thứ hai ngay trên màn hình chào. */
-.nut-huong-dan { padding: 8px; }
-.nut-huong-dan span { display: none; }
-@media (min-width: 1101px) {
-  .app-shell:not(.co-so-tay) .nut-huong-dan { padding: 7px 12px; }
-  .app-shell:not(.co-so-tay) .nut-huong-dan span { display: inline; }
-}
-@media (min-width: 801px) and (max-width: 900px) {
-  .model-pill span { display: none; }
-}
-@media (min-width: 901px) and (max-width: 1200px) {
-  .app-shell.co-so-tay .model-pill span { display: none; }
-}
+   Nút ở thanh trên (chữ tự ẩn khi chật, xem "THANH TRÊN GỌN LẠI KHI CHẬT")
+   và lời mời trên màn hình chào cho người mới. */
 .welcome-huong-dan { margin: -16px auto 28px; color: var(--ink-soft); font-size: 13px; }
 .welcome-huong-dan button { padding: 0; color: var(--blue-ink); background: none; border: 0; font: inherit; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .welcome-huong-dan button:hover { color: var(--blue); }
@@ -1195,9 +1176,27 @@ body:not([data-so-tay="1"]) .can-so-tay { display: none !important; }
   .huong-dan-dialog .dialog-header h2 { font-size: 23px; }
   .huong-dan-noi-dung { padding: 4px 17px 24px; font-size: 13px; }
   .huong-dan-noi-dung h3 { font-size: 20px; }
-  /* Thêm nút Hướng dẫn thì thanh trên chật hơn: thu khoảng cách giữa các nút
-     để điện thoại 360 px không phải cuộn ngang cả trang. */
-  .topbar { gap: 6px; padding: 0 10px; }
-  .topbar .model-pill { gap: 4px; padding: 7px 8px; }
-  .topbar .nut-dang-nhap { padding: 7px 9px; }
 }
+
+/* ============================================================
+   THANH TRÊN GỌN LẠI KHI CHẬT
+   ============================================================
+   Cột giữa hẹp lại khi mở sổ tay (và độ rộng sổ còn kéo được), tên mô hình
+   dài ngắn tuỳ lựa chọn, khách có thêm nút Đăng nhập: không bộ ngưỡng @media
+   cố định nào khớp hết, nên app.js đo chỗ cần của từng bậc rồi gắn gon-1 ...
+   gon-6 lên thanh (bậc sau giữ nguyên các bậc trước). Chữ trong thanh không
+   tự xuống dòng để phép đo phản ánh đúng; chỉ bậc 5 mới cho tiêu đề xuống
+   dòng như trước, bậc 6 cắt bằng dấu "…" để thanh luôn nằm gọn trong cột. */
+.topbar { min-width: 0; }
+.topbar-title > span, .topbar-title small, .topbar .nut-huong-dan span, .topbar .nut-so-tay span, .topbar .model-pill span { white-space: nowrap; }
+.topbar.gon-1 .nut-huong-dan span { display: none; }
+.topbar.gon-1 .nut-huong-dan { padding: 8px; }
+.topbar.gon-2 .nut-so-tay span { display: none; }
+.topbar.gon-2 .nut-so-tay { padding: 8px; }
+.topbar.gon-3 .model-pill span { display: none; }
+.topbar.gon-4 { gap: 6px; padding: 0 10px; }
+.topbar.gon-4 .model-pill { gap: 4px; padding: 7px 8px; }
+.topbar.gon-4 .nut-dang-nhap { padding: 7px 9px; }
+.topbar.gon-5 .topbar-title > span, .topbar.gon-5 .topbar-title small { white-space: normal; }
+.topbar.gon-6 .topbar-title, .topbar.gon-6 .topbar-title small { min-width: 0; }
+.topbar.gon-6 .topbar-title > span, .topbar.gon-6 #miniStatus { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

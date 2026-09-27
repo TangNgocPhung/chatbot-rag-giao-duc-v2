@@ -3456,6 +3456,63 @@ elements.collapseButton?.addEventListener('click', () => {
 });
 
 // ============================================================
+// THANH TRÊN GỌN LẠI KHI CHẬT
+// ============================================================
+// Cột giữa hẹp lại khi mở sổ tay (độ rộng sổ còn kéo được), tên mô hình dài
+// ngắn tuỳ lựa chọn, khách có thêm nút Đăng nhập: ngưỡng @media cố định không
+// khớp hết, trước đây thanh tràn ra sau sổ tay tới hơn 200 px ở màn 810 px.
+// Nên đo thẳng chỗ cần của từng bậc thu gọn (chỉ đo lại khi chữ trong thanh
+// đổi), rồi mỗi lần cột giữa đổi độ rộng chọn bậc nhẹ nhất còn vừa - kéo sổ
+// tay không phải đo lại gì. Các bậc (xem styles.css):
+//   1 ẩn chữ "Hướng dẫn"  2 ẩn chữ "Sổ tay"  3 ẩn tên mô hình
+//   4 thu khoảng cách      5 cho tiêu đề xuống dòng  6 cắt tiêu đề bằng "…"
+const SO_BAC_THU_GON = 6;
+const thanhTren = document.querySelector('.topbar');
+const khungGiua = document.querySelector('.main-panel');
+let choCanTheoBac = [];
+
+function datBacThuGon(bac) {
+  for (let i = 1; i <= SO_BAC_THU_GON; i += 1) thanhTren.classList.toggle(`gon-${i}`, i <= bac);
+}
+
+function doChoCanTheoBac() {
+  choCanTheoBac = [];
+  for (let bac = 0; bac < SO_BAC_THU_GON; bac += 1) {
+    datBacThuGon(bac);
+    // Từ bậc 5 tiêu đề được xuống dòng: chỗ cần là bề rộng nhỏ nhất của
+    // thanh, không còn là bề rộng khi mọi thứ nằm trên một dòng.
+    thanhTren.style.width = bac === 5 ? 'min-content' : 'max-content';
+    choCanTheoBac.push(thanhTren.getBoundingClientRect().width);
+  }
+  thanhTren.style.width = '';
+}
+
+function chonBacThuGon() {
+  const rong = khungGiua.clientWidth;
+  const bac = choCanTheoBac.findIndex((can) => can <= rong + 0.5);
+  datBacThuGon(bac === -1 ? SO_BAC_THU_GON : bac);
+}
+
+function canLaiThanhTren() {
+  doChoCanTheoBac();
+  chonBacThuGon();
+}
+
+if (thanhTren && khungGiua && 'ResizeObserver' in window) {
+  new ResizeObserver(chonBacThuGon).observe(khungGiua);
+  // Chữ trạng thái, tên mô hình, nút Đăng nhập ẩn/hiện... đổi thì chỗ cần đổi.
+  // Bỏ qua lớp gon-* do chính đoạn này gắn lên thanh, kẻo tự gọi mình mãi.
+  new MutationObserver((thayDoi) => {
+    if (thayDoi.every((muc) => muc.target === thanhTren && muc.type === 'attributes')) return;
+    canLaiThanhTren();
+  }).observe(thanhTren, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class'] });
+  // Qua mốc 800 px thì CSS tự ẩn/hiện chữ trên các nút, phải đo lại.
+  matchMedia('(max-width: 800px)').addEventListener('change', canLaiThanhTren);
+  document.fonts?.ready.then(canLaiThanhTren);
+  canLaiThanhTren();
+}
+
+// ============================================================
 // NÚT CUỘN XUỐNG CUỐI
 // ============================================================
 function capNhatNutCuonXuong() {

@@ -388,6 +388,8 @@ Mỗi cuộc trò chuyện có **một cuốn sổ riêng** nằm bên phải m�
 
 **Mở sổ:** bấm nút **Sổ tay** ở thanh trên cùng (hoặc nhấn **Ctrl + /**). Muốn sổ rộng hơn hoặc hẹp hơn, kéo mép trái của sổ.
 
+> Trên màn hình không quá rộng (ví dụ máy tính xách tay nhỏ), mở sổ thì **thanh bên trái tự thu gọn** để khung trò chuyện đủ rộng; đóng sổ là thanh bên hiện lại.
+
 Sổ có ba thẻ:
 
 ### Ghi chú
