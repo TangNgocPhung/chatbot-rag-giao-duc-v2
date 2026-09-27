@@ -73,7 +73,7 @@
 <rect x="1046" y="494" width="338" height="160" rx="8" fill="#7a4414" fill-opacity="0.35" stroke="#ffd59c" stroke-width="1.6"/>
 <text x="1215.0" y="517" font-size="16.5" font-weight="700" fill="#fff4e3" text-anchor="middle">Ngôn ngữ &amp; đọc tài liệu</text>
 <rect x="1058.0" y="530" width="153.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
-<text x="1134.5" y="550.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Dịch 130+ ngôn ngữ</text>
+<text x="1134.5" y="550.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Dịch bằng Ollama</text>
 <rect x="1219.0" y="530" width="153.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
 <text x="1295.5" y="550.5" font-size="14" fill="#4a2a0c" text-anchor="middle" font-weight="600">Giọng nói → chữ</text>
 <rect x="1058.0" y="568" width="314.0" height="30" rx="5" fill="#f7e2c4" stroke="#ffffff" stroke-opacity="0.8"/>
