@@ -148,13 +148,17 @@ def _cau_hoi_tu_tieu_de(tieu_de: str) -> str:
     return f"Nội dung chính của tài liệu \"{tieu_de}\" là gì?"
 
 
-def _ten_goi(nguon: dict) -> str:
-    """Cách gọi nguồn trong câu gợi ý: ưu tiên số hiệu, sau đó tới tên tài liệu."""
+def _ten_goi(nguon: dict) -> str | None:
+    """Cách gọi nguồn trong câu gợi ý: ưu tiên số hiệu, sau đó tới tên tài liệu.
+
+    None khi không có cái tên nào người đọc hiểu: lấy tên tệp thô thì ra gợi ý
+    "... thay cho bản dự thảo 222-cp.signed.pdf chưa?", còn "tài liệu này" thì
+    bấm vào thành câu hỏi mới không biết "này" là cái gì. Thà không gợi ý.
+    """
     van_ban = nguon.get("van_ban") or {}
     if van_ban.get("so_hieu"):
         return f"{van_ban.get('loai') or 'Văn bản'} {van_ban['so_hieu']}"
-    ten_file = nguon.get("name") or ""
-    return _lam_sach_tieu_de(ten_file) or str(ten_file) or "tài liệu này"
+    return _lam_sach_tieu_de(nguon.get("name") or "")
 
 
 # ============================================================
@@ -237,7 +241,7 @@ def _nhanh_theo_van_ban(ten_file: str, muc_ho_so=None, muc_thoi_gian=None) -> tu
         } if so_hieu else None,
         "validity": hieu_luc_bo_sung.nhan_hieu_luc(muc_ho_so, muc_thoi_gian),
     }
-    ten = _ten_goi(nguon)
+    ten = _ten_goi(nguon) or tieu_de
     # Tên tệp tải từ cổng văn bản nói rõ văn bản về gì hơn số hiệu, nên lá
     # "nội dung chính" ưu tiên tên đó.
     return _nhanh_theo_nguon(nguon, ten) or (_NHANH_NOI_DUNG, _cau_hoi_tu_tieu_de(tieu_de or ten))
@@ -703,7 +707,10 @@ def goi_y_tiep_theo(
     # đó và người đọc mất hẳn hướng nhìn sang những nguồn còn lại.
     for nguon in cac_nguon[:4]:
         ten = _ten_goi(nguon)
-        if ten in da_co:
+        # Không gọi được bằng tên nào đọc hiểu thì bỏ câu riêng cho nguồn này -
+        # kể cả cảnh báo hiệu lực: nhãn "dự thảo", "bị thay thế" đã hiện ngay
+        # cạnh chip nguồn trên giao diện.
+        if not ten or ten in da_co:
             continue
         cau = _cau_hoi_theo_nguon(nguon, ten)
         if cau:
@@ -722,7 +729,7 @@ def goi_y_tiep_theo(
         chu_de = _cap_tu_chu_de(cau_hoi)
         lien_quan = [n for n in cac_nguon if chu_de and _nguon_lien_quan(n, chu_de)]
         if chu_de:
-            ten_lien_quan = {_ten_goi(n) for n in lien_quan}
+            ten_lien_quan = {_ten_goi(n) for n in lien_quan} - {None}
             ung_vien = [
                 cau for cau in ung_vien if any(ten in cau for ten in ten_lien_quan)
             ]
@@ -732,11 +739,9 @@ def goi_y_tiep_theo(
         ung_vien = tu_nguon
     # Tên tệp mã hóa ("11-sgk-tin-hoc-11-...pdf") nhét vào câu gợi ý thì không
     # ai đọc nổi, nên chỉ gợi ý tóm tắt khi gọi được văn bản bằng tên tử tế.
-    if cac_nguon and (
-        (cac_nguon[0].get("van_ban") or {}).get("so_hieu")
-        or _lam_sach_tieu_de(cac_nguon[0].get("name") or "")
-    ):
-        ung_vien.append(f"Tóm tắt những nội dung chính của {_ten_goi(cac_nguon[0])}")
+    ten_nguon_dau = _ten_goi(cac_nguon[0]) if cac_nguon else None
+    if ten_nguon_dau:
+        ung_vien.append(f"Tóm tắt những nội dung chính của {ten_nguon_dau}")
     # Câu chung "đối tượng áp dụng, lộ trình" chỉ hợp khi nguồn là văn bản quản
     # lý; nguồn là sách giáo khoa hay bài giảng thì hỏi vậy là lạc đề.
     # "nội dung này" đổi thành đúng thứ đang hỏi - phạm vi "về ..." của câu hỏi,
