@@ -2054,6 +2054,8 @@ async function submitQuestion(question, tuyChon = {}) {
       body: JSON.stringify({
         question, history, tep_ids: tepIds, hoi_thoai_id: hoiThoaiId,
         pham_vi: phamViDangChon(),
+        // Chỉ để máy chủ thống kê nhóm người dùng nào hỏi gì (lich_su_chat).
+        ...(window.vaiTroNguoiDung?.lay() ? { vai_tro: window.vaiTroNguoiDung.lay() } : {}),
         ...(doanTrich ? { doan_trich: doanTrich } : {}),
         ...(moHinhRieng ? { model: moHinhRieng } : {}),
       }),

@@ -95,6 +95,13 @@ def _tao_bang(conn: sqlite3.Connection) -> None:
     cot = {dong[1] for dong in conn.execute("PRAGMA table_info(luot)")}
     if "chi_tiet" not in cot:
         conn.execute("ALTER TABLE luot ADD COLUMN chi_tiet TEXT NOT NULL DEFAULT '{}'")
+    # Vai trò người hỏi tự chọn (học sinh, phụ huynh...; mã theo
+    # goi_y_cau_hoi.VAI_TRO), rỗng là chưa chọn. Ghi theo từng lượt chứ không
+    # theo hội thoại vì người dùng đổi vai trò giữa chừng được. Người dùng tự
+    # khai, không xác thực: chỉ dùng để thống kê ai hỏi gì.
+    if "vai_tro" not in cot:
+        conn.execute("ALTER TABLE luot ADD COLUMN vai_tro TEXT NOT NULL DEFAULT ''")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_luot_vai_tro ON luot(vai_tro, tao_luc)")
     conn.commit()
 
 
@@ -134,6 +141,7 @@ def ghi_luot(
     tu_choi: bool = False,
     tu_cache: bool = False,
     chi_tiet: dict | None = None,
+    vai_tro: str = "",
 ) -> str | None:
     """
     Ghi một lượt hỏi-đáp, tạo hội thoại mới nếu chưa có. Trả về hoi_thoai_id,
@@ -180,8 +188,8 @@ def ghi_luot(
                 )
             conn.execute(
                 "INSERT INTO luot (hoi_thoai_id, cau_hoi, tra_loi, nguon, model, giay,"
-                " trich_dan_ok, so_lieu_ok, tu_choi, tu_cache, tao_luc, chi_tiet)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " trich_dan_ok, so_lieu_ok, tu_choi, tu_cache, tao_luc, chi_tiet, vai_tro)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     ma, cau_hoi, tra_loi,
                     json.dumps(nguon or [], ensure_ascii=False),
@@ -189,6 +197,7 @@ def ghi_luot(
                     int(trich_dan_ok), int(so_lieu_ok), int(tu_choi), int(tu_cache),
                     bay_gio,
                     json.dumps(chi_tiet or {}, ensure_ascii=False),
+                    (vai_tro or "").strip()[:32],
                 ),
             )
             conn.commit()
@@ -228,7 +237,7 @@ def chi_tiet_hoi_thoai(hoi_thoai_id: str) -> dict | None:
             return None
         cac_luot = conn.execute(
             "SELECT cau_hoi, tra_loi, nguon, model, giay, trich_dan_ok, so_lieu_ok,"
-            "       tu_choi, tu_cache, tao_luc, chi_tiet"
+            "       tu_choi, tu_cache, tao_luc, chi_tiet, vai_tro"
             "  FROM luot WHERE hoi_thoai_id = ? ORDER BY id",
             (hoi_thoai_id,),
         ).fetchall()
@@ -342,6 +351,7 @@ def thong_ke(so_ngay: int = 30) -> dict:
 
         so_luot = tong["so_luot"] or 0
         return {
+            **_thong_ke_theo_vai_tro(conn, moc),
             "so_ngay": so_ngay,
             "so_luot": so_luot,
             "so_hoi_thoai": tong["so_hoi_thoai"] or 0,
@@ -359,6 +369,46 @@ def thong_ke(so_ngay: int = 30) -> dict:
     except sqlite3.Error as exc:
         print(f"⚠️  Không tính được thống kê: {exc}")
         return {"so_ngay": so_ngay, "so_luot": 0, "loi": str(exc)}
+
+
+# Mỗi vai trò chỉ kể vài câu hay hỏi nhất: đủ để thấy nhóm đó quan tâm gì,
+# không biến thống kê thành bản sao của cả bảng lượt hỏi.
+SO_CAU_MOI_VAI_TRO = 5
+
+
+def _thong_ke_theo_vai_tro(conn: sqlite3.Connection, moc: float) -> dict:
+    """Mỗi nhóm người dùng hỏi bao nhiêu, bị từ chối bao nhiêu, hay hỏi gì.
+
+    Tỷ lệ từ chối theo nhóm cho biết kho đang thiếu tài liệu cho ai. "" là
+    người chưa chọn vai trò, vẫn liệt kê để biết bao nhiêu phần trăm người
+    dùng bỏ qua câu hỏi "Bạn là…".
+    """
+    cac_nhom = conn.execute(
+        "SELECT vai_tro, COUNT(*) AS so_luot, SUM(tu_choi) AS so_tu_choi,"
+        "       AVG(giay) AS giay_tb"
+        "  FROM luot WHERE tao_luc >= ?"
+        " GROUP BY vai_tro ORDER BY so_luot DESC",
+        (moc,),
+    ).fetchall()
+    ket_qua = []
+    for nhom in cac_nhom:
+        hay_hoi = conn.execute(
+            "SELECT cau_hoi, COUNT(*) AS so_lan FROM luot"
+            " WHERE tao_luc >= ? AND vai_tro = ?"
+            " GROUP BY LOWER(TRIM(cau_hoi)) ORDER BY so_lan DESC, MAX(tao_luc) DESC"
+            " LIMIT ?",
+            (moc, nhom["vai_tro"], SO_CAU_MOI_VAI_TRO),
+        ).fetchall()
+        so = nhom["so_luot"] or 0
+        ket_qua.append({
+            "vai_tro": nhom["vai_tro"],
+            "so_luot": so,
+            "so_tu_choi": nhom["so_tu_choi"] or 0,
+            "ty_le_tu_choi": round((nhom["so_tu_choi"] or 0) / so, 3) if so else 0.0,
+            "giay_trung_binh": round(nhom["giay_tb"] or 0.0, 1),
+            "cau_hay_hoi": [dict(d) for d in hay_hoi],
+        })
+    return {"theo_vai_tro": ket_qua}
 
 
 def dong_ket_noi() -> None:

@@ -129,7 +129,7 @@ Hỏi đáp và kho tri thức:
 - `GET /api/huong-dan`: nội dung `HUONG_DAN_SU_DUNG.md` (Markdown) cho nút **Hướng dẫn** trên giao diện.
 - `GET /api/documents`: danh sách tài liệu và tình trạng lập chỉ mục.
 - `GET /api/bo-loc`: các lựa chọn phạm vi (môn, cấp học...) kèm số tài liệu.
-- `GET /api/goi-y?so_luong=6`: câu hỏi gợi ý cho màn hình chào. Trả `che_do`, `goi_y` và, ở chế độ `tinh`, `nhom` (đủ 17 câu theo 4 chủ đề). Thêm `&che_do=metadata` để xem chế độ còn lại mà không đổi biến môi trường.
+- `GET /api/goi-y?so_luong=6`: câu hỏi gợi ý cho màn hình chào. Trả `che_do`, `vai_tro`, `goi_y` và, ở chế độ `tinh`, `nhom` (đủ 17 câu theo 4 chủ đề). Thêm `&che_do=metadata` để xem chế độ còn lại mà không đổi biến môi trường; thêm `&vai_tro=phu_huynh` (hoặc `hoc_sinh`, `sinh_vien`, `giao_vien`, `can_bo_quan_ly`) để nhóm câu của vai trò đó đứng đầu.
 - `POST /api/chat/stream`: nhận câu hỏi và trả NDJSON streaming.
 - `POST /api/chat/dung`: dừng câu trả lời đang sinh dở.
 - `GET /api/source?name=...`: mở tệp nguồn đã được kiểm tra trong kho dữ liệu.
@@ -138,7 +138,7 @@ Hỏi đáp và kho tri thức:
 - `POST /api/index/update` **[QT]**: cập nhật tăng dần chỉ mục sau khi thêm, sửa hoặc xóa tài liệu.
 - `POST /api/drive/sync` **[QT]**: kéo tài liệu mới từ Google Drive rồi tự cập nhật chỉ mục.
 - `POST /api/model` **[QT]**: đổi model mặc định của máy chủ.
-- `GET /api/thong-ke` **[QT]**, `DELETE /api/cache` **[QT]**: thống kê câu hỏi, xóa cache ngữ nghĩa.
+- `GET /api/thong-ke?so_ngay=30` **[QT]**, `DELETE /api/cache` **[QT]**: thống kê câu hỏi (có `theo_vai_tro`: mỗi vai trò bao nhiêu lượt, tỷ lệ bị từ chối, thời gian trung bình và 5 câu hay hỏi nhất; `vai_tro` rỗng là người chưa chọn), xóa cache ngữ nghĩa.
 
 Tài khoản, lịch sử và sổ tay:
 
@@ -186,11 +186,12 @@ Payload cho endpoint chat (chỉ `question` là bắt buộc):
   "tep_ids": ["mã tệp đính kèm"],
   "pham_vi": {},
   "doan_trich": {"van_ban": "đoạn vừa khoanh", "ten": "tên tệp", "trang": 1},
-  "model": "qwen3.5:9b"
+  "model": "qwen3.5:9b",
+  "vai_tro": "phu_huynh"
 }
 ```
 
-Ứng dụng thiết kế cho một lượt sinh câu trả lời tại một thời điểm vì Ollama chạy CPU. Câu hỏi đến sau sẽ chờ lượt hiện tại kết thúc. Lịch sử hội thoại lưu phía máy chủ trong SQLite: đã đăng nhập thì theo tài khoản (mở máy khác vẫn thấy), còn khách thì theo mã ngẫu nhiên của trình duyệt. Tối đa sáu tin nhắn gần nhất được gửi kèm câu hỏi để hiểu câu hỏi nối tiếp, và không được thêm vào kho tài liệu.
+Ứng dụng thiết kế cho một lượt sinh câu trả lời tại một thời điểm vì Ollama chạy CPU. Câu hỏi đến sau sẽ chờ lượt hiện tại kết thúc. Lịch sử hội thoại lưu phía máy chủ trong SQLite: đã đăng nhập thì theo tài khoản (mở máy khác vẫn thấy), còn khách thì theo mã ngẫu nhiên của trình duyệt. Mỗi lượt ghi kèm `vai_tro` người dùng đã chọn ở màn hình chào (cột `vai_tro` của bảng `luot`, rỗng là chưa chọn; mã lạ ghi như chưa chọn). Vai trò do người dùng tự khai nên chỉ dùng để thống kê, không đổi cách trả lời. Tối đa sáu tin nhắn gần nhất được gửi kèm câu hỏi để hiểu câu hỏi nối tiếp, và không được thêm vào kho tài liệu.
 
 Trong giao diện, câu trả lời hỗ trợ tiêu đề, danh sách, chữ đậm, mã ngắn và liên kết trích dẫn. Với nguồn PDF hoặc ảnh, dưới câu trả lời có ảnh thu nhỏ của trang gốc: các dòng được trích tô vàng, câu sát câu hỏi nhất viền đỏ. Nhấp vào nguồn hoặc ảnh trang để mở tài liệu trong trình đọc của sổ tay, đúng trang và cuộn tới đúng dòng đó (`Ctrl` + bấm để mở tài liệu gốc ở tab mới). Chunk lập chỉ mục từ trước khi lưu số trang vẫn hiện được trang, vì máy chủ dò lại chính chữ của đoạn trích trong tệp gốc. Nếu chủ động dừng giữa chừng, phần nội dung đã nhận vẫn được lưu vào lịch sử.
 

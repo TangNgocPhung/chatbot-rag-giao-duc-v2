@@ -62,6 +62,10 @@ class ChatRequest(BaseModel):
     # Mô hình người hỏi tự chọn. Bỏ trống = mô hình mặc định của máy chủ;
     # tên lạ hay bị chặn thì máy chủ tự quay về mặc định chứ không báo lỗi.
     model: str | None = Field(default=None, max_length=120)
+    # Vai trò người hỏi tự chọn (static/vai-tro.js). Chỉ ghi vào lịch sử để
+    # thống kê nhóm nào hỏi gì; không đổi cách tìm tài liệu hay trả lời. Mã lạ
+    # thì ghi như chưa chọn chứ không làm hỏng câu hỏi.
+    vai_tro: str | None = Field(default=None, max_length=32)
 
     @field_validator("question")
     @classmethod
@@ -458,6 +462,7 @@ def chat_stream(
                     tu_choi=thong_tin["tu_choi"],
                     tu_cache=thong_tin["tu_cache"],
                     chi_tiet={**chi_tiet, "sources": cac_nguon, "elapsed": thong_tin["giay"]},
+                    vai_tro=goi_y_cau_hoi.chuan_hoa_vai_tro(request.vai_tro) or "",
                 )
             # Báo hết dòng sau khi đã ghi lịch sử: giao diện đọc xong dòng là
             # gọi ngay danh sách hội thoại, báo sớm thì lượt vừa rồi chưa kịp

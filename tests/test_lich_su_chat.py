@@ -170,6 +170,66 @@ class ThongKeTests(unittest.TestCase):
         tk = lich_su_chat.thong_ke()
         self.assertEqual(tk["so_luot"], 0)
         self.assertEqual(tk["ty_le_tu_choi"], 0.0)
+        self.assertEqual(tk["theo_vai_tro"], [])
+
+    def test_thong_ke_theo_vai_tro(self):
+        lich_su_chat.ghi_luot("a", "Con được miễn học phí không?", "x", vai_tro="phu_huynh")
+        lich_su_chat.ghi_luot("a", "Con được miễn học phí không?", "x", vai_tro="phu_huynh")
+        lich_su_chat.ghi_luot("b", "Điểm chuẩn năm ngoái?", "x", vai_tro="phu_huynh", tu_choi=True)
+        lich_su_chat.ghi_luot("c", "Giáo viên THCS dạy mấy tiết?", "y", vai_tro="giao_vien")
+        lich_su_chat.ghi_luot("d", "Câu của người chưa chọn?", "z")
+        theo = {nhom["vai_tro"]: nhom for nhom in lich_su_chat.thong_ke()["theo_vai_tro"]}
+        self.assertEqual(set(theo), {"phu_huynh", "giao_vien", ""})
+        self.assertEqual(theo["phu_huynh"]["so_luot"], 3)
+        self.assertEqual(theo["phu_huynh"]["so_tu_choi"], 1)
+        self.assertAlmostEqual(theo["phu_huynh"]["ty_le_tu_choi"], 0.333, places=2)
+        self.assertEqual(
+            theo["phu_huynh"]["cau_hay_hoi"][0],
+            {"cau_hoi": "Con được miễn học phí không?", "so_lan": 2},
+        )
+        self.assertEqual(theo[""]["so_luot"], 1)
+
+
+class VaiTroLichSuTests(unittest.TestCase):
+    def setUp(self):
+        self.thu_muc = tempfile.TemporaryDirectory()
+        self.duong_dan = os.path.join(self.thu_muc.name, "vai_tro.db")
+        self.patcher = patch.object(lich_su_chat, "DUONG_DAN_DB", self.duong_dan)
+        self.patcher.start()
+        lich_su_chat.dong_ket_noi()
+
+    def tearDown(self):
+        lich_su_chat.dong_ket_noi()
+        self.patcher.stop()
+        self.thu_muc.cleanup()
+
+    def test_moi_luot_ghi_vai_tro_rieng(self):
+        # Đổi vai trò giữa cuộc trò chuyện thì mỗi lượt giữ vai trò lúc hỏi.
+        ma = lich_su_chat.ghi_luot("c", "Câu một?", "x", vai_tro="hoc_sinh")
+        lich_su_chat.ghi_luot("c", "Câu hai?", "y", hoi_thoai_id=ma)
+        luot = lich_su_chat.chi_tiet_hoi_thoai(ma)["luot"]
+        self.assertEqual([l["vai_tro"] for l in luot], ["hoc_sinh", ""])
+
+    def test_db_cu_chua_co_cot_vai_tro_duoc_them_cot(self):
+        conn = sqlite3.connect(self.duong_dan)
+        conn.executescript(
+            "CREATE TABLE hoi_thoai (id TEXT PRIMARY KEY, client_id TEXT NOT NULL,"
+            " tieu_de TEXT NOT NULL, tao_luc REAL NOT NULL, cap_nhat_luc REAL NOT NULL);"
+            "CREATE TABLE luot (id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            " hoi_thoai_id TEXT NOT NULL, cau_hoi TEXT NOT NULL, tra_loi TEXT NOT NULL,"
+            " nguon TEXT NOT NULL DEFAULT '[]', model TEXT NOT NULL DEFAULT '',"
+            " giay REAL NOT NULL DEFAULT 0, trich_dan_ok INTEGER NOT NULL DEFAULT 1,"
+            " so_lieu_ok INTEGER NOT NULL DEFAULT 1, tu_choi INTEGER NOT NULL DEFAULT 0,"
+            " tu_cache INTEGER NOT NULL DEFAULT 0, tao_luc REAL NOT NULL);"
+            "INSERT INTO hoi_thoai VALUES ('hoi-thoai-cu-1', 'c', 'Cũ', 1, 1);"
+            "INSERT INTO luot (hoi_thoai_id, cau_hoi, tra_loi, tao_luc)"
+            " VALUES ('hoi-thoai-cu-1', 'Câu cũ?', 'Đáp cũ.', 1);"
+        )
+        conn.close()
+        luot = lich_su_chat.chi_tiet_hoi_thoai("hoi-thoai-cu-1")["luot"]
+        self.assertEqual(luot[0]["vai_tro"], "")
+        ma = lich_su_chat.ghi_luot("c", "Câu mới?", "x", vai_tro="sinh_vien")
+        self.assertEqual(lich_su_chat.chi_tiet_hoi_thoai(ma)["luot"][0]["vai_tro"], "sinh_vien")
 
 
 if __name__ == "__main__":

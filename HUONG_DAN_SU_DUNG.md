@@ -60,7 +60,7 @@ Trợ lý chỉ trả lời được những gì **có trong kho**: văn bản q
 
 Hỏi ngoài những gì kho có, trợ lý sẽ nói là **không tìm thấy** thay vì tự đoán.
 
-**Cho trợ lý biết bạn là ai.** Lần đầu vào trang, hộp giới thiệu hỏi *"Bạn là…"*. Chọn một mục thì màn hình chào đưa nhóm câu gợi ý hợp với bạn lên đầu. Muốn đổi, dùng ô **Gợi ý dành cho** ngay trên các câu gợi ý. Lựa chọn này **chỉ đổi câu gợi ý**: bạn vẫn hỏi được mọi thứ trong kho, và trợ lý vẫn tìm trên toàn bộ kho như nhau với mọi người.
+**Cho trợ lý biết bạn là ai.** Lần đầu vào trang, hộp giới thiệu hỏi *"Bạn là…"*. Chọn một mục thì màn hình chào đưa nhóm câu gợi ý hợp với bạn lên đầu. Muốn đổi, dùng ô **Gợi ý dành cho** ngay trên các câu gợi ý. Lựa chọn này **chỉ đổi câu gợi ý**: bạn vẫn hỏi được mọi thứ trong kho, và trợ lý vẫn tìm trên toàn bộ kho như nhau với mọi người. Vai trò bạn chọn được ghi kèm câu hỏi trên máy chủ để nhóm thực hiện thống kê mỗi nhóm người dùng hay hỏi gì, từ đó bổ sung đúng tài liệu còn thiếu.
 
 ### Khác gì so với các chatbot trò chuyện thông thường?
 
