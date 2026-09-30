@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 import goi_y_cau_hoi
 from api import app
 from hieu_luc_bo_sung import TinhTrangThoiGian
+from phan_loai_giao_duc import PhanLoai
 from rag_service import service
 from van_ban_meta import HoSoVanBan
 
@@ -331,6 +332,85 @@ class GoiYTheoNoiDungTraLoiTests(unittest.TestCase):
     def test_dau_cau_viet_hoa_khong_bi_coi_la_ten_rieng(self):
         y_chinh = goi_y_cau_hoi.rut_y_chinh("Học sinh được học hai buổi. Giáo viên dạy.")
         self.assertEqual(y_chinh, [])
+
+
+def _sach(ten, mon, lop, loai="sach_giao_khoa"):
+    return ten, PhanLoai(ten_file=ten, mon_hoc=[mon], lop=[lop], loai_noi_dung=loai)
+
+
+KHO_NGOAI_NGU = dict([
+    _sach("03-sgk-tieng-trung-quoc-3-tap-mot.pdf", "Tiếng Trung Quốc", 3),
+    _sach("03-sgk-tieng-trung-quoc-3-tap-hai.pdf", "Tiếng Trung Quốc", 3),
+    _sach("04-sgk-tieng-trung-quoc-4-tap-mot.pdf", "Tiếng Trung Quốc", 4),
+    _sach("06-sgk-tieng-trung-quoc-6.pdf", "Tiếng Trung Quốc", 6),
+    _sach("10-sgk-tieng-trung-quoc-10.pdf", "Tiếng Trung Quốc", 10),
+    _sach("07-sgk-tieng-nhat-7.pdf", "Tiếng Nhật", 7),
+    _sach("DeKiemTra-HK2-Lop3.docx", "Tin học", 3, "de_kiem_tra"),
+    _sach("03-sgk-tin-hoc-3.pdf", "Tin học", 3),
+    _sach("04-sgk-tin-hoc-4.pdf", "Tin học", 4),
+])
+DU_PHONG = ["Câu mẫu A?", "Câu mẫu B?", "Câu mẫu C?"]
+
+
+class GoiYKhiTuChoiTests(unittest.TestCase):
+    def test_nhac_toi_mon_thi_goi_y_sach_cung_mon_trai_qua_cac_cap(self):
+        self.assertEqual(
+            goi_y_cau_hoi.goi_y_khi_tu_choi(
+                "Tiếng trung dạy từ lớp mấy", KHO_NGOAI_NGU, du_phong=DU_PHONG
+            ),
+            [
+                "Sách giáo khoa Tiếng Trung Quốc lớp 3 gồm những bài học nào?",
+                "Sách giáo khoa Tiếng Trung Quốc lớp 6 gồm những bài học nào?",
+                "Sách giáo khoa Tiếng Trung Quốc lớp 10 gồm những bài học nào?",
+            ],
+        )
+
+    def test_dung_lop_da_hoi_len_truoc(self):
+        goi_y = goi_y_cau_hoi.goi_y_khi_tu_choi(
+            "Tin học lớp 4 bài 20 nói gì", KHO_NGOAI_NGU, du_phong=DU_PHONG
+        )
+        self.assertEqual(goi_y[0], "Sách giáo khoa Tin học lớp 4 gồm những bài học nào?")
+        # Đề kiểm tra không có khuôn hỏi: cổng chặn từ chối câu hỏi kiểu đó.
+        self.assertFalse(any("Đề kiểm tra" in cau for cau in goi_y))
+
+    def test_khong_nhan_ra_chu_de_thi_dung_cau_du_phong(self):
+        self.assertEqual(
+            goi_y_cau_hoi.goi_y_khi_tu_choi(
+                "Cách nấu phở bò", KHO_NGOAI_NGU, du_phong=DU_PHONG
+            ),
+            DU_PHONG,
+        )
+
+    def test_ten_mon_chung_phai_kem_dau_hieu_truong_lop(self):
+        kho = dict([_sach("04-sgk-khoa-hoc-4.pdf", "Khoa học", 4)])
+        self.assertEqual(
+            goi_y_cau_hoi.goi_y_khi_tu_choi(
+                "Nghiên cứu khoa học của giảng viên tính giờ thế nào",
+                kho, du_phong=DU_PHONG,
+            ),
+            DU_PHONG,
+        )
+
+    def test_dang_loc_pham_vi_thi_khong_goi_y_tai_lieu_ngoai_pham_vi(self):
+        goi_y = goi_y_cau_hoi.goi_y_khi_tu_choi(
+            "Tiếng trung dạy từ lớp mấy", KHO_NGOAI_NGU,
+            pham_vi={"mon_hoc": ["Tiếng Nhật"]}, du_phong=DU_PHONG,
+        )
+        self.assertEqual(goi_y, DU_PHONG)
+
+    def test_ten_van_ban_cham_chu_de_thi_goi_y_van_ban_do(self):
+        goi_y = goi_y_cau_hoi.goi_y_khi_tu_choi(
+            "Quy định về dạy thêm học thêm ở Hà Nội năm 2030",
+            ho_so={
+                "Thông tư quy định về dạy thêm, học thêm.pdf": None,
+                "Thông tư quy định về chế độ làm việc của giáo viên.pdf": None,
+            },
+            du_phong=DU_PHONG,
+        )
+        self.assertEqual(goi_y, [
+            "Thông tư quy định về dạy thêm, học thêm có những nội dung chính nào?",
+            "Câu mẫu A?", "Câu mẫu B?",
+        ])
 
 
 class GoiYApiTests(unittest.TestCase):

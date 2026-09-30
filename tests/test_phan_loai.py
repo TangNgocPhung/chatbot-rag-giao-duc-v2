@@ -265,6 +265,61 @@ class PhamViTests(unittest.TestCase):
         self.assertEqual(pl.mo_ta_pham_vi(None), "")
 
 
+class NhanDienCauHoiTests(unittest.TestCase):
+    def test_ngoai_ngu_viet_tat_van_nhan_ra_mon(self):
+        self.assertEqual(
+            pl.nhan_dien_cau_hoi("Tiếng trung dạy từ lớp mấy"),
+            {"mon_hoc": ["Tiếng Trung Quốc"]},
+        )
+
+    def test_nhan_ca_danh_sach_lop(self):
+        self.assertEqual(
+            pl.nhan_dien_cau_hoi("Nội dung tích hợp AI cho môn Tin học lớp 3, 4, 5")["lop"],
+            [3, 4, 5],
+        )
+
+    def test_so_hieu_cong_van_khong_phai_mon_ngu_van(self):
+        self.assertEqual(
+            pl.nhan_dien_cau_hoi("Khung kế hoạch bài dạy theo Công văn 5512 gồm những phần nào?"),
+            {},
+        )
+
+    def test_tuoi_hoc_sinh_khong_phai_mon_sinh_hoc(self):
+        self.assertEqual(pl.nhan_dien_cau_hoi("Học sinh 15 tuổi được học lớp mấy?"), {})
+
+    def test_ten_mon_chung_can_dau_hieu_truong_lop(self):
+        self.assertEqual(pl.nhan_dien_cau_hoi("Nghiên cứu khoa học của giảng viên"), {})
+        self.assertEqual(
+            pl.nhan_dien_cau_hoi("Môn Khoa học lớp 4 có mấy chủ đề"),
+            {"mon_hoc": ["Khoa học"], "lop": [4]},
+        )
+
+
+class LocTheoCauHoiTests(unittest.TestCase):
+    def _qua(self, cau_hoi, meta):
+        return pl.bo_loc_tu_cau_hoi(cau_hoi)(Document(page_content="x", metadata=meta))
+
+    def test_loai_tai_lieu_ghi_ro_mon_khac(self):
+        self.assertFalse(self._qua("Tiếng trung dạy từ lớp mấy",
+                                   {"mon_hoc": ["Tiếng Nhật"], "lop": [9]}))
+        self.assertTrue(self._qua("Tiếng trung dạy từ lớp mấy",
+                                  {"mon_hoc": ["Tiếng Trung Quốc"], "lop": [5]}))
+
+    def test_loai_tai_lieu_ghi_ro_lop_khac(self):
+        self.assertFalse(self._qua("Sách giáo khoa Tin học lớp 4 gồm những bài nào",
+                                   {"mon_hoc": ["Tin học"], "lop": [12]}))
+
+    def test_tai_lieu_chua_gan_nhan_van_lot_qua(self):
+        """Nhãn kho còn thiếu: PPCT-5.docx không có môn, văn bản quy phạm không
+        có lớp - lọc cứng như khop thì mất đúng tài liệu cần tìm."""
+        self.assertTrue(self._qua("Phân phối chương trình Tin học lớp 5",
+                                  {"mon_hoc": [], "lop": []}))
+        self.assertTrue(self._qua("Phân phối chương trình Tin học lớp 5", {}))
+
+    def test_khong_nhac_mon_thi_khong_loc(self):
+        self.assertIsNone(pl.bo_loc_tu_cau_hoi("Quy định về dạy thêm, học thêm"))
+
+
 class _KhoGia:
     """Vector store giả: chỉ cần docstore và similarity_search_with_score."""
 

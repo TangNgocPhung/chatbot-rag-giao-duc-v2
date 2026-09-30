@@ -19,6 +19,7 @@ import unicodedata
 from itertools import zip_longest
 
 import hieu_luc_bo_sung
+import phan_loai_giao_duc
 
 
 SO_GOI_Y_MO_DAU = 6
@@ -605,3 +606,112 @@ def goi_y_theo_tep(
     ung_vien += [f"Tệp {ten} gồm những phần nào?" for ten in ten_tep[:2]]
     ung_vien.append("Ý nghĩa hoặc thông điệp chính của nội dung trong tệp là gì?")
     return _loc_trung(ung_vien, da_co=[cau_hoi])[:max(0, so_luong)]
+
+
+# ============================================================
+# GỢI Ý KHI TỪ CHỐI
+# ============================================================
+# Chỉ sách có khuôn hỏi: mục lục sách thì truy hồi tìm ra được. Đề kiểm tra,
+# giáo án, bài giảng đã thử - "Đề kiểm tra Tin học lớp 4 gồm những dạng câu hỏi
+# nào?" bị chính cổng chặn từ chối, còn "bài giảng" trong kho phần lớn là bảng
+# phân phối chương trình.
+_CAU_HOI_THEO_LOAI = {
+    "sach_giao_khoa": "Sách giáo khoa {mon}{lop} gồm những bài học nào?",
+    "sach_giao_vien": "Sách giáo viên {mon}{lop} hướng dẫn dạy những bài nào?",
+    "sach_bai_tap": "Sách bài tập {mon}{lop} có những dạng bài tập nào?",
+}
+_THU_TU_LOAI = list(_CAU_HOI_THEO_LOAI)
+# Tên tài liệu phải chạm ít nhất chừng này cặp từ của câu hỏi: một cặp như
+# "quy định" thì tên văn bản nào cũng có.
+_SO_CAP_TU_TEN_TOI_THIEU = 2
+
+
+def _cap_cua_lop(lop: int | None) -> int:
+    if lop is None:
+        return 3
+    return 0 if lop <= 5 else 1 if lop <= 9 else 2
+
+
+def _goi_y_theo_mon(nhan: dict, phan_loai: dict, trong_pham_vi: set | None) -> list[str]:
+    """Câu hỏi về những tài liệu cùng môn mà kho đang có.
+
+    Trải qua các cấp học (lớp thấp nhất của mỗi cấp): hỏi "tiếng Trung dạy từ
+    lớp mấy" thì gợi ý sách lớp 3, lớp 6, lớp 10 vừa cho biết kho có gì, vừa
+    ngầm trả lời luôn câu vừa hỏi.
+    """
+    mon_hoi = nhan.get("mon_hoc") or []
+    lop_hoi = set(nhan.get("lop") or [])
+    nhom: set[tuple[str, str, int | None]] = set()
+    for ten_file, muc in phan_loai.items():
+        if trong_pham_vi is not None and ten_file not in trong_pham_vi:
+            continue
+        mon = next((m for m in mon_hoi if m in muc.mon_hoc), None)
+        if mon and muc.loai_noi_dung in _CAU_HOI_THEO_LOAI:
+            nhom.add((mon, muc.loai_noi_dung, muc.lop[0] if len(muc.lop) == 1 else None))
+    # Đúng lớp đã hỏi lên trước, rồi xen kẽ từng cấp học.
+    theo_cap: dict[tuple[bool, int], list] = {}
+    for mon, loai, lop in sorted(
+        nhom, key=lambda m: (m[2] is None, m[2] or 0, _THU_TU_LOAI.index(m[1]))
+    ):
+        khoa = (bool(lop_hoi) and lop not in lop_hoi, _cap_cua_lop(lop))
+        theo_cap.setdefault(khoa, []).append(
+            _CAU_HOI_THEO_LOAI[loai].format(mon=mon, lop=f" lớp {lop}" if lop else "")
+        )
+    dung_lop = [cac for khoa, cac in sorted(theo_cap.items()) if not khoa[0]]
+    khac_lop = [cac for khoa, cac in sorted(theo_cap.items()) if khoa[0]]
+    return [
+        cau
+        for cac_nhom in (dung_lop, khac_lop)
+        for vong in zip_longest(*cac_nhom)
+        for cau in vong if cau
+    ]
+
+
+def _goi_y_theo_ten_van_ban(
+    cau_hoi: str, ho_so: dict, tinh_trang: dict, trong_pham_vi: set | None
+) -> list[str]:
+    """Văn bản trong kho có tên chạm chủ đề câu hỏi, đi qua cây quyết định như
+    gợi ý màn hình chào; tên chạm càng nhiều cặp từ càng đứng trước."""
+    chu_de = _cap_tu_chu_de(cau_hoi)
+    if not chu_de:
+        return []
+    xep_hang = []
+    for ten_file, muc in ho_so.items():
+        if trong_pham_vi is not None and ten_file not in trong_pham_vi:
+            continue
+        so_cap = len(_cap_tu(ten_file) & chu_de)
+        if so_cap < _SO_CAP_TU_TEN_TOI_THIEU:
+            continue
+        nhanh = _nhanh_theo_van_ban(ten_file, muc, tinh_trang.get(ten_file))
+        if nhanh and len(nhanh[1]) <= _DO_DAI_CAU_HOI_TOI_DA:
+            xep_hang.append((-so_cap, nhanh[1]))
+    return [cau for _, cau in sorted(xep_hang, key=lambda muc: muc[0])]
+
+
+def goi_y_khi_tu_choi(
+    cau_hoi: str,
+    phan_loai=None,
+    ho_so=None,
+    tinh_trang=None,
+    pham_vi=None,
+    so_luong: int = SO_GOI_Y_TIEP,
+    du_phong=(),
+) -> list[str]:
+    """Gợi ý sau lời "không tìm thấy": vẫn bám chủ đề người dùng vừa hỏi.
+
+    Không có nguồn nào để hỏi sâu hơn, nhưng câu hỏi thường nhắc tới một môn
+    hay một văn bản mà kho có tài liệu, chỉ là hỏi theo cách tài liệu không trả
+    lời thẳng. Gợi ý những câu kho trả lời được về đúng chủ đề đó; không nhận ra
+    chủ đề nào thì mới lấy câu dự phòng (bộ câu mẫu của màn hình chào). Đang lọc
+    phạm vi thì chỉ gợi ý tài liệu trong phạm vi, kẻo bấm vào lại bị từ chối.
+    """
+    phan_loai = phan_loai or {}
+    trong_pham_vi = None
+    if phan_loai and phan_loai_giao_duc.chuan_hoa_pham_vi(pham_vi):
+        trong_pham_vi = set(phan_loai_giao_duc.cac_file_trong_pham_vi(phan_loai, pham_vi))
+    nhan = phan_loai_giao_duc.nhan_dien_cau_hoi(cau_hoi)
+    ung_vien = _goi_y_theo_mon(nhan, phan_loai, trong_pham_vi) if nhan else []
+    ung_vien += _goi_y_theo_ten_van_ban(cau_hoi, ho_so or {}, tinh_trang or {}, trong_pham_vi)
+    return _loc_trung(
+        ung_vien + list(du_phong), da_co=[cau_hoi], gioi_han=max(0, so_luong)
+    )

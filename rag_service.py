@@ -1262,11 +1262,14 @@ class RAGService:
                 "Có tài liệu rất phù hợp với câu hỏi nhưng PDF chưa có lớp văn bản để tra cứu: "
                 f"{no_text_source}. Hãy OCR tài liệu này rồi cập nhật lại chỉ mục."
             )
+        bo_loc = phan_loai_giao_duc.bo_loc_tu_pham_vi(pham_vi)
+        # Người dùng không tự lọc mà câu hỏi nhắc tới môn, lớp thì bỏ tài liệu
+        # ghi rõ môn khác, lớp khác (xem phan_loai_giao_duc.bo_loc_tu_cau_hoi).
+        if bo_loc is None and os.getenv("RAG_LOC_THEO_CAU_HOI", "1") == "1":
+            bo_loc = phan_loai_giao_duc.bo_loc_tu_cau_hoi(question)
         return truy_hoi(
             question, self.vector_store, self.bm25_retriever,
-            so_ket_qua or SO_KET_QUA_CUOI,
-            phan_loai_giao_duc.bo_loc_tu_pham_vi(pham_vi),
-            self.tu_vung,
+            so_ket_qua or SO_KET_QUA_CUOI, bo_loc, self.tu_vung,
         )
 
     @staticmethod
@@ -1942,8 +1945,12 @@ class RAGService:
                     ),
                 }
                 # Không có nguồn nào để gợi ý hỏi sâu hơn, nên đổi sang gợi ý
-                # những câu kho chắc chắn trả lời được.
-                yield {"type": "goi_y", "goi_y": self.goi_y_mo_dau(3)}
+                # những câu kho trả lời được - về đúng môn, đúng văn bản vừa
+                # hỏi nếu nhận ra được, không thì mới tới bộ câu mẫu.
+                yield {"type": "goi_y", "goi_y": goi_y_cau_hoi.goi_y_khi_tu_choi(
+                    question, self.phan_loai, self.ho_so_van_ban,
+                    self.tinh_trang_hieu_luc, pham_vi, du_phong=self.goi_y_mo_dau(3),
+                )}
                 yield {
                     "type": "done",
                     "elapsed_seconds": round(time.perf_counter() - started, 1),
