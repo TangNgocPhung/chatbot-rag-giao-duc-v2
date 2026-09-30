@@ -46,6 +46,13 @@ SO_CHUNK_TOI_DA_MOI_NGUON = 2
 # truy_hoi_hybrid). 6 lần là mức đủ để một môn hẹp vẫn còn ứng viên mà tìm
 # dense vẫn dưới một giây trên kho ~8.800 vector.
 HE_SO_MO_RONG_KHI_LOC = 6
+# Hai đoạn của hai văn bản khác nhau trùng từ ngữ từ mức này trở lên được coi là
+# cùng phạm vi điều chỉnh (vd cùng quy định về hội đồng xét tốt nghiệp ở bản 2023
+# và bản sửa đổi 2025); khi đó văn bản mới hơn được cộng TRONG_SO_MOI_HON -
+# gần một bậc RRF, đủ để thắng khi hai bên ngang nhau, không đủ để kéo một
+# đoạn lạc đề lên trên.
+NGUONG_GIAO_THOA = 0.35
+TRONG_SO_MOI_HON = 0.012
 
 TU_DUNG = {
     "ai", "bao", "các", "cái", "cho", "có", "của", "đang", "được", "gì",
@@ -335,19 +342,49 @@ def _do_phu_tieu_de_idf(tu_cau_hoi_co_dau, tu_tieu_de, tu_vung) -> float | None:
     return phu / tong
 
 
-def xep_hang_theo_lien_quan(cau_hoi, documents, so_ket_qua, tu_vung=None):
+def _uu_tien_van_ban_moi(documents, tu_theo_doc) -> None:
+    """
+    Trọng số thời gian: đoạn của văn bản mới hơn được cộng điểm khi nó giao
+    thoa phạm vi với một đoạn của văn bản cũ hơn trong cùng rổ ứng viên.
+
+    Không cộng cho mọi văn bản mới một cách vô điều kiện: Thông tư 2026 về học
+    bạ số không vì mới mà trả lời hay hơn Thông tư 2020 về điều lệ trường.
+    `_ngay_van_ban` do rag_service gắn cho đoạn của văn bản quy phạm.
+    """
+    co_ngay = [d for d in documents if d.metadata.get("_ngay_van_ban")]
+    duoc_cong = set()
+    for i, a in enumerate(co_ngay):
+        for b in co_ngay[i + 1:]:
+            ngay_a, ngay_b = a.metadata["_ngay_van_ban"], b.metadata["_ngay_van_ban"]
+            if ngay_a == ngay_b or a.metadata.get("source_file") == b.metadata.get("source_file"):
+                continue
+            tu_a, tu_b = tu_theo_doc[id(a)], tu_theo_doc[id(b)]
+            if len(tu_a & tu_b) / max(1, len(tu_a | tu_b)) < NGUONG_GIAO_THOA:
+                continue
+            duoc_cong.add(id(a) if ngay_a > ngay_b else id(b))
+    for doc in co_ngay:
+        if id(doc) in duoc_cong:
+            doc.metadata["_retrieval_score"] += TRONG_SO_MOI_HON
+
+
+def xep_hang_theo_lien_quan(cau_hoi, documents, so_ket_qua, tu_vung=None, lich_su=False):
     """
     Rerank theo độ phủ từ khóa, tiêu đề và đa dạng nguồn.
 
     `tu_vung` là TuVungKho để chấm khớp tên tài liệu theo IDF thay vì đếm từ
     trần; để None thì lùi về cách đếm cũ (các test cũ và mọi lời gọi chưa có
     từ vựng vẫn chạy nguyên như trước).
+
+    `lich_su=True` khi câu hỏi tra quy định TRƯỚC ĐÂY: không phạt văn bản hết
+    hiệu lực và không ưu tiên văn bản mới hơn - lúc đó văn bản cũ mới là đích.
     """
+    tu_theo_doc = {}
     tu_cau_hoi = set(mo_rong_truy_van(tach_tu_mo_rong(cau_hoi), cau_hoi))
     tu_cau_hoi_co_dau = [t for t in tach_tu_tieng_viet(cau_hoi) if len(t) >= 2]
     cau_hoi_chuan = " ".join(tach_tu_tieng_viet(cau_hoi))
     for doc in documents:
         tu_noi_dung = set(tach_tu_mo_rong(doc.page_content))
+        tu_theo_doc[id(doc)] = tu_noi_dung
         ten_nguon = doc.metadata.get("source_file", "")
         tieu_de_day_du = " ".join(filter(None, [
             ten_nguon,
@@ -367,7 +404,7 @@ def xep_hang_theo_lien_quan(cau_hoi, documents, so_ket_qua, tu_vung=None):
         # Văn bản đã bị một văn bản khác trong kho thay thế thì hạ bậc, nhưng
         # không loại hẳn: người dùng vẫn có quyền hỏi về quy định cũ, và câu trả
         # lời sẽ kèm cảnh báo hiệu lực. Mức phạt đặt ngang một bậc RRF.
-        phat_het_hieu_luc = 0.015 if doc.metadata.get("_het_hieu_luc") else 0.0
+        phat_het_hieu_luc = 0.015 if doc.metadata.get("_het_hieu_luc") and not lich_su else 0.0
         doc.metadata["_lexical_coverage"] = round(do_phu, 4)
         doc.metadata["_retrieval_score"] = (
             doc.metadata.get("_rrf_score", 0.0)
@@ -378,6 +415,8 @@ def xep_hang_theo_lien_quan(cau_hoi, documents, so_ket_qua, tu_vung=None):
             - phat_lech_pham_vi
             - phat_het_hieu_luc
         )
+    if not lich_su:
+        _uu_tien_van_ban_moi(documents, tu_theo_doc)
 
     xep_hang = sorted(
         documents, key=lambda d: d.metadata.get("_retrieval_score", 0.0), reverse=True
@@ -445,8 +484,20 @@ def tach_thuc_the_so_sanh(cau_hoi: str):
 
 
 def truy_hoi_hybrid(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA_CUOI,
-                    bo_loc=None, tu_vung=None):
-    """Truy hồi 1 câu hỏi (không tách thực thể) bằng dense + BM25 + RRF."""
+                    bo_loc=None, tu_vung=None, loc_hieu_luc=None, lich_su=False):
+    """Truy hồi 1 câu hỏi (không tách thực thể) bằng dense + BM25 + RRF.
+
+    `loc_hieu_luc` (Document -> bool) bỏ đoạn của văn bản hết hiệu lực. Khác
+    `bo_loc`, nó KHÔNG nới rổ ứng viên: văn bản hết hiệu lực chỉ là phần nhỏ của
+    kho, bỏ đi vài ứng viên không làm rổ cạn, còn nới rổ thì đổi luôn thứ hạng
+    của mọi câu hỏi.
+    """
+    loc_ung_vien = bo_loc
+    if loc_hieu_luc is not None:
+        loc_ung_vien = (
+            loc_hieu_luc if bo_loc is None
+            else (lambda doc: loc_hieu_luc(doc) and bo_loc(doc))
+        )
     # Rổ ứng viên KHÔNG nở theo so_ket_qua. Bộ đo MRR/Hit@K xin danh sách dài
     # hơn cửa sổ prompt để biết tài liệu đúng nằm ở hạng mấy; nếu vì thế mà nới
     # luôn rổ ứng viên thì RRF fuse trên một tập khác hẳn và thứ hạng đo được
@@ -464,21 +515,21 @@ def truy_hoi_hybrid(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA
     dense_co_diem = vector_store.similarity_search_with_score(viet_day_du(cau_hoi), k=so_ung_vien)
     ket_qua_dense = []
     for doc, distance in dense_co_diem:
-        if bo_loc is not None and not bo_loc(doc):
+        if loc_ung_vien is not None and not loc_ung_vien(doc):
             continue
         doc.metadata["_dense_distance"] = float(distance)
         ket_qua_dense.append(doc)
         if len(ket_qua_dense) >= so_giu:
             break
     ket_qua_bm25 = _ket_qua_bm25_co_diem(
-        cau_hoi, bm25_retriever, so_giu, bo_loc
+        cau_hoi, bm25_retriever, so_giu, loc_ung_vien
     )
     hop_nhat = rrf_fusion(("dense", ket_qua_dense), ("bm25", ket_qua_bm25))
-    return xep_hang_theo_lien_quan(cau_hoi, hop_nhat, so_ket_qua, tu_vung)
+    return xep_hang_theo_lien_quan(cau_hoi, hop_nhat, so_ket_qua, tu_vung, lich_su)
 
 
 def truy_hoi(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA_CUOI,
-             bo_loc=None, tu_vung=None):
+             bo_loc=None, tu_vung=None, loc_hieu_luc=None, lich_su=False):
     """
     Điểm vào chính: tự phát hiện câu so sánh để làm balanced retrieval theo
     từng thực thể, nếu không thì truy hồi hybrid bình thường trên cả câu hỏi.
@@ -492,14 +543,16 @@ def truy_hoi(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA_CUOI,
     thuc_the = tach_thuc_the_so_sanh(cau_hoi)
     if not thuc_the:
         return truy_hoi_hybrid(
-            cau_hoi, vector_store, bm25_retriever, so_ket_qua, bo_loc, tu_vung)
+            cau_hoi, vector_store, bm25_retriever, so_ket_qua, bo_loc, tu_vung,
+            loc_hieu_luc, lich_su)
 
     so_moi_thuc_the = max(2, so_ket_qua // len(thuc_the))
     ket_qua_theo_thuc_the = []
     da_thay_noi_dung = set()
     for cum in thuc_the:
         for doc in truy_hoi_hybrid(
-            cum, vector_store, bm25_retriever, so_moi_thuc_the, bo_loc, tu_vung
+            cum, vector_store, bm25_retriever, so_moi_thuc_the, bo_loc, tu_vung,
+            loc_hieu_luc, lich_su,
         ):
             if doc.page_content not in da_thay_noi_dung:
                 da_thay_noi_dung.add(doc.page_content)

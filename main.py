@@ -261,7 +261,10 @@ def tao_rag_chain(vector_store, llm):
         "Câu hỏi mơ hồ mà tài liệu có nhiều trường hợp: nói rõ và hỏi lại ngắn gọn.\n"
         "6) Nếu khối hỗ trợ ghi \"Trang n\", \"Slide n\", \"Sheet ...\" hay \"Phút mm:ss\" thì nhắc lại đúng vị trí đó. "
         "Với bảng, đọc đúng cột theo dòng \"Cột: ...\", không ghép nhầm giá trị của cột khác.\n"
-        "7) Trình bày: kết luận trước, rồi tối đa 6 ý; bước/trình tự thì đánh số 1. 2. 3., còn lại gạch đầu dòng. "
+        "7) Dòng \"Hiệu lực:\" là tình trạng văn bản. Khối hết hiệu lực không dùng làm căn cứ cho quy định hiện hành, chỉ nêu là đã bị văn bản nào thay; "
+        "khối \"Đi kèm\" là văn bản sửa đổi/thay thế/hướng dẫn một khối khác: nội dung đã sửa thì theo khối đi kèm, "
+        "nêu cả hai văn bản.\n"
+        "8) Trình bày: kết luận trước, rồi tối đa 6 ý; bước/trình tự thì đánh số 1. 2. 3., còn lại gạch đầu dòng. "
         "Từ 3 con số so sánh được trở lên (mức, hạn, tỉ lệ...) thì lập bảng markdown, ô số kèm [n]. Không lặp lại câu hỏi, "
         "không lời dẫn chung chung, không tạo mục nguồn (giao diện đã hiển thị nguồn) và không viết ra quá trình suy nghĩ.\n\n"
         "{context}\n\n"
@@ -284,6 +287,16 @@ def tao_rag_chain(vector_store, llm):
                 dong.append(f"Điều: {doc.metadata['article']}")
             if doc.metadata.get("context_label"):
                 dong.append(f"Ngữ cảnh: {doc.metadata['context_label']}")
+            # Hai dòng do rag_service._them_van_ban_di_kem gắn vào bản sao đoạn.
+            if doc.metadata.get("_hieu_luc"):
+                dong.append(f"Hiệu lực: {doc.metadata['_hieu_luc']}")
+            di_kem = doc.metadata.get("_di_kem")
+            if di_kem:
+                cua = (
+                    f"EVIDENCE {di_kem['evidence']}" if di_kem.get("evidence")
+                    else di_kem.get("cua", "văn bản được hỏi")
+                )
+                dong.append(f"Đi kèm: {di_kem['vai_tro']} của {cua}")
             return " | ".join(dong)
 
         # Cắt bớt đuôi mỗi đoạn: phần đầu chunk (số Điều, câu quy định) mới là

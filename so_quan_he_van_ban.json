@@ -1,0 +1,32 @@
+{
+ "_ghi_chu": [
+  "SỔ QUAN HỆ VĂN BẢN NHẬP TAY - bổ sung và sửa cho phần quan_he_van_ban.py tự trích từ nội dung kho.",
+  "Chỉ ghi quan hệ ĐÃ ĐỐI CHIẾU với điều 'Hiệu lực thi hành' của văn bản mới hoặc với chính nội dung trong kho; ghi nguồn vào 'can_cu'.",
+  "loai: thay_the (thay toàn bộ) | bai_bo_mot_phan | sua_doi | huong_dan (tu quy định chi tiết/hướng dẫn den) | kem_theo (tu là phụ lục/quy chế kèm theo den).",
+  "van_ban.<số hiệu>.ten_goi: tên thường gọi, để nối câu 'quy định chi tiết Luật Giáo dục' (không kèm số) về đúng số hiệu; khi nhiều số hiệu cùng tên thì chọn bản mới nhất ban hành trước văn bản đang xét.",
+  "van_ban.<số hiệu>.tep: tên tệp trong kho mang số hiệu này mà máy không tự nhận ra (ảnh quét hỏng dòng 'Số:').",
+  "loai_bo: quan hệ máy trích SAI, liệt kê để bỏ qua."
+ ],
+ "van_ban": {
+  "38/2005/QH11": {"ten_goi": ["Luật Giáo dục"], "ngay_ban_hanh": "2005-06-14"},
+  "43/2019/QH14": {"ten_goi": ["Luật Giáo dục"], "ngay_ban_hanh": "2019-06-14", "ngay_hieu_luc": "2020-07-01"},
+  "123/2025/QH15": {"trich_yeu": "Luật sửa đổi, bổ sung một số điều của Luật Giáo dục", "ngay_ban_hanh": "2025-12-10"},
+  "8/2012/QH13": {"ten_goi": ["Luật Giáo dục đại học"], "ngay_ban_hanh": "2012-06-18"},
+  "125/2025/QH15": {"ten_goi": ["Luật Giáo dục đại học"], "nam": 2025},
+  "74/2014/QH13": {"ten_goi": ["Luật Giáo dục nghề nghiệp"], "ngay_ban_hanh": "2014-11-27"},
+  "124/2025/QH15": {"ten_goi": ["Luật Giáo dục nghề nghiệp"], "nam": 2025},
+  "73/2025/QH15": {"ten_goi": ["Luật Nhà giáo"], "nam": 2025}
+ },
+ "quan_he": [
+  {"tu": "43/2019/QH14", "loai": "thay_the", "den": "38/2005/QH11", "can_cu": "Luật Giáo dục 2019, Điều 115 Hiệu lực thi hành"},
+  {"tu": "123/2025/QH15", "loai": "sua_doi", "den": "43/2019/QH14", "can_cu": "Phần 'Căn cứ' của các Thông tư 2026 trong kho: 'Luật Giáo dục số 43/2019/QH14 được sửa đổi, bổ sung bởi Luật số 123/2025/QH15'"},
+  {"tu": "279/2026/NĐ-CP", "loai": "thay_the", "den": "37/2025/NĐ-CP", "can_cu": "Điều Hiệu lực thi hành của Nghị định 279/2026/NĐ-CP (vanban.chinhphu.vn, đối chiếu 30/9/2026)"},
+  {"tu": "66/2026/NĐ-CP", "loai": "thay_the", "den": "84/2020/NĐ-CP", "can_cu": "Điều Hiệu lực thi hành của Nghị định 66/2026/NĐ-CP"},
+  {"tu": "142/2025/NĐ-CP", "loai": "thay_the", "den": "127/2018/NĐ-CP", "can_cu": "Điều Hiệu lực thi hành của Nghị định 142/2025/NĐ-CP"},
+  {"tu": "91/2026/NĐ-CP", "loai": "thay_the", "den": "99/2019/NĐ-CP", "can_cu": "Điều Hiệu lực thi hành của Nghị định 91/2026/NĐ-CP"},
+  {"tu": "105/2020/NĐ-CP", "loai": "thay_the", "den": "6/2018/NĐ-CP", "can_cu": "Điều Hiệu lực thi hành của Nghị định 105/2020/NĐ-CP"},
+  {"tu": "360/2026/NĐ-CP", "loai": "bai_bo_mot_phan", "den": "125/2024/NĐ-CP", "can_cu": "Nghị định 360/2026 và 361/2026 cùng thay gần hết Nghị định 125/2024/NĐ-CP"},
+  {"tu": "361/2026/NĐ-CP", "loai": "bai_bo_mot_phan", "den": "125/2024/NĐ-CP", "can_cu": "Nghị định 360/2026 và 361/2026 cùng thay gần hết Nghị định 125/2024/NĐ-CP"}
+ ],
+ "loai_bo": []
+}
