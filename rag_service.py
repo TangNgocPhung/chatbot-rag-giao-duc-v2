@@ -2012,11 +2012,22 @@ class RAGService:
         # Thứ tự thử: công cụ có phạm vi hẹp nhất đi trước. tinh_toan nhận cả
         # những biểu thức trần trụi nên phải đứng cuối, sau khi hai công cụ có
         # căn cứ pháp lý đã nhận phần của mình.
+        #
+        # Bốn công cụ có căn cứ pháp lý chỉ biết quy định HIỆN HÀNH (lương cơ
+        # sở 2.340.000 theo NĐ 73/2024...). Hỏi tại một mốc đã qua ("năm 2020")
+        # thì để câu hỏi đi qua RAG: chế độ lich_su mở văn bản cũ và tính hiệu
+        # lực tại đúng mốc đó. che_do_thoi_gian chỉ trả mốc khi mốc trước hôm
+        # nay, nên "năm 2027" vẫn về công cụ. tinh_toan là số học thuần, không
+        # phụ thuộc thời điểm.
+        che_do_hoi, thoi_diem_hoi = quan_he_van_ban.che_do_thoi_gian(question)
+        hoi_moc_da_qua = che_do_hoi == "lich_su" and thoi_diem_hoi is not None
         for ten_cong_cu, cong_cu in () if hoi_doan_khoanh else (
-            ("tinh_luong", tinh_luong),
-            ("dinh_muc_tiet_day", dinh_muc_tiet_day),
-            ("dinh_muc_tiet_day_pho_thong", dinh_muc_tiet_day_pho_thong),
-            ("danh_gia_hoc_sinh", danh_gia_hoc_sinh),
+            *(() if hoi_moc_da_qua else (
+                ("tinh_luong", tinh_luong),
+                ("dinh_muc_tiet_day", dinh_muc_tiet_day),
+                ("dinh_muc_tiet_day_pho_thong", dinh_muc_tiet_day_pho_thong),
+                ("danh_gia_hoc_sinh", danh_gia_hoc_sinh),
+            )),
             ("tinh_toan", tinh_toan),
         ):
             ket_qua_tinh = cong_cu.tra_loi(question)
