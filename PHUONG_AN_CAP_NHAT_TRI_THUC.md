@@ -96,6 +96,7 @@ Có hai chỗ dễ sai khi trích quan hệ, cả hai đều đã có test:
 | Nhãn, cảnh báo | Tính tại hôm nay | Tính tại mốc được hỏi |
 | Prompt | Luật prompt cấm dựa vào khối hết hiệu lực | Dòng đầu "CÂU HỎI VỀ QUY ĐỊNH TRƯỚC ĐÂY (tại ngày …)": được dùng văn bản cũ nhưng phải nói rõ nó đã bị văn bản nào thay |
 | Cache ngữ nghĩa | Dùng | Bỏ qua ("năm 2023" và "năm 2025" gần như trùng nghĩa mà đáp án khác nhau) |
+| Công cụ tính lương, định mức | Dùng | Bỏ qua khi mốc đã qua (công cụ chỉ biết quy định hiện hành); số học thuần vẫn tính |
 
 Năm là một phần **tên văn bản** thì không phải mốc: "Luật Giáo dục năm 2019", "Chương trình giáo dục phổ thông năm 2018", "Thông tư ban hành ngày 30/12/2024". Nếu coi là mốc thì "Luật Giáo dục năm 2019" bị tra tại 31/12/2019, khi Luật 2019 chưa có hiệu lực (1/7/2020), và câu trả lời lại theo Luật 2005. Có giới từ thời gian đứng trước, hoặc có từ hỏi / động từ chen giữa tên và năm, thì vẫn là mốc: "Luật Giáo dục quy định thế nào **vào** năm 2019", "Văn bản **nào quy định** định mức năm 2020".
 
@@ -127,7 +128,7 @@ Những điểm dưới đây là giới hạn thật của hệ thống, nên n
 - **Quan hệ chỉ nhận ra từ một số dạng câu.** Đang nhận được hai dạng: "Văn bản này thay thế / bãi bỏ / sửa đổi văn bản số X", và "Văn bản số X … hết hiệu lực kể từ ngày văn bản này có hiệu lực" (dạng hay gặp nhất ở điều khoản thi hành). Ở dạng thứ hai chỉ lấy số hiệu **đầu mệnh đề**, vì các số theo sau thường là luật sửa đổi của nó và vẫn còn hiệu lực ("Luật GDĐH số 08/2012 đã được sửa đổi theo Luật số 74/2014 … hết hiệu lực"). Đổi lại, câu liệt kê hai văn bản cùng hết hiệu lực chỉ ghi nhận được văn bản đầu. Câu ghi ngày cụ thể ("Thông tư số X hết hiệu lực kể từ ngày 14/02/2025") thì chưa nhận, vì không chắc chính văn bản đang đọc là nguyên nhân. Chỗ máy đọc sót thì bổ sung ở `so_quan_he_van_ban.json`.
 - **Mốc thời gian là một ngày, không phải một khoảng.** "Năm 2020" được tra tại 31/12/2020, "năm học 2020-2021" cũng vậy; "sau năm 2020" và "từ năm 2021" được tra tại 1/1/2021. Nếu văn bản mới có hiệu lực giữa kỳ thì câu hỏi về cả kỳ chỉ thấy một phiên bản.
 - **Chế độ lịch sử không hạ bậc văn bản chưa tồn tại tại mốc.** Văn bản mới vẫn đứng trong rổ ứng viên và có thể xếp trên văn bản cũ. Nó chỉ bị gắn nhãn "chưa hiệu lực" tại mốc, và prompt nhắc mô hình. Benchmark ở mục 6 đo chính chỗ này.
-- **Công cụ tính (lương, định mức) chỉ biết quy định hiện hành.** Hỏi "lương năm 2020" hiện vẫn được công cụ tính theo lương cơ sở hôm nay.
+- **Công cụ tính (lương, định mức, đánh giá học sinh) chỉ biết quy định hiện hành.** Câu có mốc quá khứ ("lương năm 2020") vì vậy không được tính mà chuyển sang RAG ở chế độ lịch sử: có trích dẫn văn bản đúng thời điểm, nhưng không có phiếu tính từng bước.
 - **Chưa dựng bản hợp nhất tự động.** Khi A bị sửa một phần, hệ thống kéo văn bản sửa đổi vào cùng câu trả lời, nhưng chưa ghép thành một văn bản hợp nhất.
 - **Phụ thuộc chất lượng trích số hiệu.** Số hiệu đọc sai từ bản scan thì quan hệ bị bỏ lỡ. Đã có ba lớp giảm rủi ro: số hiệu ghi trong tên tệp, đối chiếu tên tệp với số OCR, và trích lại bằng mô hình ngôn ngữ cho văn bản regex không chắc (`trich_meta_llm.py`).
 
@@ -136,7 +137,7 @@ Những điểm dưới đây là giới hạn thật của hệ thống, nên n
 Đề xuất năm phép đo, đều chạy được trên kho hiện tại. Ba phép đầu đã có công cụ.
 
 1. **Độ chính xác trích quan hệ**: `python danh_gia_trich_quan_he.py xuat` lấy mẫu câu có động từ quan hệ và số hiệu. Mẫu được chọn theo từ khóa, không theo kết quả của hệ thống, để đo được recall. Gán nhãn mù ba cột (thay thế / bãi bỏ một phần / sửa đổi), rồi `python danh_gia_trich_quan_he.py cham` cho P/R/F1 kèm khoảng tin cậy Wilson và ma trận nhầm lẫn. Muốn so trước/sau một thay đổi mã nguồn trên **cùng bộ nhãn**, thêm `--ma-nguon <git worktree của phiên bản cũ>`.
-2. **Trả lời đúng mốc**: `python benchmark_moc_thoi_gian.py` chạy bộ `bo_cau_hoi_moc_thoi_gian.json` (29 câu, 12 cặp văn bản cũ - mới, 6 cặp có nhãn đã đối chiếu với sổ quan hệ nhập tay). Mỗi câu truy hồi hai lần trên cùng chỉ mục, tắt và bật chế độ thời gian. Đo bản đúng mốc có xếp trước bản sai mốc không, kèm kiểm định McNemar chính xác. Script cũng in đồ thị có nhận ra quan hệ thay thế của từng cặp không.
+2. **Trả lời đúng mốc**: `python benchmark_moc_thoi_gian.py` chạy bộ `bo_cau_hoi_moc_thoi_gian.json` (45 câu, 20 cặp văn bản cũ - mới, 14 cặp có nhãn đã đối chiếu với sổ quan hệ nhập tay). Mỗi câu truy hồi hai lần trên cùng chỉ mục, tắt và bật chế độ thời gian. Đo bản đúng mốc có xếp trước bản sai mốc không, kèm kiểm định McNemar chính xác. Script cũng in đồ thị có nhận ra quan hệ thay thế của từng cặp không.
 3. **Không ảnh hưởng câu hỏi thường**: `python benchmark_chatbot.py --ir` trên bộ 127 câu, so MRR và Hit@K trước và sau.
 4. **Tỉ lệ trả lời bằng văn bản hết hiệu lực mà không cảnh báo**: trên tập câu hỏi hiện hành có cặp cũ - mới, đếm câu trả lời có bằng chứng từ văn bản đã hết hiệu lực. Mục tiêu là 0.
 5. **Thời gian cập nhật**: thời gian từ lúc thêm một văn bản tới lúc hỏi được, so với chi phí fine-tune ước tính cho cùng văn bản.

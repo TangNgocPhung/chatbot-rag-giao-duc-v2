@@ -5,7 +5,7 @@ Chạy:            python benchmark_moc_thoi_gian.py
 Chỉ một cặp:     python benchmark_moc_thoi_gian.py --cap day_them
 Truy hồi sâu:    python benchmark_moc_thoi_gian.py --sau 24
 
-Bộ câu hỏi: bo_cau_hoi_moc_thoi_gian.json (29 câu, 12 cặp văn bản; 6 cặp có nhãn
+Bộ câu hỏi: bo_cau_hoi_moc_thoi_gian.json (45 câu, 20 cặp văn bản; 14 cặp có nhãn
 đã đối chiếu với sổ quan hệ nhập tay). Tách khỏi bo_cau_hoi_benchmark.json
 để con số MRR "toàn bộ" của các lần đo cũ vẫn so được với lần đo mới.
 

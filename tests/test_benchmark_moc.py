@@ -141,8 +141,8 @@ class ChayMotCauTests(unittest.TestCase):
                 with self.subTest(cap=ten):
                     self.assertIn((cap["moi"], "thay_the", cap["cu"]), canh)
                     ngay = so_tay["van_ban"].get(cap["moi"], {}).get("ngay_hieu_luc")
-                    if ngay:
-                        self.assertEqual(ngay, cap["moi_co_hieu_luc"])
+                    # Ngày ghi trong bộ câu hỏi phải lấy từ sổ, không tự đặt.
+                    self.assertEqual(ngay, cap["moi_co_hieu_luc"])
 
     def test_van_ban_chua_co_trong_kho_thi_bo_qua(self):
         kq = bm.chay_mot_cau(DichVuGia(), {
@@ -199,11 +199,18 @@ class BoCauHoiTests(unittest.TestCase):
                 che_do, thoi_diem = qh.che_do_thoi_gian(muc["cau_hoi"], HOM_NAY)
                 self.assertEqual(che_do, muc["che_do_mong_doi"])
                 cap = self.cap[muc["cap"]]
-                chuyen_giao = date.fromisoformat(cap["moi_co_hieu_luc"])
+                if cap["moi_co_hieu_luc"]:
+                    som_nhat = muon_nhat = date.fromisoformat(cap["moi_co_hieu_luc"])
+                else:
+                    # Sổ chưa ghi ngày: văn bản không thể có hiệu lực trước năm
+                    # ban hành, và thực tế luôn có hiệu lực trong năm đó hoặc
+                    # đầu năm sau - nên mốc phải tránh xa cả khoảng này.
+                    nam = int(cap["moi"].split("/")[1])
+                    som_nhat, muon_nhat = date(nam, 1, 1), date(nam + 1, 1, 1)
                 if muc["loai"] in ("truoc_thay_the", "so_sanh"):
-                    self.assertLess(thoi_diem, chuyen_giao)
+                    self.assertLess(thoi_diem, som_nhat)
                 elif muc["loai"] == "sau_thay_the" and thoi_diem:
-                    self.assertGreaterEqual(thoi_diem, chuyen_giao)
+                    self.assertGreaterEqual(thoi_diem, muon_nhat)
                 # Văn bản đúng phải là văn bản đang hiệu lực tại mốc đó.
                 if muc["loai"] in ("truoc_thay_the", "truoc_khi_co"):
                     self.assertEqual(muc["so_hieu_dung"], [cap["cu"]])

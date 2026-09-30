@@ -273,7 +273,7 @@ Chế độ `--ir` đo chất lượng **xếp hạng** của khối truy hồi 
 
 Hai chế độ còn lại: `--nhanh` đo truy hồi kèm cổng chặn lạc đề, `--bo` gọi đủ LLM để đo thêm trích dẫn và số liệu (chậm, khoảng 150 giây/câu trên CPU).
 
-Hỏi theo mốc thời gian có bộ câu hỏi riêng, `bo_cau_hoi_moc_thoi_gian.json`. Bộ này gồm 29 câu trên 12 cặp văn bản cũ - mới (6 cặp có nhãn đã đối chiếu với sổ quan hệ nhập tay), mỗi cặp có câu hỏi trước và sau ngày văn bản mới có hiệu lực, cùng câu kiểm soát kiểu "Luật Giáo dục năm 2019":
+Hỏi theo mốc thời gian có bộ câu hỏi riêng, `bo_cau_hoi_moc_thoi_gian.json`. Bộ này gồm 45 câu trên 20 cặp văn bản cũ - mới (14 cặp có nhãn đã đối chiếu với sổ quan hệ nhập tay), mỗi cặp có câu hỏi trước và sau ngày văn bản mới có hiệu lực, cùng câu kiểm soát kiểu "Luật Giáo dục năm 2019":
 
 ```powershell
 .\.venv\Scripts\python.exe benchmark_moc_thoi_gian.py
