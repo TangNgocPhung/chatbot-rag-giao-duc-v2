@@ -1252,9 +1252,24 @@ function renderLienQuan(cacMuc) {
     const moTa = document.createElement('b');
     moTa.textContent = `${muc.mo_ta}: `;
     item.append(moTa, document.createTextNode(muc.nhan));
+    // "Thay thế Thông tư 33/2020 từ ngày nào" - mốc để đối chiếu khi bị hỏi
+    // lại. Chỉ có khi đọc được ngày hiệu lực của văn bản tác động.
+    if (muc.tu_ngay) {
+      const tuNgay = document.createElement('span');
+      tuNgay.className = 'lien-quan-ngay';
+      tuNgay.textContent = ` · từ ngày ${vietNgay(muc.tu_ngay)}`;
+      item.append(tuNgay);
+      item.title += `\nCó tác dụng từ ngày ${vietNgay(muc.tu_ngay)}`;
+    }
     hang.append(item);
   }
   return hang;
+}
+
+// "2026-11-15" -> "15/11/2026"
+function vietNgay(iso) {
+  const [nam, thang, ngay] = String(iso).split('-');
+  return ngay ? `${Number(ngay)}/${Number(thang)}/${nam}` : String(iso);
 }
 
 function nhanNguon(source, trang, index) {

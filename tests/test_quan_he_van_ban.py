@@ -224,6 +224,20 @@ class DoThiTests(unittest.TestCase):
         ngoai_kho = [m for m in muc if m["so_hieu"] == "12/2020/TT-BGDĐT"][0]
         self.assertEqual(ngoai_kho["tep"], [])
 
+    def test_lien_quan_kem_ngay_co_tac_dung(self):
+        self.so.thong_tin["7/2026/TT-BGDĐT"] = {"ngay_hieu_luc": "2026-11-15"}
+        # Hai chiều cùng một mốc: ngày văn bản thay thế có hiệu lực.
+        thay = {m["so_hieu"]: m["tu_ngay"] for m in self.so.lien_quan("moi.pdf")}
+        self.assertEqual(thay["29/2023/TT-BGDĐT"], "2026-11-15")
+        bi_thay = self.so.lien_quan("cu.pdf")[0]
+        self.assertEqual((bi_thay["mo_ta"], bi_thay["tu_ngay"]), ("Bị thay thế bởi", "2026-11-15"))
+
+    def test_lien_quan_khong_doan_ngay(self):
+        # Không đọc được ngày hiệu lực thì để trống, không lấy ngày ban hành thế vào.
+        self.assertIsNone(self.so.lien_quan("moi.pdf")[0]["tu_ngay"])
+        # Phụ lục kèm theo không có mốc riêng.
+        self.assertIsNone(self.so.lien_quan("tt44.docx")[0]["tu_ngay"])
+
     def test_cau_hoi_nhac_van_ban_cu_rut_gon(self):
         self.assertEqual(self.so.van_ban_trong_cau_hoi("Nghị định 37/2025 quy định gì?"), ["37/2025/NĐ-CP"])
         ghi_chu, keo = self.so.ghi_chu_cau_hoi("thông tư 29/2023 về dạy thêm", self.HOM_NAY)
@@ -404,6 +418,7 @@ class TangDichVuTests(unittest.TestCase):
         nguon = RAGService._sources(docs, so_quan_he=self.so)
         self.assertEqual(nguon[0]["lien_quan"][0]["mo_ta"], "Được sửa đổi, bổ sung bởi")
         self.assertEqual(nguon[0]["lien_quan"][0]["tep"], "sua.pdf")
+        self.assertIn("tu_ngay", nguon[0]["lien_quan"][0])
         self.assertEqual(nguon[1]["di_kem"]["evidence"], 1)
 
 
