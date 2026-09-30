@@ -11,7 +11,11 @@ chen vào TRƯỚC cache ngữ nghĩa và trước cả khâu truy hồi. Hai th
     lỗi gì.
 """
 
+import importlib
 import unittest
+from contextlib import ExitStack
+from datetime import date
+from unittest.mock import patch
 
 from rag_service import RAGService
 
@@ -85,6 +89,64 @@ class DinhTuyenTests(unittest.TestCase):
         xong = self.su_kien("35 x 17")[-1]
         self.assertTrue(xong["citations_ok"])
         self.assertTrue(xong["figures_ok"])
+
+
+class MocThoiGianTests(unittest.TestCase):
+    """Bốn công cụ có căn cứ pháp lý chỉ biết quy định hiện hành. Hỏi "năm
+    2020" mà nhận phiếu lương tính theo lương cơ sở 2.340.000 (NĐ 73/2024) là
+    sai lặng lẽ - câu đó phải đi qua RAG ở chế độ lich_su."""
+
+    CONG_CU_PHAP_LY = (
+        "tinh_luong", "dinh_muc_tiet_day",
+        "dinh_muc_tiet_day_pho_thong", "danh_gia_hoc_sinh",
+    )
+
+    def setUp(self):
+        self.service = RAGService()
+        self.service.status.state = "ready"
+
+    def su_kien(self, cau_hoi):
+        """Chạy câu hỏi với truy hồi rỗng; trả về (chuỗi sự kiện, mock tra_loi
+        của từng công cụ pháp lý). Mock bọc hàm thật nên vẫn định tuyến đúng."""
+        vo_boc = {}
+        with ExitStack() as ngan_xep:
+            ngan_xep.enter_context(
+                patch.object(self.service, "_retrieve", return_value=[])
+            )
+            for ten in self.CONG_CU_PHAP_LY:
+                mo_dun = importlib.import_module(ten)
+                vo_boc[ten] = ngan_xep.enter_context(
+                    patch.object(mo_dun, "tra_loi", wraps=mo_dun.tra_loi)
+                )
+            return list(self.service._sinh_cau_tra_loi(cau_hoi)), vo_boc
+
+    def test_hoi_luong_nam_da_qua_khong_dung_cong_cu(self):
+        su_kien, vo_boc = self.su_kien("tính lương giáo viên THPT hạng III bậc 1 năm 2020")
+        for mock in vo_boc.values():
+            mock.assert_not_called()
+        self.assertNotIn("cong_cu", su_kien[-1])
+
+    def test_hoi_dinh_muc_ngay_da_qua_khong_dung_cong_cu(self):
+        su_kien, vo_boc = self.su_kien("tiết dạy của GV THPT cấp 3 ngày 15/3/2019")
+        for mock in vo_boc.values():
+            mock.assert_not_called()
+        self.assertNotIn("cong_cu", su_kien[-1])
+
+    def test_hoi_luong_nam_sau_van_dung_cong_cu(self):
+        """Mốc tương lai không phải lich_su: quy định hiện hành là thứ tốt nhất
+        đang có, nên vẫn tính bằng công cụ."""
+        su_kien, vo_boc = self.su_kien(
+            f"tính lương giáo viên THPT hạng III bậc 1 năm {date.today().year + 1}"
+        )
+        vo_boc["tinh_luong"].assert_called_once()
+        self.assertEqual(su_kien[-1]["cong_cu"], "tinh_luong")
+
+    def test_nam_da_qua_van_thu_tinh_toan(self):
+        """Số học thuần không phụ thuộc thời điểm nên tinh_toan vẫn được thử.
+        (Tự nó hiện từ chối câu có mốc ngày - con số của mốc lẫn vào phép tính.)"""
+        with patch("tinh_toan.tra_loi", return_value=None) as thu:
+            self.su_kien("năm 2020: 12% của 2.340.000 là bao nhiêu")
+        thu.assert_called_once()
 
 
 if __name__ == "__main__":
