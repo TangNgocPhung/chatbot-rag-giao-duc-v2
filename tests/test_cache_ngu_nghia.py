@@ -241,6 +241,41 @@ class VanTayTests(unittest.TestCase):
     def test_van_tay_doi_khi_so_chunk_doi(self):
         self.assertNotEqual(van_tay_chi_muc(8827, 8827), van_tay_chi_muc(8827, 8900))
 
+    def test_khong_truyen_dau_thi_giu_dang_cu(self):
+        self.assertEqual(van_tay_chi_muc(8827, 8827), "8827-8827")
+
+    @staticmethod
+    def _kho(**chunk):
+        from langchain_core.documents import Document
+        return {ma: Document(page_content=noi_dung) for ma, noi_dung in chunk.items()}
+
+    def test_van_tay_doi_khi_sua_tep_ma_so_chunk_giu_nguyen(self):
+        """Quét OCR lại một tệp: gỡ chunk cũ, nhúng chunk mới, số đếm y hệt.
+        Vân tay vẫn phải đổi, nếu không cache trả câu dựng từ chữ cũ."""
+        kho_cu = self._kho(a="Điều 3. Giáo viên dạy thêm...", b="Điều 5. Thu tiền...")
+        kho_ocr_lai = self._kho(c="Điều 3. Giáo viên dạy thêm...", d="Điều 5. Thu tiền...")
+        sua_tai_cho = self._kho(a="Điều 3. Giáo viên dạy thêm...", b="Điều 5. Không thu tiền...")
+        van_tay_cu = van_tay_chi_muc(2, 2, cache_ngu_nghia.dau_noi_dung(kho_cu))
+        for kho_moi in (kho_ocr_lai, sua_tai_cho):
+            self.assertEqual(len(kho_moi), len(kho_cu))
+            self.assertNotEqual(
+                van_tay_cu, van_tay_chi_muc(2, 2, cache_ngu_nghia.dau_noi_dung(kho_moi))
+            )
+
+    def test_dau_on_dinh_khong_phu_thuoc_thu_tu_nap(self):
+        """Nạp lại cùng một kho không được làm mất cache vô cớ."""
+        xuoi = self._kho(a="một", b="hai")
+        nguoc = dict(reversed(list(self._kho(a="một", b="hai").items())))
+        dau = cache_ngu_nghia.dau_noi_dung(xuoi)
+        self.assertEqual(dau, cache_ngu_nghia.dau_noi_dung(nguoc))
+        self.assertEqual(len(dau), 12)
+
+    def test_ranh_gioi_chunk_khong_nhap_nhang(self):
+        self.assertNotEqual(
+            cache_ngu_nghia.dau_noi_dung(self._kho(a="xy", b="z")),
+            cache_ngu_nghia.dau_noi_dung(self._kho(a="x", b="yz")),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
