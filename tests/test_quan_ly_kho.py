@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 import quan_ly_kho
 import tai_khoan
 from api import app
-from rag_service import THU_MUC_TEP_TRONG_KHO, service
+from rag_service import service
 from tep_dinh_kem import kho_tep
 
 MAT_KHAU = "matkhau-rat-dai-1"
@@ -47,7 +47,12 @@ class KhoTamTests(unittest.TestCase):
         self.addCleanup(khoa.stop)
 
     def trong_kho(self, ten):
-        return os.path.join(self.kho, THU_MUC_TEP_TRONG_KHO, ten)
+        """Thư mục con cụ thể do xep_thu_muc_kho chọn (có test riêng); ở đây
+        chỉ cần biết tệp có nằm trong kho hay không."""
+        for goc, _, ten_files in os.walk(self.kho):
+            if ten in ten_files:
+                return os.path.join(goc, ten)
+        return os.path.join(self.kho, ten)
 
 
 class ChoDuyetTests(KhoTamTests):
