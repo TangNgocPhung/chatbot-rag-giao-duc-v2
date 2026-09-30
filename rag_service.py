@@ -311,6 +311,8 @@ class RAGService:
     def __init__(self):
         self.status = ServiceStatus()
         self.vector_store = None
+        # Dấu nội dung kho cho vân tay cache; băm một lần mỗi lần nạp chỉ mục.
+        self._dau_noi_dung_chi_muc = ""
         # Giữ lại model nhúng: cache ngữ nghĩa cần nhúng câu hỏi mới
         # bằng đúng model đã nhúng kho.
         self.embeddings = None
@@ -409,6 +411,11 @@ class RAGService:
                 message = (
                     "Sẵn sàng trả lời · dữ liệu nguồn đã thay đổi, cần cập nhật chỉ mục"
                     if thong_ke["data_stale"] else "Sẵn sàng trả lời"
+                )
+                # Gán trước khi chuyển sang "ready" để không câu hỏi nào tra
+                # cache bằng dấu của kho cũ.
+                self._dau_noi_dung_chi_muc = cache_ngu_nghia.dau_noi_dung(
+                    self.vector_store.docstore._dict
                 )
                 self.status = ServiceStatus(
                     state="ready",
@@ -1781,7 +1788,8 @@ class RAGService:
     # ============================================================
     def _van_tay_chi_muc(self) -> str:
         return cache_ngu_nghia.van_tay_chi_muc(
-            self.status.vector_count, self.status.document_count
+            self.status.vector_count, self.status.document_count,
+            self._dau_noi_dung_chi_muc,
         )
 
     @staticmethod

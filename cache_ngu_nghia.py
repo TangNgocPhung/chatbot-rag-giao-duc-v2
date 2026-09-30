@@ -16,8 +16,8 @@ so với 150 giây phải tiết kiệm.
 BỐN ĐIỀU KIỆN ĐỂ MỘT MỤC CACHE CÒN DÙNG ĐƯỢC - thiếu một là bỏ:
   1. Cùng model trả lời. Đổi từ qwen3.5:4b sang 9b mà trả lại câu của model cũ
      thì người dùng tưởng đã đổi nhưng thực chất chưa.
-  2. Cùng vân tay chỉ mục. Kho vừa thêm/bớt tài liệu thì câu trả lời cũ có thể
-     đã sai căn cứ - đây là rủi ro nghiêm trọng nhất với văn bản quy phạm.
+  2. Cùng vân tay chỉ mục. Kho vừa thêm/bớt/sửa tài liệu thì câu trả lời cũ có
+     thể đã sai căn cứ - đây là rủi ro nghiêm trọng nhất với văn bản quy phạm.
   3. Đủ giống, VÀ nếu chỉ giống vừa phải thì phải cùng bộ bằng chứng - xem phần
      "HAI NGƯỠNG" bên dưới. Trả nhầm câu trả lời của một câu hỏi khác tệ hơn
      nhiều so với việc để người dùng chờ.
@@ -30,6 +30,7 @@ hai lần hỏi giống nhau vẫn có thể phải trả lời khác nhau.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -265,13 +266,35 @@ def cung_bang_chung(muc: dict, tai_lieu) -> bool:
     return bool(da_luu) and da_luu == khoa_chunk_cua(tai_lieu)
 
 
-def van_tay_chi_muc(so_vector: int, so_tai_lieu: int) -> str:
+def dau_noi_dung(docstore: dict) -> str:
+    """
+    Dấu nội dung kho: 12 ký tự hex đầu của sha256 trên mọi cặp (id, nội dung
+    chunk), xếp theo id để không phụ thuộc thứ tự nạp.
+
+    Hai con số đếm KHÔNG đủ: tệp bị sửa (vd. quét OCR lại cho đúng dấu) được gỡ
+    vector cũ rồi nhúng lại, số chunk thường giữ nguyên nên số đếm y hệt, trong
+    khi chữ đã khác. Id đổi theo mỗi lần thêm (uuid), nội dung đổi khi sửa tại
+    chỗ - băm cả hai thì đường nào cũng làm dấu đổi. Băm ~9 nghìn chunk mất vài
+    chục mili giây nên chỉ làm một lần lúc nạp chỉ mục.
+    """
+    h = hashlib.sha256()
+    for ma in sorted(docstore, key=str):
+        noi_dung = getattr(docstore[ma], "page_content", "") or ""
+        du_lieu = noi_dung.encode("utf-8", "surrogatepass")
+        # Ghi kèm độ dài để ranh giới giữa các chunk không thể nhập nhằng.
+        h.update(f"{ma}\0{len(du_lieu)}\0".encode("utf-8", "surrogatepass"))
+        h.update(du_lieu)
+    return h.hexdigest()[:12]
+
+
+def van_tay_chi_muc(so_vector: int, so_tai_lieu: int, dau: str = "") -> str:
     """
     Vân tay để biết cache có thuộc về đúng phiên bản kho hay không. Số vector +
-    số chunk là đủ: mọi thao tác thêm, bớt hay nạp lại tài liệu đều làm ít nhất
-    một trong hai con số này đổi.
+    số chunk bắt được thêm/bớt tài liệu; `dau` (xem dau_noi_dung) bắt được tệp
+    bị sửa mà số chunk không đổi. Không truyền `dau` thì giữ dạng cũ.
     """
-    return f"{so_vector}-{so_tai_lieu}"
+    van_tay = f"{so_vector}-{so_tai_lieu}"
+    return f"{van_tay}-{dau}" if dau else van_tay
 
 
 cache = CacheNguNghia()
