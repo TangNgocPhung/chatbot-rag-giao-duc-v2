@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import unicodedata
 from dataclasses import asdict, dataclass, field
 
 THU_MUC_DU_AN = os.path.dirname(os.path.abspath(__file__))
@@ -78,6 +79,33 @@ MAU_QUAN_HE = re.compile(
 # Nhận ra cặp dấu hiệu này mới tránh được kết luận ngược "71 sửa đổi 311".
 MAU_BI_DONG_TRUOC = re.compile(r"\b(được|bị)\s*$", re.IGNORECASE)
 MAU_BI_DONG_SAU = re.compile(r"^\s*(theo|tại|bởi)\b", re.IGNORECASE)
+# "bãi bỏ Điều 5, khoản 2 Điều 7 của Thông tư số ..." chỉ làm văn bản kia mất
+# hiệu lực MỘT PHẦN. Trước đây câu này bị tính như thay thế toàn bộ, nên một
+# Nghị định bị bãi bỏ vài điều cũng bị gắn nhãn "đã bị thay thế" và bị hạ bậc
+# khi truy hồi - trong khi phần còn lại vẫn đang áp dụng.
+MAU_MOT_PHAN = re.compile(
+    r"\b(?:đi[eềể]u|kho[aả]n|đi[eể]m|ch[uư][oơ]ng|m[uụ]c|ph[uụ]\s*l[uụ]c|c[uụ]m\s*t[uừ]|một\s*số)\b",
+    re.IGNORECASE,
+)
+# "Nghị định này quy định chi tiết một số điều của Luật Giáo dục số 43/2019/QH14",
+# "Thông tư này hướng dẫn thi hành Nghị định số 71/2020/NĐ-CP". Chỉ dò ở trích
+# yếu và điều đầu tiên (phạm vi điều chỉnh): trong thân bài, "hướng dẫn" là
+# động từ thường ("nhà trường hướng dẫn học sinh...").
+MAU_HUONG_DAN = re.compile(
+    r"(quy\s*định\s*chi\s*tiết|hướng\s*dẫn\s*(?:thi\s*hành|thực\s*hiện)?)"
+    r"([^.;\n]{0,160})",
+    re.IGNORECASE,
+)
+# Luật được hướng dẫn thường chỉ gọi bằng tên, không kèm số hiệu: "quy định chi
+# tiết một số điều của Luật Giáo dục". Giữ nguyên cụm tên để sổ quan hệ tay
+# (quan_he_van_ban) tra ra số hiệu, thay vì đoán ở đây.
+MAU_TEN_LUAT = re.compile(r"\b(Luật\s+[^\d.;,\n(]{3,80}?)(?=\s*(?:số|năm|ngày|và|[.;,\n(]|$))")
+# Quy chế, Điều lệ, Phụ lục tách thành tệp riêng: "(Ban hành kèm theo Thông tư
+# số 49/2021/TT-BGDĐT ngày ...)". Chỉ nhận ở phần đầu tệp - câu "căn cứ Quy chế
+# ban hành kèm theo Quyết định số ..." trong thân bài là viện dẫn, không phải
+# quan hệ kèm theo.
+MAU_KEM_THEO = re.compile(r"k[eè]m\s*theo\s+([^\n]{0,120})", re.IGNORECASE)
+DO_DAI_VUNG_KEM_THEO = 600
 
 # "Căn cứ Nghị định số 37/2025/NĐ-CP ngày 26 tháng 02 năm 2025 của Chính phủ;"
 # Đây là loại quan hệ nhiều nhất trong văn bản quy phạm - mỗi Thông tư viện dẫn
@@ -121,6 +149,17 @@ class HoSoVanBan:
     # Được điền ở bước đối chiếu toàn kho (tên file, không phải số hiệu).
     bi_thay_the_boi: list[str] = field(default_factory=list)
     bi_sua_doi_boi: list[str] = field(default_factory=list)
+    # Văn bản này bãi bỏ/thay thế MỘT PHẦN (vài điều, khoản) của các số hiệu này.
+    bai_bo_mot_phan: list[str] = field(default_factory=list)
+    # Văn bản này quy định chi tiết / hướng dẫn thi hành các số hiệu này; phần
+    # chỉ có tên ("Luật Giáo dục") nằm ở huong_dan_ten chờ sổ quan hệ tra số.
+    huong_dan: list[str] = field(default_factory=list)
+    huong_dan_ten: list[str] = field(default_factory=list)
+    # Tệp này là Quy chế/Điều lệ/Phụ lục ban hành kèm theo số hiệu này.
+    kem_theo: str | None = None
+    bi_bai_bo_mot_phan_boi: list[str] = field(default_factory=list)
+    duoc_huong_dan_boi: list[str] = field(default_factory=list)
+    co_tep_kem_theo: list[str] = field(default_factory=list)
     # False với giáo án .pptx, ma trận đề .docx, thời khoá biểu .xlsx... Những
     # file này không có số hiệu là ĐÚNG, không phải trích trượt; tách ra để
     # không làm hỏng thống kê độ phủ và không đổ vào đồ thị như văn bản.
@@ -217,6 +256,48 @@ def trich_so_hieu(van_ban: str) -> list[str]:
     return ket_qua
 
 
+def _bo_dau_thuong(chuoi: str) -> str:
+    chuoi = unicodedata.normalize("NFD", chuoi or "")
+    chuoi = "".join(c for c in chuoi if not unicodedata.combining(c))
+    return chuoi.replace("đ", "d").replace("Đ", "D").lower()
+
+
+# Tên tệp ghi đủ số hiệu: "Nghị-định-125-2026-NĐ-CP.pdf",
+# "07_2026_TT-BGDDT_696111.doc", "thong-tu-27-2020-tt-bgddt.doc", "Luật-43-2019-QH14".
+# Bắt buộc số hiệu đứng ĐẦU tên (chỉ cho phép chữ chỉ loại văn bản đứng trước):
+# "huong-dan-thuc-hien-32-2020-tt-bgddt.pdf" là công văn hướng dẫn Thông tư 32,
+# không phải chính Thông tư 32.
+_TIEN_TO_LOAI = (
+    r"(?:(?:nghi[-_ ]*dinh|thong[-_ ]*tu(?:[-_ ]*lien[-_ ]*tich)?|quyet[-_ ]*dinh"
+    r"|nghi[-_ ]*quyet|chi[-_ ]*thi|luat|nd|tt|qd)[-_ ]*(?:so[-_ ]*)?)?"
+)
+MAU_SO_HIEU_TEN_FILE = re.compile(
+    rf"^{_TIEN_TO_LOAI}(\d{{1,4}})[-_ ]+(\d{{4}})[-_ ]+(ttlt|tt|nd|qd|nq|ct)[-_ ]+([a-z]{{2,10}})(?![a-z])"
+)
+MAU_SO_HIEU_LUAT_TEN_FILE = re.compile(
+    rf"^{_TIEN_TO_LOAI}(\d{{1,4}})[-_ ]+(\d{{4}})[-_ ]+(qh\d{{2}})(?![a-z\d])"
+)
+
+
+def so_hieu_tu_ten_file(ten_file: str) -> str | None:
+    """Số hiệu ghi đầy đủ trong tên tệp, hoặc None.
+
+    Tên tệp là chữ gõ máy (tải từ cổng văn bản rồi đặt theo số hiệu) nên đáng
+    tin hơn con số OCR từ ảnh quét - và là nguồn DUY NHẤT với các tệp mà dòng
+    "Số:" bị OCR đọc hỏng.
+    """
+    ten = _bo_dau_thuong(ten_file)
+    khop = MAU_SO_HIEU_TEN_FILE.match(ten)
+    if khop:
+        so, nam, loai, co_quan = khop.groups()
+        return f"{int(so)}/{nam}/{chuan_hoa_ma(loai.upper())}-{chuan_hoa_ma(co_quan.upper())}"
+    khop = MAU_SO_HIEU_LUAT_TEN_FILE.match(ten)
+    if khop:
+        so, nam, khoa = khop.groups()
+        return f"{int(so)}/{nam}/{khoa.upper()}"
+    return None
+
+
 def _so_dau_ten_file(ten_file: str) -> str | None:
     """'311-cp.signed.pdf' -> '311'; 'thong-tu-27-2020-tt-bgddt.doc' -> '27'."""
     khop = re.match(r"[^\d]*?(\d{1,4})\b", ten_file or "")
@@ -236,6 +317,11 @@ def _so_dau_ten_file(ten_file: str) -> str | None:
 MAU_CAN_CU = re.compile(r"\bC[ăâa]n\s*c[^\s]{0,3}\s+(?=\S)", re.IGNORECASE)
 # Bản dự thảo chưa có số: "Số: /2026/TT-BGDĐT".
 MAU_SO_HIEU_THIEU_SO = re.compile(r"/\s*(\d{4})\s*/\s*([A-ZĐ]{2,7})\s*[-–]\s*([A-ZĐ][A-ZĐ0-9]{1,14})")
+# Như trên nhưng không được là đuôi của một số hiệu đầy đủ ("12/2020/TT-BGDĐT"
+# trong trích yếu), và chỉ nhận mã loại văn bản có thật.
+MAU_O_SO_CON_NAM = re.compile(
+    r"(?<![\d/])/\s*(\d{4})\s*/\s*(TTLT|TT|NĐ|ND|QĐ|QD|NQ)\s*[-–]\s*([A-ZĐ][A-ZĐ0-9]{1,14})"
+)
 
 
 def cat_khoi_tieu_de(van_ban: str) -> str:
@@ -262,6 +348,11 @@ def suy_so_hieu_chinh(ten_file: str, phan_dau: str) -> tuple[str | None, bool]:
     thông tin nó là ID tải về chứ không phải số hiệu - "1483-ttg.signed.pdf"
     thật ra là Quyết định 92/QĐ-TTg, "281-cp.signed.pdf" là Nghị quyết 29/NQ-CP.
     """
+    # Tên tệp ghi đủ số hiệu thì lấy luôn: đó là chữ gõ máy, không qua OCR.
+    so_hieu_ten_file = so_hieu_tu_ten_file(ten_file)
+    if so_hieu_ten_file:
+        return so_hieu_ten_file, False
+
     tieu_de = cat_khoi_tieu_de(phan_dau)
     so_ten_file = _so_dau_ten_file(ten_file)
     cac_so_hieu = trich_so_hieu(tieu_de)
@@ -283,6 +374,20 @@ def suy_so_hieu_chinh(ten_file: str, phan_dau: str) -> tuple[str | None, bool]:
                 so_ten_file and cac_ung_vien[0].split("/")[0] != so_ten_file
             )
             return cac_ung_vien[0], khong_khop_ten_file
+
+    # Bản quét ĐÃ KÝ SỐ ("26-bgd.signed.pdf"): OCR đọc hỏng con số ở ô "Số:"
+    # ("Sá:v4ố /2023/TT-BGDĐT") nhưng còn giữ phần năm và mã. Ghép với số đầu
+    # tên tệp, và coi là suy đoán - xay_dung_ho_so sẽ xác nhận nếu thân văn bản
+    # tự nhắc lại đúng số hiệu này. Chỉ làm với bản đã ký: bản dự thảo cũng có
+    # ô số trống y hệt, điền vào là bịa ra văn bản không tồn tại (xem trên).
+    if so_ten_file and "signed" in (ten_file or "").lower():
+        khop = MAU_O_SO_CON_NAM.search(tieu_de)
+        if khop:
+            nam, loai, co_quan = khop.groups()
+            return (
+                f"{int(so_ten_file)}/{nam}/{chuan_hoa_ma(loai.upper())}-{chuan_hoa_ma(co_quan.upper())}",
+                True,
+            )
 
     return None, False
 
@@ -314,14 +419,35 @@ def trich_co_quan(phan_dau: str) -> str | None:
     return None
 
 
+def _vi_tri_so_hieu_dau(chuoi: str) -> int:
+    """Vị trí số hiệu đầu tiên trong chuỗi (-1 nếu không có)."""
+    cac_vi_tri = [
+        khop.start()
+        for mau in (MAU_SO_HIEU, MAU_SO_KHONG_NAM, MAU_SO_HIEU_LUAT)
+        for khop in [mau.search(chuoi)] if khop
+    ]
+    return min(cac_vi_tri) if cac_vi_tri else -1
+
+
 def trich_quan_he(van_ban: str) -> tuple[list[str], list[str]]:
     """
-    Trả về (danh sách số hiệu bị văn bản này thay thế/bãi bỏ,
+    Trả về (danh sách số hiệu bị văn bản này thay thế/bãi bỏ TOÀN BỘ,
             danh sách số hiệu bị văn bản này sửa đổi, bổ sung).
+    Phần bãi bỏ một vài điều khoản nằm ở trich_quan_he_day_du()["bai_bo_mot_phan"].
+    """
+    quan_he = trich_quan_he_day_du(van_ban)
+    return quan_he["thay_the"], quan_he["sua_doi"]
+
+
+def trich_quan_he_day_du(van_ban: str) -> dict[str, list[str]]:
+    """
+    {"thay_the": [...], "bai_bo_mot_phan": [...], "sua_doi": [...]} - số hiệu
+    các văn bản bị văn bản này thay thế toàn bộ / bãi bỏ một phần / sửa đổi.
     Bỏ qua câu ở thể bị động ("được sửa đổi, bổ sung bởi Luật số ...") vì khi đó
     chiều quan hệ ngược lại, và chiều đó sẽ được ghi nhận từ phía văn bản kia.
     """
     thay_the: list[str] = []
+    bai_bo_mot_phan: list[str] = []
     sua_doi: list[str] = []
     van_ban = van_ban or ""
     for khop in MAU_QUAN_HE.finditer(van_ban):
@@ -339,11 +465,97 @@ def trich_quan_he(van_ban: str) -> tuple[list[str], list[str]]:
             continue
         if MAU_BI_DONG_TRUOC.search(truoc_do) and MAU_BI_DONG_SAU.match(khop.group(3)):
             continue
-        dich = thay_the if dong_tu.startswith(("bãi bỏ", "thay thế", "hết hiệu lực")) else sua_doi
+        if dong_tu.startswith(("bãi bỏ", "thay thế", "hết hiệu lực")):
+            # Giữa động từ và số hiệu có "Điều/khoản/điểm..." thì chỉ một phần
+            # văn bản kia bị bãi bỏ.
+            vi_tri = _vi_tri_so_hieu_dau(khop.group(3))
+            phan_truoc = khop.group(3)[: max(vi_tri, 0)]
+            if not MAU_MOT_PHAN.search(phan_truoc):
+                dich = thay_the
+            elif dong_tu.startswith("thay thế") or re.search(r"c[uụ]m\s*t[uừ]", phan_truoc, re.IGNORECASE):
+                # Thay một điều khoản bằng nội dung mới, hay thay/bỏ vài cụm
+                # từ, là SỬA ĐỔI: văn bản kia vẫn áp dụng, chỉ khác chữ.
+                dich = sua_doi
+            else:
+                # Bãi bỏ hẳn điều, khoản, điểm: phần đó hết hiệu lực.
+                dich = bai_bo_mot_phan
+        else:
+            dich = sua_doi
         for so_hieu in cac_so_hieu:
             if so_hieu not in dich:
                 dich.append(so_hieu)
-    return thay_the, sua_doi
+    # Cùng một văn bản vừa bị thay toàn bộ vừa bị bãi bỏ vài điều (hai câu khác
+    # nhau) thì mức toàn bộ thắng.
+    bai_bo_mot_phan = [s for s in bai_bo_mot_phan if s not in thay_the]
+    return {"thay_the": thay_the, "bai_bo_mot_phan": bai_bo_mot_phan, "sua_doi": sua_doi}
+
+
+def _vung_pham_vi(van_ban: str) -> str:
+    """Trích yếu (khối tiêu đề) + đoạn đầu ngay sau khối "Căn cứ" - nơi văn bản
+    tự nói nó quy định chi tiết/hướng dẫn cái gì."""
+    van_ban = van_ban or ""
+    tieu_de = cat_khoi_tieu_de(van_ban[:DO_DAI_PHAN_DAU])
+    khop_het = MAU_HET_KHOI_CAN_CU.search(van_ban[:8000])
+    than_dau = van_ban[khop_het.start(): khop_het.start() + 1500] if khop_het else ""
+    return tieu_de + "\n" + than_dau
+
+
+def trich_huong_dan(van_ban: str) -> tuple[list[str], list[str]]:
+    """
+    (số hiệu, tên Luật chưa có số) mà văn bản này quy định chi tiết / hướng dẫn.
+
+    "Thông tư này hướng dẫn thi hành Nghị định số 71/2020/NĐ-CP" -> số hiệu.
+    "Quy định chi tiết một số điều của Luật Giáo dục" -> tên "Luật Giáo dục".
+    """
+    so_hieu: list[str] = []
+    ten: list[str] = []
+    for khop in MAU_HUONG_DAN.finditer(_vung_pham_vi(van_ban)):
+        phan_sau = khop.group(2)
+        cac_so = trich_so_hieu(phan_sau)
+        for so in cac_so:
+            if so not in so_hieu:
+                so_hieu.append(so)
+        if cac_so:
+            continue
+        for khop_ten in MAU_TEN_LUAT.finditer(phan_sau):
+            ten_luat = " ".join(khop_ten.group(1).split())
+            # "Luật này" là chính văn bản đang đọc.
+            if ten_luat.lower().startswith("luật này") or ten_luat in ten:
+                continue
+            ten.append(ten_luat)
+    return so_hieu, ten
+
+
+def _co_o_so_hieu(tieu_de: str, so_hieu: str) -> bool:
+    """Số hiệu này có đứng ngay sau chữ "Số" ở khối tiêu đề không."""
+    return any(
+        so_hieu in trich_so_hieu(tieu_de[khop.end(): khop.end() + 40])
+        for khop in MAU_DONG_SO.finditer(tieu_de)
+    )
+
+
+def trich_kem_theo(van_ban: str) -> str | None:
+    """Số hiệu văn bản mà tệp này được ban hành kèm theo (Quy chế, Phụ lục...).
+
+    Chỉ gọi cho tệp KHÔNG có số hiệu riêng: văn bản có số hiệu thì cụm "kèm
+    theo" ở trích yếu của nó là đối tượng bị sửa ("Thông tư sửa đổi Quy chế ban
+    hành kèm theo Thông tư số 24/2024"), không phải chính nó là phụ lục.
+    """
+    vung = (van_ban or "")[:DO_DAI_VUNG_KEM_THEO]
+    # Khối "Căn cứ" trở đi là viện dẫn, không phải quan hệ kèm theo.
+    khop_can_cu = MAU_CAN_CU.search(vung)
+    if khop_can_cu:
+        vung = vung[: khop_can_cu.start()]
+    for khop in MAU_KEM_THEO.finditer(vung):
+        # Dự thảo và bản hợp nhất cũng không có số hiệu riêng, nhưng cụm "kèm
+        # theo" của chúng nằm trong câu sửa đổi/hợp nhất.
+        truoc_do = _bo_dau_thuong(vung[max(0, khop.start() - 200): khop.start()])
+        if re.search(r"sua\s*doi|bo\s*sung|bai\s*bo|thay\s*the|hop\s*nhat", truoc_do):
+            continue
+        cac_so = trich_so_hieu(khop.group(1))
+        if cac_so:
+            return cac_so[0]
+    return None
 
 
 def trich_can_cu(van_ban: str) -> list[str]:
@@ -405,6 +617,13 @@ def xay_dung_ho_so(van_ban_theo_file: dict[str, str]) -> dict[str, HoSoVanBan]:
     for ten_file, van_ban in van_ban_theo_file.items():
         phan_dau = van_ban[:DO_DAI_PHAN_DAU]
         so_hieu, uoc_doan = suy_so_hieu_chinh(ten_file, phan_dau)
+        # Số hiệu ghép từ tên bản đã ký: thân văn bản tự nhắc lại đúng số đó
+        # ("Ban hành kèm theo Thông tư số 26/2023/TT-BGDĐT") thì hết là đoán.
+        if (
+            so_hieu and uoc_doan and "signed" in ten_file.lower()
+            and so_hieu in trich_so_hieu(van_ban[DO_DAI_PHAN_DAU:])
+        ):
+            uoc_doan = False
         # Ngày ban hành cũng phải lấy trong khối tiêu đề, nếu không sẽ nhặt
         # nhầm ngày của văn bản được viện dẫn ở phần "Căn cứ".
         tieu_de = cat_khoi_tieu_de(phan_dau)
@@ -426,13 +645,26 @@ def xay_dung_ho_so(van_ban_theo_file: dict[str, str]) -> dict[str, HoSoVanBan]:
             co_quan = co_quan or muc_llm.get("co_quan")
             ngay_ban_hanh = ngay_ban_hanh or muc_llm.get("ngay_ban_hanh")
 
-        thay_the, sua_doi = trich_quan_he(van_ban)
+        quan_he = trich_quan_he_day_du(van_ban)
         can_cu = trich_can_cu(van_ban)
+        huong_dan, huong_dan_ten = trich_huong_dan(van_ban)
+        kem_theo = trich_kem_theo(van_ban)
+        if kem_theo and kem_theo == so_hieu and not _co_o_so_hieu(tieu_de, so_hieu):
+            # "PHỤ LỤC TT 44.docx" + "(Kèm theo Thông tư số 44/2026/TT-BGDĐT)":
+            # số đầu tên tệp khớp số hiệu nên bị nhận là chính Thông tư 44.
+            # Không có ô "Số:" mang số đó thì đây là phụ lục của nó.
+            so_hieu, uoc_doan = None, False
+        elif so_hieu:
+            # Văn bản có số hiệu riêng: "kèm theo" ở trích yếu là đối tượng bị
+            # sửa, không phải chính nó là phụ lục (xem trich_kem_theo).
+            kem_theo = None
         # Văn bản không tự thay thế chính nó (câu "Thông tư này thay thế Thông
         # tư số <chính nó>" không tồn tại, nhưng OCR lỗi có thể tạo ra).
-        thay_the = [s for s in thay_the if s != so_hieu]
-        sua_doi = [s for s in sua_doi if s != so_hieu]
+        thay_the = [s for s in quan_he["thay_the"] if s != so_hieu]
+        bai_bo_mot_phan = [s for s in quan_he["bai_bo_mot_phan"] if s != so_hieu]
+        sua_doi = [s for s in quan_he["sua_doi"] if s != so_hieu]
         can_cu = [s for s in can_cu if s != so_hieu]
+        huong_dan = [s for s in huong_dan if s != so_hieu]
         ho_so[ten_file] = HoSoVanBan(
             ten_file=ten_file,
             so_hieu=so_hieu,
@@ -443,7 +675,13 @@ def xay_dung_ho_so(van_ban_theo_file: dict[str, str]) -> dict[str, HoSoVanBan]:
             thay_the=thay_the,
             sua_doi=sua_doi,
             can_cu=can_cu,
-            la_qppl=bool(MAU_DAU_HIEU_QPPL.search(phan_dau)),
+            bai_bo_mot_phan=bai_bo_mot_phan,
+            huong_dan=huong_dan,
+            huong_dan_ten=huong_dan_ten,
+            kem_theo=kem_theo,
+            # Phụ lục/Quy chế tách tệp không mở đầu bằng quốc hiệu nhưng vẫn là
+            # một phần của văn bản quy phạm.
+            la_qppl=bool(MAU_DAU_HIEU_QPPL.search(phan_dau)) or bool(kem_theo),
             la_du_thao=la_du_thao,
             nguon_meta=nguon_meta,
         )
@@ -463,6 +701,18 @@ def xay_dung_ho_so(van_ban_theo_file: dict[str, str]) -> dict[str, HoSoVanBan]:
             for file_dich in theo_so_hieu.get(so_hieu, []):
                 if file_dich != ten_file:
                     ho_so[file_dich].bi_sua_doi_boi.append(ten_file)
+        for so_hieu in muc.bai_bo_mot_phan:
+            for file_dich in theo_so_hieu.get(so_hieu, []):
+                if file_dich != ten_file:
+                    ho_so[file_dich].bi_bai_bo_mot_phan_boi.append(ten_file)
+        for so_hieu in muc.huong_dan:
+            for file_dich in theo_so_hieu.get(so_hieu, []):
+                if file_dich != ten_file:
+                    ho_so[file_dich].duoc_huong_dan_boi.append(ten_file)
+        if muc.kem_theo:
+            for file_dich in theo_so_hieu.get(muc.kem_theo, []):
+                if file_dich != ten_file:
+                    ho_so[file_dich].co_tep_kem_theo.append(ten_file)
     return ho_so
 
 

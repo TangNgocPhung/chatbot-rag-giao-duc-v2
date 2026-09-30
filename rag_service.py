@@ -25,6 +25,7 @@ import goi_y_cau_hoi
 import kiem_tra_tra_loi
 import hieu_luc_bo_sung
 import phan_loai_giao_duc
+import quan_he_van_ban
 import quan_ly_kho
 import tai_khoan
 import danh_gia_hoc_sinh
@@ -358,6 +359,10 @@ class RAGService:
         # Nhãn môn/cấp học/lớp của từng file, dùng cho bộ lọc phạm vi truy xuất.
         self.phan_loai: dict = {}
         self.tinh_trang_hieu_luc: dict = {}
+        # Đồ thị thay thế/sửa đổi/hướng dẫn/kèm theo giữa các văn bản, và các
+        # đoạn của từng tệp để kéo văn bản đi kèm vào ngữ cảnh.
+        self.so_quan_he = quan_he_van_ban.SoQuanHe(so_tay={})
+        self._doan_theo_tep: dict[str, list] = {}
         self.drive = TrangThaiDrive()
         self._drive_lock = threading.Lock()
         self._drive_auto_started = False
@@ -477,17 +482,34 @@ class RAGService:
                 self.vector_store, self.ho_so_van_ban
             )
             hieu_luc_bo_sung.luu(self.tinh_trang_hieu_luc)
+            # Gộp quan hệ trích từ nội dung với sổ nhập tay thành một đồ thị
+            # trên số hiệu - biết cả văn bản cũ đã rời kho bị thay bởi cái gì.
+            self.so_quan_he = quan_he_van_ban.SoQuanHe(
+                self.ho_so_van_ban, self.tinh_trang_hieu_luc
+            )
+            self.so_quan_he.luu()
         except Exception as exc:
             # Hồ sơ văn bản là lớp thông tin thêm; hỏng thì chatbot vẫn phải chạy.
             self.ho_so_van_ban = {}
             self.tinh_trang_hieu_luc = {}
+            self.so_quan_he = quan_he_van_ban.SoQuanHe(so_tay={})
             print(f"⚠️  Không lập được hồ sơ văn bản: {exc}")
             return
 
+        doan_theo_tep: dict[str, list] = {}
         for doc in self.vector_store.docstore._dict.values():
-            muc = self.ho_so_van_ban.get(doc.metadata.get("source_file"))
-            if muc and muc.bi_thay_the_boi:
+            ten_file = doc.metadata.get("source_file")
+            doan_theo_tep.setdefault(ten_file, []).append(doc)
+            # Hạ bậc theo đồ thị chứ không theo bi_thay_the_boi của từng tệp:
+            # đồ thị biết thêm quan hệ ở sổ tay, và không coi văn bản bị bãi bỏ
+            # vài điều hay bị thay bởi văn bản chưa tới ngày hiệu lực là hết hiệu lực.
+            if self.so_quan_he.het_hieu_luc(ten_file):
                 doc.metadata["_het_hieu_luc"] = True
+            # Cho trọng số thời gian khi xếp hạng (hybrid_retrieval._uu_tien_van_ban_moi).
+            ngay = self.so_quan_he.ngay_cua_tep(ten_file)
+            if ngay:
+                doc.metadata["_ngay_van_ban"] = ngay
+        self._doan_theo_tep = doan_theo_tep
 
     def _lap_phan_loai(self) -> None:
         """
@@ -1267,15 +1289,102 @@ class RAGService:
         # ghi rõ môn khác, lớp khác (xem phan_loai_giao_duc.bo_loc_tu_cau_hoi).
         if bo_loc is None and os.getenv("RAG_LOC_THEO_CAU_HOI", "1") == "1":
             bo_loc = phan_loai_giao_duc.bo_loc_tu_cau_hoi(question)
+        # Hỏi quy định hiện hành: chỉ tìm trong văn bản còn hiệu lực. Hỏi quy
+        # định trước đây ("trước đây theo văn bản 124", "năm 2023"): mở cả kho
+        # văn bản cũ - chính vì thế văn bản cũ được giữ chứ không xoá. Hiệu lực
+        # tính theo đồ thị ngay lúc hỏi, nên văn bản thay thế vừa tới ngày hiệu
+        # lực là có tác dụng luôn, không đợi khởi động lại.
+        che_do, _ = quan_he_van_ban.che_do_thoi_gian(question)
+        lich_su = che_do == "lich_su"
+        loc_hieu_luc = None
+        if not lich_su and os.getenv("RAG_LOC_HIEU_LUC", "1") == "1":
+            so = self.so_quan_he
+            loc_hieu_luc = lambda doc: not so.het_hieu_luc(doc.metadata.get("source_file"))
         return truy_hoi(
             question, self.vector_store, self.bm25_retriever,
             so_ket_qua or SO_KET_QUA_CUOI, bo_loc, self.tu_vung,
+            loc_hieu_luc, lich_su,
         )
+
+    def _them_van_ban_di_kem(self, documents: list, question: str,
+                             hom_nay=None) -> tuple[list, list[str]]:
+        """
+        Kéo thêm văn bản phải đọc CÙNG nguồn vừa truy hồi được, và gắn tình
+        trạng hiệu lực vào từng đoạn cho prompt. Trả về (đoạn, ghi chú hiệu lực
+        về văn bản mà câu hỏi nhắc tới).
+
+        Truy hồi theo ngữ nghĩa chỉ tìm thấy đoạn GIỐNG câu hỏi. Thông tư sửa
+        đổi "khoản 2 Điều 5 được sửa đổi như sau: ..." không giống câu hỏi bằng
+        chính Điều 5 của văn bản gốc, nên hay bị bỏ lại - và mô hình trả lời
+        theo chữ cũ. Ở đây đi theo đồ thị quan hệ: nguồn [1] đã được Thông tư
+        B sửa đổi thì lấy đoạn khớp nhất của B đưa vào cùng.
+
+        Số đoạn thêm bị chặn bởi RAG_SO_DOAN_DI_KEM (mặc định 2): mỗi đoạn là
+        ~900 ký tự prompt, tức vài giây chờ trên CPU.
+
+        `hom_nay` là mốc thời gian câu hỏi muốn tra (None = hôm nay): hỏi "năm
+        2023" thì hiệu lực ghi cho mô hình là hiệu lực tại năm 2023.
+        """
+        so = self.so_quan_he
+        ghi_chu, keo_theo_cau_hoi = so.ghi_chu_cau_hoi(question, hom_nay)
+
+        def ban_sao(doc, **them):
+            # Đoạn trong docstore dùng chung cho mọi câu hỏi: chép ra rồi mới
+            # gắn thông tin của riêng lượt này.
+            return type(doc)(page_content=doc.page_content, metadata={**doc.metadata, **them})
+
+        def hieu_luc_cho_prompt(doc) -> str | None:
+            nhan = so.nhan_hieu_luc(doc.metadata.get("source_file"), doc.page_content, hom_nay)
+            return f"{nhan['label']} - {nhan['note']}" if nhan else None
+
+        ket_qua = [
+            ban_sao(doc, _hieu_luc=hieu_luc_cho_prompt(doc)) for doc in documents
+        ]
+        gioi_han = int(os.getenv("RAG_SO_DOAN_DI_KEM", "2"))
+        if gioi_han <= 0 or not self._doan_theo_tep:
+            return ket_qua, ghi_chu
+
+        # (số EVIDENCE của nguồn gốc - None nếu kéo theo câu hỏi, mục đi kèm)
+        ung_vien = [(None, muc) for muc in keo_theo_cau_hoi]
+        for so_evidence, doc in enumerate(documents, 1):
+            ten_file = doc.metadata.get("source_file")
+            for muc in so.di_kem(ten_file, hom_nay):
+                ung_vien.append((so_evidence, {
+                    **muc,
+                    "cua": so.nhan_nut(so.nut_cua_tep.get(ten_file, "")) or ten_file,
+                    "so_hieu_goc": so.nut_cua_tep.get(ten_file),
+                }))
+
+        tep_da_co = {doc.metadata.get("source_file") for doc in documents}
+        so_da_them = 0
+        for so_evidence, muc in ung_vien:
+            if so_da_them >= gioi_han:
+                break
+            if muc["tep"] in tep_da_co:
+                continue
+            doan = quan_he_van_ban.chon_doan_tot_nhat(
+                self._doan_theo_tep.get(muc["tep"], []), question, muc.get("so_hieu_goc")
+            )
+            if doan is None:
+                continue
+            tep_da_co.add(muc["tep"])
+            so_da_them += 1
+            ket_qua.append(ban_sao(
+                doan,
+                _hieu_luc=hieu_luc_cho_prompt(doan),
+                _di_kem={
+                    "evidence": so_evidence,
+                    "vai_tro": muc["vai_tro"],
+                    "cua": muc["cua"],
+                },
+            ))
+        return ket_qua, ghi_chu
 
     @staticmethod
     def _sources(
         documents, ho_so: dict | None = None, tinh_trang: dict | None = None,
-        cau_hoi: str = "",
+        cau_hoi: str = "", so_quan_he: quan_he_van_ban.SoQuanHe | None = None,
+        hom_nay=None,
     ) -> list[dict]:
         sources = []
         for evidence_number, doc in enumerate(documents, 1):
@@ -1311,7 +1420,9 @@ class RAGService:
                     "sua_doi": muc_ho_so.sua_doi,
                 } if muc_ho_so and muc_ho_so.so_hieu else None,
                 # Nhãn ngắn để giao diện gắn ngay cạnh chip nguồn.
-                "validity": hieu_luc_bo_sung.nhan_hieu_luc(
+                "validity": so_quan_he.nhan_hieu_luc(
+                    source_name, doc.page_content, hom_nay
+                ) if so_quan_he is not None else hieu_luc_bo_sung.nhan_hieu_luc(
                     muc_ho_so, muc_thoi_gian, doc.page_content
                 ),
                 "page": so_trang,
@@ -1329,6 +1440,27 @@ class RAGService:
                 # đúng các dòng được trích trên trang gốc (xem dinh_vi_doan).
                 source["doan"] = " ".join(doc.page_content.split())[:DO_DAI_DOAN_DINH_VI]
                 source["trong_tam"] = cau_trong_tam(doc.page_content, cau_hoi)
+            if so_quan_he is not None:
+                # Văn bản thay thế/sửa đổi/hướng dẫn/kèm theo, kể cả cái không
+                # có trong kho - giao diện liệt kê ngay dưới chip nguồn.
+                source["lien_quan"] = [
+                    {
+                        "mo_ta": muc["mo_ta"],
+                        "quan_he": muc["quan_he"],
+                        "chieu": muc["chieu"],
+                        "nhan": muc["nhan"],
+                        "tep": muc["tep"][0] if muc["tep"] else None,
+                        "url": (
+                            f"/api/source?name={quote(muc['tep'][0])}" if muc["tep"] else None
+                        ),
+                    }
+                    for muc in so_quan_he.lien_quan(source_name, gioi_han=5)
+                ]
+            di_kem = doc.metadata.get("_di_kem")
+            if di_kem:
+                # Đoạn được kéo thêm vì đi kèm một nguồn khác, không phải vì
+                # tự khớp câu hỏi - nói rõ để người đọc hiểu vì sao nó ở đây.
+                source["di_kem"] = dict(di_kem)
             sources.append(source)
         return sources
 
@@ -1671,6 +1803,10 @@ class RAGService:
         # lọc sinh ra để ngăn.
         if pham_vi:
             return False
+        # Hỏi quy định trước đây / tại một mốc ngày: "năm 2023" và "năm 2025"
+        # gần như trùng về ngữ nghĩa mà câu trả lời dựa trên văn bản khác nhau.
+        if quan_he_van_ban.che_do_thoi_gian(question)[0] == "lich_su":
+            return False
         return not tim_url_trong_cau_hoi(question)
 
     def _vector_cau_hoi(self, question: str) -> list[float] | None:
@@ -1929,6 +2065,13 @@ class RAGService:
             ly_do_chan = None if hoi_doan_khoanh else kiem_tra_tra_loi.ly_do_bo_qua(
                 documents, retrieval_question, self.tu_vung
             )
+            # Hỏi đích danh văn bản đã bị thay mà kho chỉ còn văn bản mới: truy
+            # hồi không thấy gì khớp số hiệu cũ, nhưng câu trả lời đúng là
+            # "đã bị X thay, theo X thì..." chứ không phải "không tìm thấy".
+            if ly_do_chan and not hoi_doan_khoanh and self.so_quan_he.ghi_chu_cau_hoi(
+                retrieval_question
+            )[1]:
+                ly_do_chan = None
             if os.getenv("RAG_TU_CHOI_KHI_LAC_DE", "1") == "1" and ly_do_chan:
                 yield {"type": "sources", "sources": []}
                 # Đang lọc phạm vi mà nói trống không "không có trong tài liệu"
@@ -1963,8 +2106,18 @@ class RAGService:
                 }
                 return
 
+            # Giữ bộ đoạn truy hồi gốc làm khoá cache: lần sau truy hồi ra đúng
+            # bộ này thì phần đi kèm cũng y hệt, vì nó suy ra từ chính bộ này.
+            documents_truy_hoi = documents
+            # Hỏi quy định trước đây thì hiệu lực tính tại mốc được hỏi (nếu
+            # có), và mô hình được phép dựa vào văn bản nay đã hết hiệu lực.
+            che_do_thoi_gian, thoi_diem = quan_he_van_ban.che_do_thoi_gian(retrieval_question)
+            documents, ghi_chu_hieu_luc = self._them_van_ban_di_kem(
+                documents, retrieval_question, thoi_diem
+            )
             cac_nguon = self._sources(
-                documents, self.ho_so_van_ban, self.tinh_trang_hieu_luc, retrieval_question
+                documents, self.ho_so_van_ban, self.tinh_trang_hieu_luc, retrieval_question,
+                so_quan_he=self.so_quan_he, hom_nay=thoi_diem,
             )
             yield {"type": "sources", "sources": cac_nguon}
 
@@ -1981,8 +2134,12 @@ class RAGService:
                     "kind": canh_bao["loai"],
                 }
                 for canh_bao in (
-                    van_ban_meta.canh_bao_hieu_luc(self.ho_so_van_ban, cac_nguon)
-                    + hieu_luc_bo_sung.canh_bao(self.tinh_trang_hieu_luc, cac_nguon)
+                    [
+                        {"thong_bao": ghi_chu, "evidence": None, "loai": "cau_hoi"}
+                        for ghi_chu in ghi_chu_hieu_luc
+                    ]
+                    + self.so_quan_he.canh_bao(cac_nguon, thoi_diem)
+                    + hieu_luc_bo_sung.canh_bao(self.tinh_trang_hieu_luc, cac_nguon, thoi_diem)
                     + hieu_luc_bo_sung.canh_bao_doan(cac_nguon, documents)
                 )
             ]
@@ -1993,6 +2150,23 @@ class RAGService:
                 "message": "Đang soạn câu trả lời",
             }
             context = self.format_docs(documents)
+            if ghi_chu_hieu_luc:
+                # Văn bản người hỏi nhắc tới không còn nguyên hiệu lực: nói cho
+                # mô hình biết trước, để nó trả lời theo văn bản mới và nói rõ
+                # văn bản cũ đã bị thay, thay vì im lặng dùng số hiệu cũ.
+                context = (
+                    "TÌNH TRẠNG VĂN BẢN ĐƯỢC HỎI: " + " ".join(ghi_chu_hieu_luc) + "\n\n" + context
+                )
+            if che_do_thoi_gian == "lich_su":
+                # Luật 7) của prompt cấm dựa vào khối hết hiệu lực - đúng với
+                # câu hỏi hiện hành, sai với câu tra quy định trước đây.
+                context = (
+                    "CÂU HỎI VỀ QUY ĐỊNH TRƯỚC ĐÂY"
+                    + (f" (tại ngày {thoi_diem.day}/{thoi_diem.month}/{thoi_diem.year},"
+                       " dòng Hiệu lực tính theo ngày này)" if thoi_diem else "")
+                    + ": được dựa vào văn bản nay đã hết hiệu lực, nhưng phải nói rõ "
+                    "văn bản đó đã bị văn bản nào thay.\n\n" + context
+                )
             cau_tra_loi = ""
             for token in self._phat_token(
                 self._chain_tra_loi(doan_khoanh, ten_mo_hinh),
@@ -2034,7 +2208,7 @@ class RAGService:
                     model=ten_mo_hinh,
                     van_tay=self._van_tay_chi_muc(),
                     canh_bao_hieu_luc=cac_canh_bao_hieu_luc,
-                    khoa_chunk=cache_ngu_nghia.khoa_chunk_cua(documents),
+                    khoa_chunk=cache_ngu_nghia.khoa_chunk_cua(documents_truy_hoi),
                 )
             yield {
                 "type": "done",

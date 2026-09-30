@@ -34,6 +34,7 @@ file_da_xu_ly.json
 phan_loai_tai_lieu.json
 tinh_trang_hieu_luc.json
 ho_so_van_ban.json
+quan_he_van_ban.json
 meta_llm.json
 cache_cau_tra_loi.json
 ket_qua_benchmark*.json

@@ -667,6 +667,16 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .source-validity.muc-vua { color: var(--warn-ink); background: var(--warn-soft); }
 .source-validity.muc-thap { color: var(--ok); background: var(--ok-soft); }
 .source-chip.canh-bao-cao { border-color: var(--danger-line); }
+/* Văn bản đi kèm / liên quan (thay thế, sửa đổi, hướng dẫn, kèm theo) */
+.source-di-kem { flex: 0 0 auto; margin-left: 2px; padding: 1px 7px; color: var(--navy); background: var(--blue-soft); border-radius: 20px; font-size: 10px; font-style: normal; font-weight: 700; white-space: nowrap; }
+.source-lien-quan { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: -4px 0 2px 26px; color: var(--ink-mute); font-size: 11px; line-height: 1.45; }
+.lien-quan-muc { min-width: 0; color: var(--ink-soft); text-decoration: none; overflow-wrap: anywhere; }
+.lien-quan-muc b { color: var(--ink-mute); font-weight: 650; }
+a.lien-quan-muc:hover { color: var(--blue); text-decoration: underline; }
+.lien-quan-muc.ngoai-kho { color: var(--ink-mute); }
+/* Chỉ tô màu chiều bị tác động ("Bị thay thế bởi..."); "Thay thế: X" là thông tin thường. */
+.lien-quan-muc.quan-he-thay_the.chieu-vao b { color: var(--danger-ink); }
+.lien-quan-muc.quan-he-sua_doi.chieu-vao b, .lien-quan-muc.quan-he-bai_bo_mot_phan.chieu-vao b { color: var(--warn-ink); }
 
 /* --- Gập thanh bên trên màn hình lớn --- */
 .app-shell { transition: grid-template-columns .2s ease; }

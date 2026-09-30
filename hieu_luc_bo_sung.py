@@ -105,8 +105,16 @@ class TinhTrangThoiGian:
         return f"{int(ngay)}/{int(thang)}/{nam}"
 
 
-def phat_hien_du_thao(phan_dau: str) -> bool:
-    """Nhận diện bản dự thảo qua hai ô còn bỏ trống ở khối tiêu đề."""
+def phat_hien_du_thao(phan_dau: str, ten_file: str = "") -> bool:
+    """Nhận diện bản dự thảo qua hai ô còn bỏ trống ở khối tiêu đề.
+
+    Tệp tải từ cổng văn bản mang đuôi ".signed" là bản ĐÃ KÝ SỐ, tức đã ban
+    hành. Bản quét của chúng hay bị OCR đọc hỏng con số ở ô "Số:" ("Sá:v4ố
+    /2023/TT-BGDĐT"), trông y như ô bỏ trống - 13 văn bản đã ký từng bị gắn
+    nhãn dự thảo vì vậy.
+    """
+    if "signed" in (ten_file or "").lower():
+        return False
     tieu_de = nen(van_ban_meta.cat_khoi_tieu_de(phan_dau))
     if not MAU_DANG_VAN_BAN.search(tieu_de):
         return False
@@ -180,7 +188,7 @@ def xay_dung(
         muc = ho_so.get(ten_file)
         tinh_trang[ten_file] = TinhTrangThoiGian(
             ten_file=ten_file,
-            la_du_thao=phat_hien_du_thao(phan_dau),
+            la_du_thao=phat_hien_du_thao(phan_dau, ten_file),
             ngay_hieu_luc=trich_ngay_hieu_luc(
                 van_ban, muc.ngay_ban_hanh if muc else None
             ),

@@ -1214,9 +1214,47 @@ function renderSources(container, sourceList) {
       ].filter(Boolean).join('\n');
       chip.append(hoSo);
     }
+    // Đoạn được kéo thêm vì đi kèm một nguồn khác (văn bản sửa đổi, thay thế,
+    // hướng dẫn...), không phải vì tự khớp câu hỏi.
+    if (source.di_kem) {
+      const diKem = document.createElement('em');
+      diKem.className = 'source-di-kem';
+      diKem.textContent = source.di_kem.evidence
+        ? `${source.di_kem.vai_tro} của [${source.di_kem.evidence}]`
+        : `${source.di_kem.vai_tro} của ${source.di_kem.cua}`;
+      chip.append(diKem);
+    }
     container.append(chip);
+    if (source.lien_quan?.length) {
+      container.append(renderLienQuan(source.lien_quan));
+    }
   });
   renderTrangGoc(container, sourceList, cacNhan);
+}
+
+// Văn bản thay thế / sửa đổi / hướng dẫn / kèm theo của một nguồn, kể cả văn
+// bản chưa có trong kho (chỉ hiện số hiệu, không bấm được).
+function renderLienQuan(cacMuc) {
+  const hang = document.createElement('div');
+  hang.className = 'source-lien-quan';
+  for (const muc of cacMuc) {
+    const moDuoc = Boolean(muc.url) && coQuyen('xem_kho');
+    const item = document.createElement(moDuoc ? 'a' : 'span');
+    item.className = `lien-quan-muc quan-he-${muc.quan_he} chieu-${muc.chieu}${muc.url ? '' : ' ngoai-kho'}`;
+    if (moDuoc) {
+      item.href = muc.url;
+      item.target = '_blank';
+      item.rel = 'noopener noreferrer';
+      item.title = `Mở ${muc.tep}`;
+    } else {
+      item.title = muc.url ? muc.tep : 'Văn bản này chưa có trong kho';
+    }
+    const moTa = document.createElement('b');
+    moTa.textContent = `${muc.mo_ta}: `;
+    item.append(moTa, document.createTextNode(muc.nhan));
+    hang.append(item);
+  }
+  return hang;
 }
 
 function nhanNguon(source, trang, index) {
