@@ -356,6 +356,95 @@ _TU_HOI = {
 _SO_Y_CHINH_TOI_DA = 3
 _MA_HIEU_LUC_CAN_HOI = {"bi_thay_the", "bi_sua_doi", "doan_sua_doi", "chua_hieu_luc", "du_thao"}
 
+# ============================================================
+# CHỦ ĐỀ CÂU HỎI
+# ============================================================
+# Động từ chính của câu hỏi: phần đứng trước là chủ thể được hỏi. "Chương trình
+# giáo dục phổ thông 2018 | đặt ra những yêu cầu nào về phẩm chất và năng lực".
+# Cố ý không có "dạy", "học": "Kế hoạch bài dạy theo Công văn 5512 gồm..." sẽ bị
+# cắt ở "Kế hoạch bài". Cũng không có "ban hành", "sửa đổi", "thay thế" - chúng
+# thường nằm trong chính tên văn bản ("Thông tư ban hành quy chế tuyển sinh").
+_DONG_TU_CHINH = re.compile(
+    r"\s(?:đặt ra|quy định|bao gồm|gồm|có|là|được|cần|phải|áp dụng|dành|trình bày"
+    r"|hướng dẫn|nêu|yêu cầu|xác định|thực hiện|sử dụng)\s",
+    re.IGNORECASE,
+)
+# Đuôi hỏi dính vào phạm vi: "về chương trình mầm non là gì" -> "chương trình mầm non".
+_DUOI_CAU_HOI = re.compile(
+    r"\s+(?:là gì|là như thế nào|như thế nào|thế nào|ra sao|gồm những gì|những gì"
+    r"|gì|nào|không)$",
+    re.IGNORECASE,
+)
+# Hai khuôn gợi ý của chính module này: bấm vào rồi hỏi tiếp vẫn giữ chủ thể.
+_KHUON_CO_CHU_THE = re.compile(
+    r"^(?:nói rõ hơn|giải thích thêm) về .+? trong (.+?)\??$", re.IGNORECASE
+)
+_SO_TU_CHU_THE = (2, 10)
+# Chủ thể là người thì "... trong học sinh phổ thông" thành câu ngô nghê.
+_CHU_THE_LA_NGUOI = (
+    "học sinh", "giáo viên", "sinh viên", "người", "trẻ", "cán bộ", "nhà giáo",
+    "phụ huynh", "tôi", "em",
+)
+# Tên văn bản có số ("Chương trình giáo dục phổ thông 2018", "Công văn 5512")
+# giữ chữ hoa đầu như một tên riêng; còn lại hạ xuống khi đứng giữa câu.
+_TEN_VAN_BAN_CO_SO = re.compile(
+    rf"^(?:chương trình|{'|'.join(_LOAI_VAN_BAN_MO_DAU)})\b.*\d", re.IGNORECASE
+)
+_DO_DAI_GOI_Y_TOI_DA = 120
+
+
+def tach_chu_de(cau_hoi: str) -> tuple[str | None, str]:
+    """(chủ thể, phạm vi được hỏi) của một câu hỏi, chủ thể None khi không tách được.
+
+    "Chương trình giáo dục phổ thông 2018 đặt ra những yêu cầu nào về phẩm chất
+    và năng lực?" -> ("Chương trình giáo dục phổ thông 2018", "phẩm chất và năng
+    lực"). Không có động từ chính nào ("Tiếng trung dạy từ lớp mấy") thì không
+    đoán: gắn nhầm chủ thể vào gợi ý còn tệ hơn không gắn.
+    """
+    cau = re.sub(r"\s+", " ", str(cau_hoi or "")).strip().rstrip("?.! ")
+    khop = _KHUON_CO_CHU_THE.match(cau)
+    if khop:
+        return khop.group(1).strip(), ""
+    # Động từ đầu tiên có ít nhất hai chữ đứng trước: "Các quy định hiện hành về
+    # ..." thì "quy định" ở vị trí thứ hai là danh từ, chưa phải động từ chính.
+    dong_tu = next(
+        (khop for khop in _DONG_TU_CHINH.finditer(cau)
+         if len(cau[: khop.start()].split()) >= _SO_TU_CHU_THE[0]),
+        None,
+    )
+    if not dong_tu:
+        return None, ""
+    chu_the = cau[: dong_tu.start()].strip(" ,")
+    # "Năng lực chung trong Chương trình ... gồm những gì": chủ thể là phần sau
+    # "trong" - chỉ khi phần đó là tên riêng; "Việc ứng dụng công nghệ trong
+    # giáo dục đại học" thì cả cụm mới là chủ thể.
+    if " trong " in chu_the and chu_the.rsplit(" trong ", 1)[1][:1].isupper():
+        chu_the = chu_the.rsplit(" trong ", 1)[1]
+    pham_vi = ""
+    phan_sau = cau[dong_tu.end():]
+    if " về " in f" {phan_sau} ":
+        pham_vi = _DUOI_CAU_HOI.sub("", f" {phan_sau}".split(" về ", 1)[1]).strip(" ,")
+    so_tu = len(chu_the.split())
+    if not (_SO_TU_CHU_THE[0] <= so_tu <= _SO_TU_CHU_THE[1]):
+        return None, pham_vi
+    # Chủ thể là người, hoặc chỉ trơ tên loại văn bản ("Thông tư") - gắn vào
+    # gợi ý thành "... quy định về thông tư?" chẳng nói lên gì.
+    if chu_the.casefold().startswith(_CHU_THE_LA_NGUOI):
+        return None, pham_vi
+    if chu_the.casefold() in _LOAI_VAN_BAN_MO_DAU:
+        return None, pham_vi
+    return chu_the, pham_vi
+
+
+def _chu_the_giua_cau(chu_the: str) -> str:
+    if _TEN_VAN_BAN_CO_SO.match(chu_the):
+        return chu_the
+    tu = chu_the.split()
+    # "Việc", "Khung" hạ xuống; "ICT", "Hùng Vương" giữ nguyên.
+    if tu[0][1:].islower() and (len(tu) == 1 or tu[1][:1].islower()):
+        return chu_the[0].lower() + chu_the[1:]
+    return chu_the
+
 
 def _la_cum_dung_duoc(cum: str, cau_hoi_chuan: str) -> bool:
     khoa = _chuan_hoa(cum)
@@ -428,41 +517,80 @@ def rut_y_chinh(cau_tra_loi: str, cau_hoi: str = "") -> list[tuple[str, bool]]:
     for cum, so_lan in sorted(dem.items(), key=lambda muc: -muc[1]):
         if (cum in giua_cau or so_lan >= 2) and cum.casefold() not in _TEN_RIENG_CHUNG:
             ung_vien.append((cum, True))
-    # Cụm nào chạm đúng chủ đề câu hỏi ("Tin học ứng dụng" khi hỏi về môn tin
-    # học) được đưa lên trước; sort ổn định nên thứ tự còn lại giữ nguyên.
+    # Xếp lại, sort ổn định nên trong cùng một bậc vẫn giữ thứ tự xuất hiện:
+    # 1. Cụm chỉ nằm trong ô bảng xuống cuối: bảng so sánh liệt kê từng môn,
+    #    "năng lực thể chất" của riêng môn Thể dục không phải ý chính của câu
+    #    hỏi về cả chương trình.
+    # 2. Chạm đúng phạm vi được hỏi ("về phẩm chất và năng lực") lên trước.
+    # 3. Chạm chủ đề câu hỏi ("Tin học ứng dụng" khi hỏi về môn tin học).
     chu_de = _cap_tu_chu_de(cau_hoi)
-    if chu_de:
-        ung_vien.sort(key=lambda muc: not (_cap_tu(muc[0]) & chu_de))
+    cap_pham_vi = _cap_tu_chu_de(tach_chu_de(cau_hoi)[1])
+    ngoai_bang = "\n".join(
+        dong for dong in van_ban.replace("**", "").casefold().splitlines()
+        if not dong.lstrip().startswith("|")
+    )
+    def chi_trong_bang(cum: str) -> bool:
+        return cum.replace("**", "").casefold() not in ngoai_bang
+
+    ung_vien.sort(key=lambda muc: (
+        chi_trong_bang(muc[0]),
+        bool(cap_pham_vi) and not (_cap_tu(muc[0]) & cap_pham_vi),
+        bool(chu_de) and not (_cap_tu(muc[0]) & chu_de),
+    ))
 
     ket_qua: list[tuple[str, bool]] = []
     da_thay: list[str] = []
+    so_ngoai_bang = 0
     for cum, ten_rieng in ung_vien:
         cum = re.sub(r"\s+", " ", _TRICH_DAN.sub("", cum)).strip(" :.,;")
         if len(cum.split()) > 8 or not _la_cum_dung_duoc(cum, cau_hoi_chuan):
+            continue
+        # Đã có hai ý nói ngoài bảng thì thôi hẳn ý chỉ có trong ô bảng: nhét
+        # vào chỗ thứ ba là lạc sang một môn, một dòng lẻ của bảng.
+        if chi_trong_bang(cum) and so_ngoai_bang >= 2:
             continue
         khoa = _chuan_hoa(cum)
         if any(khoa == cu or khoa in cu or cu in khoa for cu in da_thay):
             continue
         da_thay.append(khoa)
         ket_qua.append((cum, ten_rieng))
+        so_ngoai_bang += not chi_trong_bang(cum)
         if len(ket_qua) >= _SO_Y_CHINH_TOI_DA:
             break
     return ket_qua
 
 
-def _cau_hoi_tu_y_chinh(y_chinh: list[tuple[str, bool]]) -> list[str]:
+def _cau_hoi_tu_y_chinh(
+    y_chinh: list[tuple[str, bool]], chu_the: str | None = None
+) -> list[str]:
+    """Câu hỏi tiếp từ các ý chính; có chủ thể thì gắn vào để câu gợi ý tự nó
+    đã nói rõ đang hỏi về cái gì ("... phẩm chất chủ yếu trong Chương trình giáo
+    dục phổ thông 2018" thay vì "... phẩm chất chủ yếu" trống không)."""
     cau_hoi = []
     ten_rieng = [cum for cum, la_ten in y_chinh if la_ten]
     if len(ten_rieng) >= 2:
         cau_hoi.append(f"{ten_rieng[0]} và {ten_rieng[1]} có quan hệ với nhau thế nào?")
     mau = ("Nói rõ hơn về {}", "Tài liệu còn nói gì thêm về {}?", "Giải thích thêm về {}")
+    mau_gan = ("Nói rõ hơn về {} trong {}", "{} trong {} gồm những gì?", "Giải thích thêm về {} trong {}")
+    ct = _chu_the_giua_cau(chu_the) if chu_the else None
     for so, (cum, la_ten) in enumerate(y_chinh):
         # "Sính lễ" in đậm đầu dòng chỉ viết hoa vì đứng đầu dòng; đặt vào giữa
         # câu hỏi thì hạ xuống. Tên riêng và chữ viết tắt ("THPT") giữ nguyên.
         tu = cum.split()
-        if not la_ten and len(tu) > 1 and tu[1].islower() and tu[0][1:].islower():
+        if (not la_ten and len(tu) > 1 and tu[0][1:].islower()
+                and (tu[1].islower() or tu[1].isdigit())):
             cum = cum[0].lower() + cum[1:]
-        cau_hoi.append(mau[so % len(mau)].format(cum))
+        # Ý đã chạm chủ thể ("Chương trình tổng thể" khi hỏi về chương trình)
+        # thì gắn thêm chỉ lặp chữ; tên riêng thì "Hùng Vương gồm những gì" vô nghĩa.
+        cau = None
+        if ct and not la_ten and not (_cap_tu(cum) & _cap_tu(ct)):
+            khuon = mau_gan[so % len(mau_gan)]
+            cau = khuon.format(cum, ct)
+            if khuon.startswith("{}"):
+                cau = cau[0].upper() + cau[1:]
+            if len(cau) > _DO_DAI_GOI_Y_TOI_DA:
+                cau = None
+        cau_hoi.append(cau or mau[so % len(mau)].format(cum))
     return cau_hoi
 
 
@@ -520,8 +648,14 @@ def goi_y_tiep_theo(
     cac_nguon=None,
     so_luong: int = SO_GOI_Y_TIEP,
     cau_tra_loi: str = "",
+    cau_hoi_truoc: str = "",
 ) -> list[str]:
-    """Gợi ý hỏi tiếp sau một câu trả lời có trích nguồn."""
+    """Gợi ý hỏi tiếp sau một câu trả lời có trích nguồn.
+
+    cau_hoi_truoc: câu hỏi trước đó khi câu này là câu nối tiếp ("còn năng lực
+    chung thì sao?") - câu nối tiếp hiếm khi tự nêu chủ thể, mượn của câu trước
+    để gợi ý vẫn bám đúng chuyện đang hỏi.
+    """
     cac_nguon = [nguon for nguon in (cac_nguon or []) if isinstance(nguon, dict)]
     if cau_tra_loi:
         cac_nguon = _nguon_duoc_trich(cac_nguon, cau_tra_loi)
@@ -546,7 +680,8 @@ def goi_y_tiep_theo(
                 canh_bao_hieu_luc.append(cau)
             else:
                 ung_vien.append(cau)
-    tu_y_chinh = _cau_hoi_tu_y_chinh(rut_y_chinh(cau_tra_loi, cau_hoi))
+    chu_the = tach_chu_de(cau_hoi)[0] or tach_chu_de(cau_hoi_truoc)[0]
+    tu_y_chinh = _cau_hoi_tu_y_chinh(rut_y_chinh(cau_tra_loi, cau_hoi), chu_the)
     if tu_y_chinh:
         # Đã có ý chính bám câu trả lời thì câu hỏi theo Điều chỉ được chen vào
         # khi văn bản đó đúng chủ đề đang hỏi: hỏi môn tin học mà gợi ý "Điều 1
@@ -571,18 +706,28 @@ def goi_y_tiep_theo(
         ung_vien.append(f"Tóm tắt những nội dung chính của {_ten_goi(cac_nguon[0])}")
     # Câu chung "đối tượng áp dụng, lộ trình" chỉ hợp khi nguồn là văn bản quản
     # lý; nguồn là sách giáo khoa hay bài giảng thì hỏi vậy là lạc đề.
+    # "nội dung này" đổi thành đúng thứ đang hỏi - phạm vi "về ..." của câu hỏi,
+    # không có thì chủ thể - để câu gợi ý đọc riêng vẫn hiểu.
+    pham_vi = tach_chu_de(cau_hoi)[1] or tach_chu_de(cau_hoi_truoc)[1]
+    ct = _chu_the_giua_cau(chu_the) if chu_the else ""
+    chu_de_hoi = pham_vi or ct or "nội dung này"
     if not cac_nguon or any((nguon.get("van_ban") or {}).get("so_hieu") for nguon in cac_nguon):
-        ung_vien += [
-            "Nội dung này áp dụng cho những đối tượng nào?",
+        cau_chung = [
+            f"{ct[:1].upper()}{ct[1:]} áp dụng cho những đối tượng nào?" if ct
+            else "Nội dung này áp dụng cho những đối tượng nào?",
             "Có mốc thời gian hoặc lộ trình thực hiện nào không?",
-            "Còn văn bản nào khác trong kho quy định về nội dung này?",
+            f"Còn văn bản nào khác trong kho quy định về {chu_de_hoi}?",
         ]
     else:
-        ung_vien += [
-            "Còn tài liệu nào khác trong kho nói về nội dung này?",
-            "Cho ví dụ cụ thể về nội dung này",
+        cau_chung = [
+            f"Còn tài liệu nào khác trong kho nói về {chu_de_hoi}?",
+            f"Cho ví dụ cụ thể về {chu_de_hoi}",
             "Tóm tắt ngắn gọn các ý trên",
         ]
+    ung_vien += [
+        cau if len(cau) <= _DO_DAI_GOI_Y_TOI_DA else cau.replace(chu_de_hoi, "nội dung này")
+        for cau in cau_chung
+    ]
     return _loc_trung(ung_vien, da_co=[cau_hoi])[:max(0, so_luong)]
 
 

@@ -323,8 +323,9 @@ class GoiYTheoNoiDungTraLoiTests(unittest.TestCase):
         )
         self.assertEqual(
             goi_y[:2],
+            # "Tin học ứng dụng" đã chạm chủ thể "môn tin học" nên không gắn thêm.
             ["Nói rõ hơn về tin học ứng dụng",
-             "Tài liệu còn nói gì thêm về khoa học máy tính?"],
+             "Khoa học máy tính trong môn tin học gồm những gì?"],
         )
         self.assertFalse(any("37/2021" in cau or "Việt Nam" in cau for cau in goi_y))
         self.assertFalse(any("lớp 10" in cau for cau in goi_y))
@@ -332,6 +333,117 @@ class GoiYTheoNoiDungTraLoiTests(unittest.TestCase):
     def test_dau_cau_viet_hoa_khong_bi_coi_la_ten_rieng(self):
         y_chinh = goi_y_cau_hoi.rut_y_chinh("Học sinh được học hai buổi. Giáo viên dạy.")
         self.assertEqual(y_chinh, [])
+
+
+CAU_HOI_CT_2018 = (
+    "Chương trình giáo dục phổ thông 2018 đặt ra những yêu cầu nào về phẩm chất và năng lực?"
+)
+# Rút gọn từ một câu trả lời thật: ý chính in đậm, rồi bảng so sánh từng môn.
+TRA_LOI_CT_2018 = (
+    "Chương trình Giáo dục phổ thông 2018 đặt ra các yêu cầu sau:\n\n"
+    "*   Góp phần hình thành ở học sinh các **phẩm chất chủ yếu** và **năng lực chung**. [4]\n"
+    "*   Yêu cầu này được quy định cụ thể trong **Chương trình tổng thể**. [2]\n\n"
+    "| Môn học | Yêu cầu | Nguồn |\n|---|---|---|\n"
+    "| Giáo dục thể chất lớp 12 | Phẩm chất chủ yếu; **năng lực thể chất** (đặc thù). | [2] |\n"
+    "| Tin học lớp 12 | Phát triển **năng lực tin học**. | [4] |\n"
+)
+NGUON_SGV = [
+    {"name": "11-sgv-cong-nghe-11.pdf"},
+    {"name": "12-sgv-giao-duc-the-chat-12-bong-chuyen.pdf"},
+    {"name": "10-sgv-cong-nghe-10.pdf"},
+    {"name": "12-sgv-tin-hoc-12.pdf"},
+]
+
+
+class TachChuDeTests(unittest.TestCase):
+    def test_chu_the_dung_truoc_dong_tu_chinh(self):
+        self.assertEqual(
+            goi_y_cau_hoi.tach_chu_de(CAU_HOI_CT_2018),
+            ("Chương trình giáo dục phổ thông 2018", "phẩm chất và năng lực"),
+        )
+        self.assertEqual(
+            goi_y_cau_hoi.tach_chu_de("Kế hoạch bài dạy theo Công văn 5512 gồm những phần nào?")[0],
+            "Kế hoạch bài dạy theo Công văn 5512",
+        )
+
+    def test_khong_co_dong_tu_chinh_thi_khong_doan(self):
+        self.assertIsNone(goi_y_cau_hoi.tach_chu_de("Tiếng trung dạy từ lớp mấy")[0])
+
+    def test_chu_the_la_nguoi_thi_bo(self):
+        self.assertIsNone(goi_y_cau_hoi.tach_chu_de(
+            "Học sinh phổ thông được miễn học phí trong những trường hợp nào?"
+        )[0])
+
+    def test_lay_lai_chu_the_tu_goi_y_cua_chinh_minh(self):
+        for cau in (
+            "Nói rõ hơn về phẩm chất chủ yếu trong Chương trình giáo dục phổ thông 2018",
+            "Năng lực chung trong Chương trình giáo dục phổ thông 2018 gồm những gì?",
+        ):
+            self.assertEqual(
+                goi_y_cau_hoi.tach_chu_de(cau)[0], "Chương trình giáo dục phổ thông 2018"
+            )
+
+    def test_ten_loai_van_ban_tro_troi_khong_phai_chu_the(self):
+        # "ban hành" nằm trong tên văn bản: cắt ở đó thì chỉ còn mỗi "Thông tư".
+        self.assertEqual(
+            goi_y_cau_hoi.tach_chu_de(
+                "Thông tư ban hành quy chế tuyển sinh có những nội dung chính nào?"
+            )[0],
+            "Thông tư ban hành quy chế tuyển sinh",
+        )
+        self.assertIsNone(goi_y_cau_hoi.tach_chu_de("Quyết định có hiệu lực từ ngày nào?")[0])
+
+    def test_pham_vi_khong_dinh_duoi_cau_hoi(self):
+        self.assertEqual(
+            goi_y_cau_hoi.tach_chu_de("Luật Nhà giáo có quy định gì về phụ cấp là gì?")[1],
+            "phụ cấp",
+        )
+
+    def test_trong_chi_tach_khi_phan_sau_la_ten_rieng(self):
+        self.assertEqual(
+            goi_y_cau_hoi.tach_chu_de(
+                "Việc ứng dụng công nghệ trong giáo dục đại học được quy định thế nào?"
+            )[0],
+            "Việc ứng dụng công nghệ trong giáo dục đại học",
+        )
+
+
+class GoiYBamChuDeCauHoiTests(unittest.TestCase):
+    def test_goi_y_gan_chu_the_va_bo_y_chi_co_trong_o_bang(self):
+        self.assertEqual(
+            goi_y_cau_hoi.goi_y_tiep_theo(
+                CAU_HOI_CT_2018, NGUON_SGV, cau_tra_loi=TRA_LOI_CT_2018
+            ),
+            [
+                "Nói rõ hơn về phẩm chất chủ yếu trong Chương trình giáo dục phổ thông 2018",
+                "Năng lực chung trong Chương trình giáo dục phổ thông 2018 gồm những gì?",
+                "Còn tài liệu nào khác trong kho nói về phẩm chất và năng lực?",
+            ],
+        )
+
+    def test_y_trong_o_bang_van_dung_khi_ngoai_bang_khong_du_y(self):
+        tra_loi = (
+            "Các môn đều hướng tới phẩm chất chủ yếu. [1]\n\n"
+            "| Môn | Năng lực |\n|---|---|\n"
+            "| Thể dục | **năng lực thể chất** |\n| Tin học | **năng lực tin học** |\n"
+        )
+        y_chinh = [cum for cum, _ in goi_y_cau_hoi.rut_y_chinh(tra_loi, CAU_HOI_CT_2018)]
+        self.assertEqual(y_chinh, ["năng lực thể chất", "năng lực tin học"])
+
+    def test_cau_noi_tiep_muon_chu_the_cua_cau_truoc(self):
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo(
+            "Còn năng lực đặc thù thì sao?", NGUON_SGV,
+            cau_tra_loi=TRA_LOI_CT_2018, cau_hoi_truoc=CAU_HOI_CT_2018,
+        )
+        self.assertTrue(
+            all("Chương trình giáo dục phổ thông 2018" in cau for cau in goi_y[:2]), goi_y
+        )
+
+    def test_khong_tach_duoc_chu_the_thi_giu_khuon_cu(self):
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo(
+            "Tiếng trung dạy từ lớp mấy", NGUON_SGV, cau_tra_loi=TRA_LOI_CT_2018
+        )
+        self.assertEqual(goi_y[0], "Nói rõ hơn về phẩm chất chủ yếu")
 
 
 def _sach(ten, mon, lop, loai="sach_giao_khoa"):
