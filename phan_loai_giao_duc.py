@@ -552,6 +552,82 @@ def cac_file_trong_pham_vi(bang: dict[str, PhanLoai], pham_vi: dict | None) -> l
     return sorted(ten for ten, muc in bang.items() if khop(asdict(muc), pham_vi))
 
 
+# Câu hỏi nhắc tới việc dạy - học ở trường. Tên môn chung như "khoa học", "công
+# nghệ" chỉ tính là môn khi đi kèm một dấu hiệu này: "nghiên cứu khoa học của
+# giảng viên" không phải câu hỏi về môn Khoa học lớp 4.
+_DAU_HIEU_TRUONG_LOP = re.compile(
+    r"\b(?:lop|khoi|mon|sgk|sgv|sbt|sach|hoc sinh|day|bai hoc|tiet|cap hoc"
+    r"|tieu hoc|thcs|thpt)\b"
+)
+# "Công văn 5512" khớp nhánh "văn + số" của Ngữ văn - số hiệu công văn không
+# phải số lớp. Tên tệp không vướng vì tên tệp hiếm khi viết "cong van 5512".
+_CONG_VAN_SO = re.compile(r"\bcong van(?= so| \d)")
+# "lớp 3, 4, 5": _tim_lop chỉ lấy số ngay sau chữ "lớp".
+_DANH_SACH_LOP = re.compile(r"\b(?:lop|khoi) ((?:\d{1,2} )+)")
+
+
+def nhan_dien_cau_hoi(cau_hoi: str) -> dict:
+    """Môn, lớp, cấp học mà câu hỏi nhắc tới - cùng từ điển dùng cho tên file.
+
+    Ngoại ngữ thì tên đã đủ rõ ("tiếng trung"); môn khác phải kèm dấu hiệu
+    trường lớp mới tính. Trả về {} khi câu hỏi không nhắc tới môn nào.
+    """
+    chuoi = _CONG_VAN_SO.sub("congvan", _chuan_hoa(cau_hoi))
+    co_dau_hieu = bool(_DAU_HIEU_TRUONG_LOP.search(chuoi))
+    # "học sinh 15 tuổi" khớp nhánh "sinh + số" của Sinh học.
+    chuoi = chuoi.replace(" hoc sinh ", " hocsinh ")
+    mon = [
+        ten for ten in _bo_mon_bi_bao_trum(_tim_nhan(chuoi, _MON_DA_BIEN_DICH))
+        if ten in MON_CHI_THEO_TEN or co_dau_hieu
+    ]
+    if not mon:
+        return {}
+    ket_qua = {"mon_hoc": mon}
+    lop = set(_tim_lop(chuoi))
+    for khop_lop in _DANH_SACH_LOP.finditer(chuoi):
+        lop |= {int(so) for so in khop_lop.group(1).split() if 1 <= int(so) <= 12}
+    lop = sorted(lop)
+    if lop:
+        ket_qua["lop"] = lop
+    cap = _tim_nhan(chuoi, _CAP_DA_BIEN_DICH)
+    if cap:
+        ket_qua["cap_hoc"] = cap
+    return ket_qua
+
+
+def khong_mau_thuan(metadata: dict, pham_vi: dict) -> bool:
+    """Bản lỏng của khop: chunk chưa gắn nhãn một trường thì coi như qua.
+
+    Dùng cho phạm vi TỰ SUY từ câu hỏi, không phải bộ lọc người dùng bật: nhãn
+    trong kho còn thiếu nhiều (PPCT-5.docx, NLS.pdf không có môn; tài liệu "Tin
+    3,4,5" chỉ gắn lớp 3), lọc cứng thì mất đúng những tài liệu cần tìm. Chỉ
+    loại thứ nói rõ là môn khác, lớp khác - SGK Tiếng Nhật khi hỏi tiếng Trung.
+    """
+    for khoa, mong_muon in pham_vi.items():
+        cua_chunk = metadata.get(khoa)
+        if not cua_chunk:
+            continue
+        if not isinstance(cua_chunk, (list, tuple, set)):
+            cua_chunk = [cua_chunk]
+        if not set(cua_chunk) & set(mong_muon):
+            return False
+    return True
+
+
+def bo_loc_tu_cau_hoi(cau_hoi: str):
+    """Hàm lọc theo môn, lớp mà câu hỏi nhắc tới, hoặc None nếu không nhắc gì.
+
+    Không có nó thì "tiếng trung dạy từ lớp mấy" kéo về SGK Tiếng Nhật 9 đứng
+    đầu, "SGK Tin học lớp 4" kéo về sách Tin 11, 12: đoạn mục lục của các sách
+    ngoại ngữ, các sách cùng môn giống nhau tới mức xếp hạng không tách nổi.
+    """
+    nhan = nhan_dien_cau_hoi(cau_hoi)
+    pham_vi = {khoa: nhan[khoa] for khoa in ("mon_hoc", "lop") if nhan.get(khoa)}
+    if not pham_vi:
+        return None
+    return lambda doc: khong_mau_thuan(doc.metadata, pham_vi)
+
+
 def mo_ta_pham_vi(pham_vi: dict | None) -> str:
     """Câu mô tả ngắn để ghép vào lời từ chối: người dùng cần biết mình đang
     tự bó hẹp phạm vi, nếu không sẽ tưởng kho thiếu tài liệu."""
