@@ -36,6 +36,7 @@ import tinh_toan
 import trinh_doc_tai_lieu
 import tu_vung_kho
 import van_ban_meta
+import xep_thu_muc_kho
 from capnhat_tailieu_moi import main as cap_nhat_chi_muc_tren_dia
 from chunking_utils import tinh_hash_file
 from hybrid_retrieval import (
@@ -99,6 +100,40 @@ KHO_PHANG = os.getenv("RAG_KHO_PHANG", "1") == "1"
 THU_MUC_TEP_TRONG_KHO = "" if KHO_PHANG else os.getenv(
     "RAG_THU_MUC_TEP_DINH_KEM_TRONG_KHO", "tai_lieu_dinh_kem"
 )
+
+
+def _thu_muc_cho_tep(ten: str, duong_dan_nguon: str | None = None,
+                     dung_bang_da_luu: bool = False) -> str:
+    """Thư mục con trong kho nơi cất tệp mới (xem xep_thu_muc_kho.py).
+
+    dung_bang_da_luu: tệp từng nằm trong kho (khôi phục từ thùng rác) nên đã
+    có nhãn lập từ toàn văn - đáng tin hơn đọc lại 2 trang đầu.
+    Phân loại lỗi thì cất như trước chứ không làm hỏng việc tải lên.
+    """
+    if not xep_thu_muc_kho.dang_bat():
+        return THU_MUC_TEP_TRONG_KHO
+    try:
+        goi_y = {}
+        if dung_bang_da_luu:
+            goi_y = {
+                "phan_loai": phan_loai_giao_duc.tai().get(ten),
+                "ho_so": van_ban_meta.tai_ho_so().get(ten),
+            }
+        return xep_thu_muc_kho.thu_muc_he_dieu_hanh(
+            xep_thu_muc_kho.chon_thu_muc(ten, duong_dan_nguon, **goi_y)
+        )
+    except Exception as exc:
+        print(f"⚠️ Không xếp được thư mục cho {ten}: {exc}")
+        return THU_MUC_TEP_TRONG_KHO
+
+
+def _noi_luu(duong_dan: str) -> str:
+    """'.../data_giao_duc/pdf/sach_bai_tap/x.pdf' -> 'data_giao_duc/pdf/sach_bai_tap'."""
+    tuong_doi = os.path.relpath(os.path.dirname(duong_dan), DATA_PATH)
+    ten_kho = os.path.basename(DATA_PATH)
+    if tuong_doi == os.curdir:
+        return ten_kho
+    return "/".join([ten_kho, *tuong_doi.split(os.sep)])
 
 
 # tar và zip chỉ giữ mtime tới giây (zip tới 2 giây), nên chép kho sang máy
@@ -874,24 +909,25 @@ class RAGService:
                 "Bạn vẫn hỏi về tệp này được ngay."
             )
 
-        ten_trong_kho = self._chep_vao_kho(duong_dan, ten)
+        dich = self._chep_vao_kho(duong_dan, ten)
         quan_ly_kho.ghi_vao_kho(
-            ten, ten_trong_kho, ma_bam, os.path.getsize(duong_dan),
+            ten, os.path.basename(dich), ma_bam, os.path.getsize(duong_dan),
             "thu_muc_nong" if tu_he_thong else nguon, nguoi,
         )
-        noi_luu = THU_MUC_TEP_TRONG_KHO or os.path.basename(DATA_PATH)
+        noi_luu = _noi_luu(dich)
         return "da_luu", (
             f"Đã thêm vào kho tài liệu ({noi_luu}), "
             f"sẽ nạp vào chỉ mục {_luc_nap_chi_muc()}."
         )
 
     def _chep_vao_kho(self, duong_dan: str, ten: str) -> str:
-        dich = self._duong_dan_trong_kho(ten)
+        """Trả về đường dẫn đầy đủ của bản chép trong kho."""
+        dich = self._duong_dan_trong_kho(ten, duong_dan)
         os.makedirs(os.path.dirname(dich), exist_ok=True)
         shutil.copy2(duong_dan, dich)
         self.tep_cho_nap.append(os.path.basename(dich))
         self._hen_cap_nhat_chi_muc()
-        return os.path.basename(dich)
+        return dich
 
     # ------------------------------------------------------------
     # QUẢN TRỊ KHO: duyệt tệp gửi lên, gỡ và khôi phục tài liệu
@@ -901,7 +937,7 @@ class RAGService:
         trung = self._tim_tep_trung_trong_kho(tinh_hash_file(duong_dan))
         if trung is not None:
             return "da_co", f"Kho đã có tệp này ({os.path.basename(trung)})."
-        return "da_luu", self._chep_vao_kho(duong_dan, ten)
+        return "da_luu", os.path.basename(self._chep_vao_kho(duong_dan, ten))
 
     def go_tai_lieu(self, ten: str, nguoi: dict) -> dict:
         duong_dan = self.resolve_source_file(ten)
@@ -917,7 +953,10 @@ class RAGService:
         if quan_ly_kho.la_tep_bi_tu_choi(ma):
             # Về lại hàng chờ duyệt, chưa vào kho nên chưa có gì để lập chỉ mục.
             return quan_ly_kho.tra_ve_cho_duyet(ma)
-        ten = quan_ly_kho.khoi_phuc(ma, self._duong_dan_trong_kho)
+        ten = quan_ly_kho.khoi_phuc(
+            ma,
+            lambda ten, nguon: self._duong_dan_trong_kho(ten, nguon, dung_bang_da_luu=True),
+        )
         self.tep_cho_nap.append(ten)
         self._hen_cap_nhat_chi_muc()
         return ten
@@ -961,7 +1000,7 @@ class RAGService:
                     "Đã gửi quản trị viên duyệt, duyệt xong tệp sẽ vào kho."
                     if la_moi else "Tệp này đã có người gửi và đang chờ duyệt."
                 )
-            dich = self._duong_dan_trong_kho(ten_goc)
+            dich = self._duong_dan_trong_kho(ten_goc, tam)
             os.makedirs(os.path.dirname(dich), exist_ok=True)
             shutil.move(tam, dich)
         finally:
@@ -973,7 +1012,9 @@ class RAGService:
 
         self.tep_cho_nap.append(os.path.basename(dich))
         self._hen_cap_nhat_chi_muc()
-        return "da_luu", f"Đã thêm {os.path.basename(dich)} vào kho tài liệu."
+        return "da_luu", (
+            f"Đã thêm {os.path.basename(dich)} vào kho tài liệu ({_noi_luu(dich)})."
+        )
 
     @staticmethod
     def _tim_tep_trung_trong_kho(ma_bam: str) -> str | None:
@@ -994,28 +1035,37 @@ class RAGService:
                     return duong_dan
 
         # Tệp đính kèm của lượt trước có thể chưa kịp vào sổ (chỉ mục chạy sau),
-        # nên phải băm thêm chính thư mục này. Kho phẳng thì đây là cả kho, song
+        # nên phải băm thêm những nơi tệp mới được cất. Kho phẳng hay kho xếp
+        # theo loại thì đó là cả kho (tệp mới rải vào nhiều thư mục con), song
         # tệp đã vào sổ được bỏ qua ở trên nên chỉ băm phần chưa lập chỉ mục.
-        thu_muc = os.path.join(DATA_PATH, THU_MUC_TEP_TRONG_KHO)
+        thu_muc = (
+            DATA_PATH if xep_thu_muc_kho.dang_bat()
+            else os.path.join(DATA_PATH, THU_MUC_TEP_TRONG_KHO)
+        )
         if not os.path.isdir(thu_muc):
             return None
-        for ten_file in sorted(os.listdir(thu_muc)):
-            duong_dan = os.path.join(thu_muc, ten_file)
-            if os.path.normcase(os.path.abspath(duong_dan)) in da_co_trong_so:
-                continue
-            if not os.path.isfile(duong_dan):
-                continue
-            try:
-                if tinh_hash_file(duong_dan) == ma_bam:
-                    return duong_dan
-            except OSError:
-                continue
+        for goc, cac_thu_muc, ten_files in os.walk(thu_muc):
+            cac_thu_muc.sort()
+            for ten_file in sorted(ten_files):
+                duong_dan = os.path.join(goc, ten_file)
+                if os.path.normcase(os.path.abspath(duong_dan)) in da_co_trong_so:
+                    continue
+                if not os.path.isfile(duong_dan):
+                    continue
+                try:
+                    if tinh_hash_file(duong_dan) == ma_bam:
+                        return duong_dan
+                except OSError:
+                    continue
         return None
 
     @staticmethod
-    def _duong_dan_trong_kho(ten: str) -> str:
+    def _duong_dan_trong_kho(ten: str, duong_dan_nguon: str | None = None,
+                             dung_bang_da_luu: bool = False) -> str:
         """Tên phải là duy nhất trong cả kho: resolve_source_file từ chối mở
-        nguồn khi hai thư mục có tệp trùng tên, trích dẫn sẽ mất liên kết."""
+        nguồn khi hai thư mục có tệp trùng tên, trích dẫn sẽ mất liên kết.
+
+        duong_dan_nguon: nơi đọc nội dung để chọn thư mục con theo loại."""
         da_dung = set()
         for _, _, ten_files in os.walk(DATA_PATH):
             da_dung.update(os.path.normcase(ten_file) for ten_file in ten_files)
@@ -1026,7 +1076,8 @@ class RAGService:
         while os.path.normcase(ten_chon) in da_dung:
             lan += 1
             ten_chon = f"{goc} ({lan}){duoi}"
-        return os.path.join(DATA_PATH, THU_MUC_TEP_TRONG_KHO, ten_chon)
+        thu_muc_con = _thu_muc_cho_tep(ten, duong_dan_nguon, dung_bang_da_luu)
+        return os.path.join(DATA_PATH, thu_muc_con, ten_chon)
 
     def _hen_cap_nhat_chi_muc(self) -> None:
         """Một luồng chờ duy nhất cho mọi tệp đang xếp hàng."""

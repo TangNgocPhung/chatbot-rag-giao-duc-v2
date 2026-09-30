@@ -48,15 +48,31 @@ echo "    May nay co:  $(wc -l < "$TAM/cuc_bo.txt") file"
 
 # So sanh: chi giu file VPS chua co, hoac co ma khac kich thuoc.
 awk -F'\t' -v gioi_han_mb="$BO_QUA_LON_HON_MB" '
+  function ten_tep(p,   n, a) { n = split(p, a, "/"); return a[n] }
   # So theo TEN TEP chu khong dung NR==FNR: khi danh sach phia VPS rong,
   # NR==FNR van dung o dong dau tien cua tep thu hai va awk se nhet ca kho
   # cuc bo vao mang "da co" -> khong day gi het.
-  FILENAME == ARGV[1] { co[$2]=$1; next }
+  FILENAME == ARGV[1] { co[$2]=$1; co_ten[ten_tep($2)]=$1; cho_ten[ten_tep($2)]=$2; next }
   {
     if (gioi_han_mb > 0 && $1 > gioi_han_mb*1048576) { bo_qua++; next }
-    if (!($2 in co) || co[$2] != $1) print $1 "\t" $2
+    if ($2 in co) { if (co[$2] != $1) print $1 "\t" $2; next }
+    # VPS da xep kho vao thu muc con (xep_kho_theo_loai.py): cung ten tep
+    # nhung khac duong dan. Day theo duong dan cu may nay la de them mot ban
+    # trung ten o goc kho -> trich dan khong mo duoc nua. Nen so theo ten.
+    ten = ten_tep($2)
+    if (ten in co_ten) {
+      if (co_ten[ten] != $1) {
+        khac_cho++
+        printf("    [bo qua] %s: VPS co ban khac kich thuoc o %s - go ban cu tren giao dien roi chay lai\n", $2, cho_ten[ten]) > "/dev/stderr"
+      }
+      next
+    }
+    print $1 "\t" $2
   }
-  END { if (bo_qua) printf("    Bo qua %d file lon hon %s MB\n", bo_qua, gioi_han_mb) > "/dev/stderr" }
+  END {
+    if (bo_qua) printf("    Bo qua %d file lon hon %s MB\n", bo_qua, gioi_han_mb) > "/dev/stderr"
+    if (khac_cho) printf("    Bo qua %d file da sua tren may nay nhung VPS dang de o thu muc khac\n", khac_cho) > "/dev/stderr"
+  }
 ' "$TAM/xa.txt" "$TAM/cuc_bo.txt" | sort -n > "$TAM/can_day.txt"
 
 SO_FILE=$(wc -l < "$TAM/can_day.txt")

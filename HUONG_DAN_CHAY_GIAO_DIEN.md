@@ -66,7 +66,8 @@ Thiết lập biến môi trường trước khi chạy nếu cấu hình máy k
 | `RAG_DRIVE_GO_TOI_DA` | `20` | Một lượt đồng bộ định gỡ nhiều tệp hơn mức này (hoặc hơn 10% số tệp đã đồng bộ, tùy số nào lớn hơn) thì dừng, không gỡ tệp nào |
 | `RAG_THU_MUC_NONG` | *(trống)* | Thư mục "nóng" (vd thư mục Google Drive for Desktop): tệp thả vào được tự chép vào kho và lập chỉ mục |
 | `RAG_LUU_TEP_DINH_KEM` | `1` | Đặt `0` để không tự chép tệp từ thư mục nóng vào kho; nút **Đề xuất** của tài liệu riêng vẫn dùng được |
-| `RAG_THU_MUC_TEP_DINH_KEM_TRONG_KHO` | `tai_lieu_dinh_kem` | Thư mục con trong kho chứa tài liệu được đề xuất vào kho, chỉ dùng khi `RAG_KHO_PHANG=0` |
+| `RAG_THU_MUC_TEP_DINH_KEM_TRONG_KHO` | `tai_lieu_dinh_kem` | Thư mục con trong kho chứa tài liệu được đề xuất vào kho, chỉ dùng khi `RAG_KHO_PHANG=0` và `RAG_XEP_THU_MUC_THEO_LOAI=0` |
+| `RAG_XEP_THU_MUC_THEO_LOAI` | `1` | Tệp vào kho (tải lên, duyệt, khôi phục, Drive, thư mục nóng) được cất vào thư mục con theo định dạng và loại nội dung, vd `pdf/sach_bai_tap/`, `pdf/van_ban_quy_pham/thong_tu/`. Đặt `0` để lưu như cũ. Xếp lại tệp đang có: `xep_kho_theo_loai.py` |
 | `RAG_CHO_NAP_TEP_GIAY` | `90` | Đợi bao lâu sau câu hỏi cuối mới nạp tệp mới vào chỉ mục |
 | `RAG_TU_NAP_CHI_MUC` | `1` | `0` = không tự cập nhật chỉ mục khi kho có tệp mới (duyệt tệp, tải lên, Drive); tệp chờ lượt cập nhật ban đêm. Đặt `0` trên VPS |
 | `RAG_SO_TEP_DINH_KEM_TOI_DA` | `200` | Số tệp đính kèm của khách (chưa đăng nhập) máy chủ giữ, mọi khách cộng lại |
