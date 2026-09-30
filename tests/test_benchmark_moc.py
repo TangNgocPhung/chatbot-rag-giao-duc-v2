@@ -1,6 +1,7 @@
 """Bộ câu hỏi và cách chấm của benchmark_moc_thoi_gian (không cần chỉ mục)."""
 
 import json
+import os
 import unittest
 from datetime import date
 
@@ -84,8 +85,9 @@ class ChamTests(unittest.TestCase):
 class DichVuGia:
     """
     Chỉ mục giả, chọn chế độ đúng cách rag_service._retrieve của thật: gọi
-    quan_he_van_ban.che_do_thoi_gian. Chế độ lịch sử thì văn bản cũ lên đầu,
-    hiện hành thì văn bản cũ bị lọc bỏ.
+    quan_he_van_ban.che_do_thoi_gian và đọc RAG_HA_BAC_NGOAI_MOC. Hiện hành thì
+    văn bản cũ bị lọc bỏ; lịch sử thì văn bản mới vẫn đứng đầu (không phạt gì),
+    trừ khi bật hạ bậc ngoài mốc.
     """
 
     def __init__(self):
@@ -102,7 +104,12 @@ class DichVuGia:
 
     def _retrieve(self, cau_hoi, so_ket_qua=None):
         che_do, _ = qh.che_do_thoi_gian(cau_hoi)
-        thu_tu = ["cu.pdf", "moi.pdf"] if che_do == "lich_su" else ["moi.pdf"]
+        if che_do != "lich_su":
+            thu_tu = ["moi.pdf"]
+        elif os.environ.get("RAG_HA_BAC_NGOAI_MOC") == "1":
+            thu_tu = ["cu.pdf", "moi.pdf"]
+        else:
+            thu_tu = ["moi.pdf", "cu.pdf"]
         return [Document(page_content="x", metadata={"source_file": t}) for t in thu_tu]
 
 
@@ -114,11 +121,16 @@ class ChayMotCauTests(unittest.TestCase):
             "so_hieu_dung": ["28/2009/TT-BGDĐT"], "so_hieu_sai": ["5/2025/TT-BGDĐT"],
         }, 24)
         self.assertTrue(kq.nhan_moc_dung)
+        # Tắt mốc: văn bản cũ bị lọc; bật mốc: vào rổ nhưng xếp sau; hạ bậc: lên đầu.
         self.assertFalse(kq.ket_qua["tat_moc"].dung_phien_ban)
-        self.assertTrue(kq.ket_qua["bat_moc"].dung_phien_ban)
+        self.assertEqual(kq.ket_qua["bat_moc"].hang_dung, 2)
+        self.assertTrue(kq.ket_qua["ha_bac"].dung_phien_ban)
         tong = bm.tong_hop([kq])
-        self.assertEqual((tong["tot_len"], tong["te_di"]), (1, 0))
-        self.assertEqual(tong["bat_moc"]["hit@1"], 1)
+        self.assertEqual(tong["so_sanh"]["bat_moc->ha_bac"]["tot_len"], 1)
+        self.assertEqual(tong["ha_bac"]["hit@1"], 1)
+        self.assertEqual(tong["bat_moc"]["mrr@10"], 0.5)
+        # Biến môi trường được trả lại sau lượt đo.
+        self.assertNotEqual(os.environ.get("RAG_HA_BAC_NGOAI_MOC"), "1")
         # Lượt tắt mốc xong thì che_do_thoi_gian thật được trả lại.
         self.assertEqual(qh.che_do_thoi_gian("Năm 2020 thì sao?")[0], "lich_su")
 
@@ -158,6 +170,7 @@ class ChayMotCauTests(unittest.TestCase):
         dung.ket_qua = {
             "tat_moc": bm.DoMotCheDo(loi="Lỗi"),
             "bat_moc": bm.cham(["cu.pdf"], dung.tep_dung, dung.tep_sai),
+            "ha_bac": bm.cham(["cu.pdf"], dung.tep_dung, dung.tep_sai),
         }
         sai = bm.KetQuaMoc("b", "c", "l", "lich_su", nhan_moc_dung=True,
                            tep_dung={"x": ["cu.pdf"]}, tep_sai={})

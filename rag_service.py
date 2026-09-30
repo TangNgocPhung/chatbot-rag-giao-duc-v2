@@ -1301,16 +1301,27 @@ class RAGService:
         # văn bản cũ - chính vì thế văn bản cũ được giữ chứ không xoá. Hiệu lực
         # tính theo đồ thị ngay lúc hỏi, nên văn bản thay thế vừa tới ngày hiệu
         # lực là có tác dụng luôn, không đợi khởi động lại.
-        che_do, _ = quan_he_van_ban.che_do_thoi_gian(question)
+        che_do, thoi_diem = quan_he_van_ban.che_do_thoi_gian(question)
         lich_su = che_do == "lich_su"
+        so = self.so_quan_he
         loc_hieu_luc = None
         if not lich_su and os.getenv("RAG_LOC_HIEU_LUC", "1") == "1":
-            so = self.so_quan_he
             loc_hieu_luc = lambda doc: not so.het_hieu_luc(doc.metadata.get("source_file"))
+        # Chế độ lịch sử có mốc ngày: tuỳ chọn hạ bậc văn bản không áp dụng tại
+        # mốc (văn bản 2025 khi hỏi "năm 2020"). Mặc định TẮT cho tới khi
+        # benchmark_moc_thoi_gian.py cho thấy nó giúp chứ không hại. Văn bản
+        # câu hỏi gọi đích danh thì không hạ - người hỏi muốn đọc đúng nó.
+        phat_ngoai_moc = None
+        if lich_su and thoi_diem and os.getenv("RAG_HA_BAC_NGOAI_MOC", "0") == "1":
+            duoc_hoi = set(so.van_ban_trong_cau_hoi(question))
+            phat_ngoai_moc = lambda doc: (
+                so.nut_cua_tep.get(doc.metadata.get("source_file")) not in duoc_hoi
+                and so.ngoai_moc(doc.metadata.get("source_file"), thoi_diem)
+            )
         return truy_hoi(
             question, self.vector_store, self.bm25_retriever,
             so_ket_qua or SO_KET_QUA_CUOI, bo_loc, self.tu_vung,
-            loc_hieu_luc, lich_su,
+            loc_hieu_luc, lich_su, phat_ngoai_moc,
         )
 
     def _them_van_ban_di_kem(self, documents: list, question: str,

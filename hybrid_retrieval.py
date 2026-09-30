@@ -367,7 +367,8 @@ def _uu_tien_van_ban_moi(documents, tu_theo_doc) -> None:
             doc.metadata["_retrieval_score"] += TRONG_SO_MOI_HON
 
 
-def xep_hang_theo_lien_quan(cau_hoi, documents, so_ket_qua, tu_vung=None, lich_su=False):
+def xep_hang_theo_lien_quan(cau_hoi, documents, so_ket_qua, tu_vung=None, lich_su=False,
+                            phat_ngoai_moc=None):
     """
     Rerank theo độ phủ từ khóa, tiêu đề và đa dạng nguồn.
 
@@ -377,6 +378,11 @@ def xep_hang_theo_lien_quan(cau_hoi, documents, so_ket_qua, tu_vung=None, lich_s
 
     `lich_su=True` khi câu hỏi tra quy định TRƯỚC ĐÂY: không phạt văn bản hết
     hiệu lực và không ưu tiên văn bản mới hơn - lúc đó văn bản cũ mới là đích.
+
+    `phat_ngoai_moc` (Document -> bool, chỉ có ở chế độ lịch sử với mốc ngày
+    cụ thể): đoạn của văn bản không áp dụng tại mốc - chưa ban hành, hoặc đã bị
+    thay trước mốc - bị phạt cùng mức với văn bản hết hiệu lực ở chế độ hiện
+    hành. Để None thì chế độ lịch sử không phạt gì, như trước.
     """
     tu_theo_doc = {}
     tu_cau_hoi = set(mo_rong_truy_van(tach_tu_mo_rong(cau_hoi), cau_hoi))
@@ -404,7 +410,11 @@ def xep_hang_theo_lien_quan(cau_hoi, documents, so_ket_qua, tu_vung=None, lich_s
         # Văn bản đã bị một văn bản khác trong kho thay thế thì hạ bậc, nhưng
         # không loại hẳn: người dùng vẫn có quyền hỏi về quy định cũ, và câu trả
         # lời sẽ kèm cảnh báo hiệu lực. Mức phạt đặt ngang một bậc RRF.
-        phat_het_hieu_luc = 0.015 if doc.metadata.get("_het_hieu_luc") and not lich_su else 0.0
+        khong_ap_dung = (
+            (doc.metadata.get("_het_hieu_luc") and not lich_su)
+            or (phat_ngoai_moc is not None and phat_ngoai_moc(doc))
+        )
+        phat_het_hieu_luc = 0.015 if khong_ap_dung else 0.0
         doc.metadata["_lexical_coverage"] = round(do_phu, 4)
         doc.metadata["_retrieval_score"] = (
             doc.metadata.get("_rrf_score", 0.0)
@@ -484,7 +494,8 @@ def tach_thuc_the_so_sanh(cau_hoi: str):
 
 
 def truy_hoi_hybrid(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA_CUOI,
-                    bo_loc=None, tu_vung=None, loc_hieu_luc=None, lich_su=False):
+                    bo_loc=None, tu_vung=None, loc_hieu_luc=None, lich_su=False,
+                    phat_ngoai_moc=None):
     """Truy hồi 1 câu hỏi (không tách thực thể) bằng dense + BM25 + RRF.
 
     `loc_hieu_luc` (Document -> bool) bỏ đoạn của văn bản hết hiệu lực. Khác
@@ -525,11 +536,14 @@ def truy_hoi_hybrid(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA
         cau_hoi, bm25_retriever, so_giu, loc_ung_vien
     )
     hop_nhat = rrf_fusion(("dense", ket_qua_dense), ("bm25", ket_qua_bm25))
-    return xep_hang_theo_lien_quan(cau_hoi, hop_nhat, so_ket_qua, tu_vung, lich_su)
+    return xep_hang_theo_lien_quan(
+        cau_hoi, hop_nhat, so_ket_qua, tu_vung, lich_su, phat_ngoai_moc
+    )
 
 
 def truy_hoi(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA_CUOI,
-             bo_loc=None, tu_vung=None, loc_hieu_luc=None, lich_su=False):
+             bo_loc=None, tu_vung=None, loc_hieu_luc=None, lich_su=False,
+             phat_ngoai_moc=None):
     """
     Điểm vào chính: tự phát hiện câu so sánh để làm balanced retrieval theo
     từng thực thể, nếu không thì truy hồi hybrid bình thường trên cả câu hỏi.
@@ -544,7 +558,7 @@ def truy_hoi(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA_CUOI,
     if not thuc_the:
         return truy_hoi_hybrid(
             cau_hoi, vector_store, bm25_retriever, so_ket_qua, bo_loc, tu_vung,
-            loc_hieu_luc, lich_su)
+            loc_hieu_luc, lich_su, phat_ngoai_moc)
 
     so_moi_thuc_the = max(2, so_ket_qua // len(thuc_the))
     ket_qua_theo_thuc_the = []
@@ -552,7 +566,7 @@ def truy_hoi(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA_CUOI,
     for cum in thuc_the:
         for doc in truy_hoi_hybrid(
             cum, vector_store, bm25_retriever, so_moi_thuc_the, bo_loc, tu_vung,
-            loc_hieu_luc, lich_su,
+            loc_hieu_luc, lich_su, phat_ngoai_moc,
         ):
             if doc.page_content not in da_thay_noi_dung:
                 da_thay_noi_dung.add(doc.page_content)

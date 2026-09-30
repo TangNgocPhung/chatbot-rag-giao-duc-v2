@@ -10,13 +10,16 @@ Bộ câu hỏi: bo_cau_hoi_moc_thoi_gian.json (45 câu, 20 cặp văn bản; 14
 để con số MRR "toàn bộ" của các lần đo cũ vẫn so được với lần đo mới.
 
 ĐO A/B TRONG CÙNG MỘT LẦN CHẠY
-  Mỗi câu truy hồi hai lần trên cùng chỉ mục:
+  Mỗi câu truy hồi ba lần trên cùng chỉ mục:
     - "tắt mốc": ép quan_he_van_ban.che_do_thoi_gian luôn trả "hien_hanh" -
       văn bản hết hiệu lực bị LỌC BỎ, văn bản mới hơn được cộng điểm, bất kể
       câu hỏi hỏi về năm nào. Đây là hành vi khi hệ thống không biết mốc.
-    - "bật mốc": chế độ tự chọn từ câu hỏi, như khi chạy thật.
-  Cùng câu, cùng chỉ mục, chỉ khác đúng một yếu tố, nên chênh lệch giữa hai
-  cột là tác động của riêng tính năng này.
+    - "bật mốc": chế độ tự chọn từ câu hỏi, như khi chạy thật (hạ bậc ngoài
+      mốc tắt - đúng mặc định hiện tại).
+    - "hạ bậc": như bật mốc, cộng RAG_HA_BAC_NGOAI_MOC=1 - ở chế độ lịch sử có
+      mốc ngày, văn bản chưa tồn tại hoặc đã bị thay tại mốc bị hạ bậc.
+  Cùng câu, cùng chỉ mục, hai nhánh liền kề chỉ khác đúng một yếu tố, nên
+  chênh lệch giữa chúng là tác động của riêng yếu tố đó.
 
   Đo ở khâu truy hồi (RAGService._retrieve), TRƯỚC bước kéo thêm văn bản đi
   kèm (_them_van_ban_di_kem). Bước đó có thể đưa thêm văn bản thay thế vào
@@ -35,8 +38,8 @@ CHỈ SỐ
   - Đúng vào prompt:   mọi văn bản đúng mốc đều có mặt trong cửa sổ chunk đi vào
                        prompt (với câu so sánh: cả hai phiên bản đều có mặt).
   - Sai lọt prompt:    bản sai mốc có nằm trong cửa sổ đó không.
-  - McNemar chính xác: trên chỉ số "đúng phiên bản", đếm số câu bật mốc làm
-                       tốt lên / tệ đi rồi tính p hai phía. Bộ câu nhỏ, nên đọc
+  - McNemar chính xác: trên chỉ số "đúng phiên bản", với từng cặp nhánh liền
+                       kề, đếm số câu tốt lên / tệ đi rồi tính p hai phía. Bộ câu nhỏ, nên đọc
                        p để biết chênh lệch có đủ lớn để không phải do may rủi,
                        không phải để ước lượng độ chính xác trên dân số câu hỏi.
 
@@ -73,7 +76,11 @@ THU_MUC_DU_AN = os.path.dirname(os.path.abspath(__file__))
 DUONG_DAN_BO = os.path.join(THU_MUC_DU_AN, "bo_cau_hoi_moc_thoi_gian.json")
 DUONG_DAN_KET_QUA = os.path.join(THU_MUC_DU_AN, "ket_qua_moc_thoi_gian.json")
 SO_CHUNK_MAC_DINH = 24
-CHE_DO = ("tat_moc", "bat_moc")
+# Ba nhánh, mỗi nhánh thêm đúng một yếu tố so với nhánh trước:
+#   tat_moc -> bat_moc : tác động của việc chọn chế độ lịch sử theo mốc
+#   bat_moc -> ha_bac  : tác động của RAG_HA_BAC_NGOAI_MOC (mặc định đang tắt)
+CHE_DO = ("tat_moc", "bat_moc", "ha_bac")
+CAP_SO_SANH = (("tat_moc", "bat_moc"), ("bat_moc", "ha_bac"))
 
 
 # ============================================================
@@ -248,12 +255,14 @@ def chay_mot_cau(service, muc: dict, so_chunk: int) -> KetQuaMoc:
     cau_truy_hoi, _ = RAGService._conversation_inputs(kq.cau_hoi, None)
     for che_do in CHE_DO:
         try:
-            if che_do == "tat_moc":
-                with patch.object(quan_he_van_ban, "che_do_thoi_gian",
-                                  lambda *a, **k: ("hien_hanh", None)):
+            ha_bac = {"RAG_HA_BAC_NGOAI_MOC": "1" if che_do == "ha_bac" else "0"}
+            with patch.dict(os.environ, ha_bac):
+                if che_do == "tat_moc":
+                    with patch.object(quan_he_van_ban, "che_do_thoi_gian",
+                                      lambda *a, **k: ("hien_hanh", None)):
+                        tai_lieu = service._retrieve(cau_truy_hoi, so_ket_qua=so_chunk)
+                else:
                     tai_lieu = service._retrieve(cau_truy_hoi, so_ket_qua=so_chunk)
-            else:
-                tai_lieu = service._retrieve(cau_truy_hoi, so_ket_qua=so_chunk)
             nguon = [d.metadata.get("source_file", "") for d in tai_lieu]
             kq.ket_qua[che_do] = cham(nguon, kq.tep_dung, kq.tep_sai)
         except Exception as exc:
@@ -289,16 +298,23 @@ def tong_hop(cac_kq: list[KetQuaMoc]) -> dict:
             "sai_trong_cua_so": sum(r.sai_trong_cua_so for r in luot),
             "so_luot": len(luot),
         }
-    tot_len = te_di = 0
-    for k in do_duoc:
-        truoc, sau = k.ket_qua["tat_moc"], k.ket_qua["bat_moc"]
-        if truoc.loi or sau.loi:
-            continue
-        a, b = bool(truoc.dung_phien_ban), bool(sau.dung_phien_ban)
-        tot_len += (not a) and b
-        te_di += a and not b
-    ket_qua["tot_len"], ket_qua["te_di"] = tot_len, te_di
-    ket_qua["p_mcnemar"] = mcnemar_chinh_xac(tot_len, te_di)
+    ket_qua["so_sanh"] = {}
+    for truoc_ten, sau_ten in CAP_SO_SANH:
+        tot_len = te_di = 0
+        for k in do_duoc:
+            truoc, sau = k.ket_qua.get(truoc_ten), k.ket_qua.get(sau_ten)
+            if truoc is None or sau is None or truoc.loi or sau.loi:
+                continue
+            a, b = bool(truoc.dung_phien_ban), bool(sau.dung_phien_ban)
+            tot_len += (not a) and b
+            te_di += a and not b
+        ket_qua["so_sanh"][f"{truoc_ten}->{sau_ten}"] = {
+            "tot_len": tot_len, "te_di": te_di, "p_mcnemar": mcnemar_chinh_xac(tot_len, te_di),
+        }
+    # Giữ khoá cũ cho bước chính (tắt -> bật mốc).
+    chinh = ket_qua["so_sanh"]["tat_moc->bat_moc"]
+    ket_qua["tot_len"], ket_qua["te_di"] = chinh["tot_len"], chinh["te_di"]
+    ket_qua["p_mcnemar"] = chinh["p_mcnemar"]
     return ket_qua
 
 
@@ -312,28 +328,34 @@ def in_bao_cao(cac_kq: list[KetQuaMoc], chan_doan: list[dict]) -> dict:
     bang["nhãn chưa đối chiếu"] = tong_hop([k for k in cac_kq if not k.da_doi_chieu])
     bang["TOÀN BỘ"] = tong_hop(cac_kq)
 
-    print("\n" + "=" * 96)
-    print("HỎI THEO MỐC THỜI GIAN - mỗi ô là  tắt mốc → bật mốc")
-    print("=" * 96)
-    print(f"{'Loại câu':<20}{'Câu':>4}{'Chế độ':>10}{'Hit@1':>12}{'MRR@10':>15}"
-          f"{'Đúng phiên bản':>17}{'Đúng vào prompt':>17}{'Sai lọt prompt':>16}")
+    rong = 112
+    print("\n" + "=" * rong)
+    print("HỎI THEO MỐC THỜI GIAN - mỗi ô là  tắt mốc → bật mốc → bật mốc + hạ bậc ngoài mốc")
+    print("=" * rong)
+    print(f"{'Loại câu':<20}{'Câu':>4}{'Chế độ':>9}{'Hit@1':>14}{'MRR@10':>20}"
+          f"{'Đúng phiên bản':>17}{'Đúng vào prompt':>16}{'Sai lọt prompt':>15}")
+
+    def ba(tt, khoa, dang="{}"):
+        return " → ".join(dang.format(tt[c][khoa]) for c in CHE_DO)
+
     for loai, tt in bang.items():
         if loai in ("nhãn đã đối chiếu", "TOÀN BỘ"):
-            print("-" * 96)
+            print("-" * rong)
         if not tt["so_cau"] and loai != "TOÀN BỘ":
             continue
-        t, b = tt["tat_moc"], tt["bat_moc"]
         print(
-            f"{loai:<20}{tt['so_cau']:>4}{tt['nhan_moc_dung']:>6}/{tt['so_cau']:<3}"
-            f"{t['hit@1']:>6} → {b['hit@1']:<3}"
-            f"{t['mrr@10']:>8.2f} → {b['mrr@10']:<4.2f}"
-            f"{t['dung_phien_ban']:>6}/{t['so_cau_co_cap']} → {b['dung_phien_ban']}/{b['so_cau_co_cap']:<3}"
-            f"{t['dung_trong_cua_so']:>9} → {b['dung_trong_cua_so']:<5}"
-            f"{t['sai_trong_cua_so']:>8} → {b['sai_trong_cua_so']:<3}"
+            f"{loai:<20}{tt['so_cau']:>4}{tt['nhan_moc_dung']:>5}/{tt['so_cau']:<3}"
+            f"{ba(tt, 'hit@1'):>14}{ba(tt, 'mrr@10', '{:.2f}'):>20}"
+            f"{ba(tt, 'dung_phien_ban'):>12}/{tt['bat_moc']['so_cau_co_cap']:<4}"
+            f"{ba(tt, 'dung_trong_cua_so'):>16}{ba(tt, 'sai_trong_cua_so'):>15}"
         )
     toan_bo = bang["TOÀN BỘ"]
-    print(f"\nĐúng phiên bản: bật mốc làm tốt lên {toan_bo['tot_len']} câu, tệ đi "
-          f"{toan_bo['te_di']} câu · McNemar chính xác p = {toan_bo['p_mcnemar']:.3f}")
+    for ten, mo_ta in (("tat_moc->bat_moc", "bật mốc"), ("bat_moc->ha_bac", "hạ bậc ngoài mốc")):
+        ss = toan_bo["so_sanh"][ten]
+        print(f"Đúng phiên bản, {mo_ta}: tốt lên {ss['tot_len']} câu, tệ đi {ss['te_di']} câu"
+              f" · McNemar chính xác p = {ss['p_mcnemar']:.3f}")
+    print("Bật RAG_HA_BAC_NGOAI_MOC mặc định chỉ khi dòng thứ hai tốt lên rõ và không "
+          "tệ đi câu nào trên nhãn đã đối chiếu.")
     if toan_bo["so_cau"] < 30:
         print(f"Chỉ {toan_bo['so_cau']} câu đo được: đọc bảng như bộ ca kiểm thử, "
               "chưa phải ước lượng độ chính xác.")
@@ -363,14 +385,15 @@ def in_bao_cao(cac_kq: list[KetQuaMoc], chan_doan: list[dict]) -> dict:
             print(f"    · mong đợi {k.che_do_mong_doi}, hệ thống {k.che_do_nhan_ra}"
                   f"  ·  {k.cau_hoi[:60]}")
 
-    te_di = [
-        k for k in cac_kq if not k.bo_qua
-        and k.ket_qua["tat_moc"].dung_phien_ban and not k.ket_qua["bat_moc"].dung_phien_ban
-    ]
-    if te_di:
-        print("\nBật mốc làm TỆ ĐI (xem kỹ trước tiên):")
-        for k in te_di:
-            print(f"    · {k.cau_hoi[:70]}")
+    for truoc_ten, sau_ten in CAP_SO_SANH:
+        te_di = [
+            k for k in cac_kq if not k.bo_qua
+            and k.ket_qua[truoc_ten].dung_phien_ban and not k.ket_qua[sau_ten].dung_phien_ban
+        ]
+        if te_di:
+            print(f"\n{truoc_ten} → {sau_ten} làm TỆ ĐI (xem kỹ trước tiên):")
+            for k in te_di:
+                print(f"    · {k.cau_hoi[:70]}")
     return bang
 
 
@@ -407,8 +430,7 @@ def main() -> int:
         if kq.bo_qua:
             dong = "BỎ QUA"
         else:
-            t, b = kq.ket_qua["tat_moc"], kq.ket_qua["bat_moc"]
-            dong = f"hạng {t.hang_dung} → {b.hang_dung}"
+            dong = "hạng " + " → ".join(str(kq.ket_qua[c].hang_dung) for c in CHE_DO)
         print(f"[{thu_tu:>2}/{len(bo['cau_hoi'])}] {dong:<16} {kq.cau_hoi[:64]}", flush=True)
 
     bang = in_bao_cao(cac_kq, chan_doan)

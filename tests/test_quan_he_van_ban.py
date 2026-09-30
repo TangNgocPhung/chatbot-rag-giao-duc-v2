@@ -532,3 +532,79 @@ class TangDichVuTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HaBacNgoaiMocTests(unittest.TestCase):
+    """Chế độ lịch sử, tuỳ chọn RAG_HA_BAC_NGOAI_MOC: hạ bậc văn bản không áp
+    dụng tại mốc. Kho mẫu: 7/2026 (ban hành 10/1/2026) thay 29/2023 (30/12/2023)."""
+
+    def setUp(self):
+        self.so, _ = kho_mau()
+
+    def test_ngoai_moc(self):
+        # Năm 2024: 29/2023 đang áp dụng (7/2026 chưa có), 7/2026 chưa tồn tại.
+        self.assertFalse(self.so.ngoai_moc("cu.pdf", date(2024, 12, 31)))
+        self.assertTrue(self.so.ngoai_moc("moi.pdf", date(2024, 12, 31)))
+        # Hôm nay: 29/2023 đã bị thay, 7/2026 đang áp dụng.
+        self.assertTrue(self.so.ngoai_moc("cu.pdf", date(2026, 9, 30)))
+        self.assertFalse(self.so.ngoai_moc("moi.pdf", date(2026, 9, 30)))
+        # Trước khi chính nó ban hành: chưa có hiệu lực, dù về sau bị thay.
+        self.assertTrue(self.so.ngoai_moc("cu.pdf", date(2022, 12, 31)))
+        self.assertEqual(
+            self.so.tinh_trang_nut("29/2023/TT-BGDĐT", date(2022, 12, 31))["code"], "chua_hieu_luc"
+        )
+        # Tệp không phải văn bản quy phạm thì không bao giờ ngoài mốc.
+        self.assertFalse(self.so.ngoai_moc("khong-co.pdf", date(2022, 12, 31)))
+
+    def test_xep_hang_ha_bac_van_ban_ngoai_moc(self):
+        from langchain_core.documents import Document
+
+        from hybrid_retrieval import xep_hang_theo_lien_quan
+
+        def cac_doan():
+            noi_dung = "Quy định dạy thêm, học thêm trong nhà trường."
+            return [
+                Document(page_content=noi_dung, metadata={"source_file": "moi.pdf", "_rrf_score": 0.020}),
+                Document(page_content=noi_dung, metadata={"source_file": "cu.pdf", "_rrf_score": 0.019}),
+            ]
+
+        cau_hoi = "năm 2024 dạy thêm thế nào"
+        khong_phat = xep_hang_theo_lien_quan(cau_hoi, cac_doan(), 2, lich_su=True)
+        self.assertEqual(khong_phat[0].metadata["source_file"], "moi.pdf")
+        phat = lambda doc: self.so.ngoai_moc(doc.metadata["source_file"], date(2024, 12, 31))
+        co_phat = xep_hang_theo_lien_quan(cau_hoi, cac_doan(), 2, lich_su=True, phat_ngoai_moc=phat)
+        self.assertEqual(co_phat[0].metadata["source_file"], "cu.pdf")
+
+    def _tham_so_truy_hoi(self, cau_hoi, bat):
+        from unittest.mock import patch
+
+        import rag_service
+
+        service = rag_service.RAGService()
+        service.so_quan_he = self.so
+        with patch.object(service, "_matching_no_text_source", return_value=None), \
+                patch.dict("os.environ", {"RAG_HA_BAC_NGOAI_MOC": "1" if bat else "0"}), \
+                patch("rag_service.truy_hoi", return_value=[]) as truy_hoi:
+            service._retrieve(cau_hoi)
+        return truy_hoi.call_args.args
+
+    def test_mac_dinh_tat(self):
+        self.assertIsNone(self._tham_so_truy_hoi("Năm 2024 dạy thêm thế nào?", bat=False)[-1])
+
+    def test_chi_bat_o_che_do_lich_su_co_moc_ngay(self):
+        phat = self._tham_so_truy_hoi("Năm 2024 dạy thêm thế nào?", bat=True)[-1]
+        from langchain_core.documents import Document
+
+        self.assertTrue(phat(Document(page_content="x", metadata={"source_file": "moi.pdf"})))
+        self.assertFalse(phat(Document(page_content="x", metadata={"source_file": "cu.pdf"})))
+        # Hiện hành, hay lịch sử không có mốc ngày ("trước đây"): không có gì để so.
+        self.assertIsNone(self._tham_so_truy_hoi("Dạy thêm thế nào?", bat=True)[-1])
+        self.assertIsNone(self._tham_so_truy_hoi("Trước đây dạy thêm thế nào?", bat=True)[-1])
+
+    def test_van_ban_goi_dich_danh_khong_bi_ha(self):
+        from langchain_core.documents import Document
+
+        phat = self._tham_so_truy_hoi(
+            "Năm 2024 Thông tư 7/2026/TT-BGDĐT đã áp dụng chưa?", bat=True
+        )[-1]
+        self.assertFalse(phat(Document(page_content="x", metadata={"source_file": "moi.pdf"})))

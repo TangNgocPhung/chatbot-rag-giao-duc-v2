@@ -403,6 +403,12 @@ class SoQuanHe:
         chinh = [q.den for q in self.ra.get(nut, []) if q.loai == "kem_theo"]
         if chinh and not _dang_theo_kem_theo:
             return self.tinh_trang_nut(chinh[0], hom_nay, _dang_theo_kem_theo=True)
+        # Xét "chưa có hiệu lực" TRƯỚC "bị thay": tra mốc năm 2022 thì Thông tư
+        # 29/2023 chưa tồn tại, dù về sau nó bị 7/2026 thay. Xét ngược thứ tự
+        # thì nó thành "sắp hết hiệu lực - còn áp dụng đến trước 10/1/2026",
+        # tức là đang áp dụng vào năm 2022.
+        if self._chua_hieu_luc(nut, hom_nay):
+            return {"code": "chua_hieu_luc", "tu_ngay": self._ngay_bat_dau(nut)}
         vao = self.vao.get(nut, [])
         thay_boi = [q.tu for q in vao if q.loai == "thay_the"]
         if thay_boi:
@@ -411,8 +417,6 @@ class SoQuanHe:
                 return {"code": "het_hieu_luc", "boi": da_hieu_luc}
             ngay = min(self._ngay_bat_dau(t) for t in thay_boi)
             return {"code": "sap_het_hieu_luc", "boi": thay_boi, "tu_ngay": ngay}
-        if self._chua_hieu_luc(nut, hom_nay):
-            return {"code": "chua_hieu_luc", "tu_ngay": self._ngay_bat_dau(nut)}
         bai_bo = [q.tu for q in vao if q.loai == "bai_bo_mot_phan"
                   and not self._chua_hieu_luc(q.tu, hom_nay)]
         if bai_bo:
@@ -422,6 +426,18 @@ class SoQuanHe:
         if sua_doi:
             return {"code": "da_sua_doi", "boi": sua_doi}
         return {"code": "con_hieu_luc"}
+
+    def ngoai_moc(self, ten_file: str, moc: date) -> bool:
+        """
+        Tại mốc này văn bản KHÔNG áp dụng: đã bị thay (het_hieu_luc) hoặc chưa
+        có hiệu lực (chua_hieu_luc). Văn bản cũ mà văn bản thay thế nó chưa tới
+        ngày hiệu lực tại mốc là sap_het_hieu_luc - vẫn đang áp dụng, không
+        tính. Tệp không phải văn bản quy phạm thì không bao giờ ngoài mốc.
+        """
+        nut = self.nut_cua_tep.get(ten_file)
+        return bool(nut) and self.tinh_trang_nut(nut, moc)["code"] in (
+            "het_hieu_luc", "chua_hieu_luc",
+        )
 
     def het_hieu_luc(self, ten_file: str, hom_nay: date | None = None) -> bool:
         nut = self.nut_cua_tep.get(ten_file)
