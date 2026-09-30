@@ -408,6 +408,33 @@ class TachChuDeTests(unittest.TestCase):
         )
 
 
+class TenGoiNguonTests(unittest.TestCase):
+    def test_nguon_ten_tep_ma_hoa_khong_thanh_cau_goi_y(self):
+        """VPS 30/9: "Đã có văn bản chính thức nào ban hành thay cho bản dự
+        thảo 222-cp.signed.pdf chưa?" - nguồn không có số hiệu trong hồ sơ."""
+        nguon = [
+            {"name": "08-sgv-tieng-trung-quoc-8.pdf"},
+            {"name": "222-cp.signed.pdf", "validity": {"code": "du_thao"}},
+        ]
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo(
+            "Tiếng trung dạy từ lớp mấy", nguon,
+            cau_tra_loi="Sách dành cho **lớp 8** [1]. Đối tượng chuyển lớp theo Điều 5 [2].",
+        )
+        self.assertFalse([cau for cau in goi_y if ".pdf" in cau or "dự thảo" in cau], goi_y)
+        self.assertEqual(len(goi_y), goi_y_cau_hoi.SO_GOI_Y_TIEP)
+
+    def test_co_so_hieu_thi_van_hoi_ve_du_thao(self):
+        nguon = [{
+            "name": "du-thao-222.pdf",
+            "van_ban": {"so_hieu": "222/2025/NĐ-CP", "loai": "Nghị định"},
+            "validity": {"code": "du_thao"},
+        }]
+        self.assertEqual(
+            goi_y_cau_hoi.goi_y_tiep_theo("Học phí được miễn khi nào?", nguon)[0],
+            "Đã có văn bản chính thức nào ban hành thay cho bản dự thảo Nghị định 222/2025/NĐ-CP chưa?",
+        )
+
+
 class GoiYBamChuDeCauHoiTests(unittest.TestCase):
     def test_goi_y_gan_chu_the_va_bo_y_chi_co_trong_o_bang(self):
         self.assertEqual(
