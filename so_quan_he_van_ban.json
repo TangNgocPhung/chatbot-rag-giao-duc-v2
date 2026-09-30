@@ -6,7 +6,7 @@
    "van_ban.<số hiệu>.ten_goi: tên thường gọi, để nối câu 'quy định chi tiết Luật Giáo dục' (không kèm số) về đúng số hiệu; khi nhiều số hiệu cùng tên thì chọn bản mới nhất ban hành trước văn bản đang xét.",
    "van_ban.<số hiệu>.tep: tên tệp trong kho mang số hiệu này mà máy không tự nhận ra (ảnh quét hỏng dòng 'Số:').",
    "loai_bo: quan hệ máy trích SAI, liệt kê để bỏ qua.",
-   "Ngày của các Thông tư ghi thêm ngày 30/9/2026 (sau 76/2018/TT-BTC) tra từ kết quả tìm kiếm web (luatvietnam, caselaw, thuvienphapluat...), CHƯA đối chiếu nguyên văn điều Hiệu lực thi hành; chỉ ghi ngày có nguồn nêu rõ và khớp quy tắc hiệu lực không sớm hơn 45 ngày sau ngày ký (trừ 15/2020, 21/2025, 3/2026, 23/2026: nhiều nguồn cùng ghi có hiệu lực kể từ ngày ký). Sửa ngay khi đối chiếu thấy khác."
+   "Ngày của các Thông tư ghi thêm ngày 30/9/2026 (sau 76/2018/TT-BTC) tra từ kết quả tìm kiếm web (luatvietnam, caselaw, thuvienphapluat...), CHƯA đối chiếu nguyên văn điều Hiệu lực thi hành; chỉ ghi ngày có nguồn nêu rõ và khớp quy tắc hiệu lực không sớm hơn 45 ngày sau ngày ký (trừ 15/2020, 21/2025, 3/2026, 23/2026, 27/2026, 30/2026: nhiều nguồn cùng ghi có hiệu lực kể từ ngày ký). Sửa ngay khi đối chiếu thấy khác."
  ],
  "van_ban": {
   "38/2005/QH11": {"ten_goi": ["Luật Giáo dục"], "ngay_ban_hanh": "2005-06-14"},
@@ -136,7 +136,11 @@
   "74/2026/TT-BGDĐT": {"ngay_hieu_luc": "2026-10-12"},
   "1/2017/TT-BGDĐT": {"ngay_ban_hanh": "2017-01-13", "ngay_hieu_luc": "2017-03-01"},
   "146/2025/TT-BTC": {"ngay_hieu_luc": "2026-03-01"},
-  "3/2026/TT-BGDĐT": {"ngay_ban_hanh": "2026-01-30", "ngay_hieu_luc": "2026-01-30"}
+  "3/2026/TT-BGDĐT": {"ngay_ban_hanh": "2026-01-30", "ngay_hieu_luc": "2026-01-30"},
+  "27/2026/TT-BGDĐT": {"ngay_hieu_luc": "2026-04-09"},
+  "30/2026/TT-BGDĐT": {"ngay_ban_hanh": "2026-04-14", "ngay_hieu_luc": "2026-04-14"},
+  "76/2026/TT-BGDĐT": {"ngay_ban_hanh": "2026-09-18", "ngay_hieu_luc": "2026-11-03"},
+  "83/2026/TT-BGDĐT": {"ngay_ban_hanh": "2026-09-30", "ngay_hieu_luc": "2026-11-15"}
  },
  "quan_he": [
   {"tu": "43/2019/QH14", "loai": "thay_the", "den": "38/2005/QH11", "can_cu": "Luật Giáo dục 2019, Điều 115 Hiệu lực thi hành"},
