@@ -2009,10 +2009,17 @@ class RAGService:
             kiem_tra = kiem_tra_tra_loi.kiem_tra(cau_tra_loi, documents)
             if not kiem_tra.dat:
                 yield {"type": "warning", "message": kiem_tra.canh_bao()}
+            # Câu nối tiếp đã được ghép sau câu hỏi trước để truy hồi
+            # (_conversation_inputs); gợi ý mượn chủ thể của câu trước đó.
+            cau_hoi_truoc = (
+                retrieval_question[: -len(question)].rstrip("\n")
+                if retrieval_question != question else ""
+            )
             yield {
                 "type": "goi_y",
                 "goi_y": goi_y_cau_hoi.goi_y_tiep_theo(
-                    question, cac_nguon, cau_tra_loi=cau_tra_loi
+                    question, cac_nguon, cau_tra_loi=cau_tra_loi,
+                    cau_hoi_truoc=cau_hoi_truoc,
                 ),
             }
             # Chỉ cache câu trả lời đã qua hậu kiểm. Câu có trích dẫn sai hoặc số
