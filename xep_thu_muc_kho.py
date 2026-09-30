@@ -44,7 +44,12 @@ from document_loaders import (
 )
 from hybrid_retrieval import bo_dau
 from media_transcribe import DINH_DANG_MEDIA
-from phan_loai_giao_duc import LOAI_NOI_DUNG_MAC_DINH, PhanLoai, suy_phan_loai
+from phan_loai_giao_duc import (
+    LOAI_NOI_DUNG_MAC_DINH,
+    NHAN_LOAI_NOI_DUNG,
+    PhanLoai,
+    suy_phan_loai,
+)
 from van_ban_meta import (
     MAU_DAU_HIEU_QPPL,
     HoSoVanBan,
@@ -338,6 +343,40 @@ def chon_thu_muc(
     if loai_noi_dung == LOAI_NOI_DUNG_MAC_DINH:
         return f"{goc}/{THU_MUC_CHUA_PHAN_LOAI}"
     return f"{goc}/{loai_noi_dung}"
+
+
+# ============================================================
+# NHÃN HIỂN THỊ
+# ============================================================
+NHAN_THU_MUC_DINH_DANG = {
+    "pdf": "PDF",
+    "word": "Word",
+    "trinh_chieu": "Trình chiếu",
+    "am_thanh": "Âm thanh",
+    "video": "Video",
+    "hinh_anh": "Hình ảnh",
+    "bang_tinh": "Bảng tính",
+    "phu_de": "Phụ đề",
+    "van_ban_khac": "Văn bản khác",
+}
+
+
+def nhan_thu_muc() -> dict:
+    """Tên thư mục -> nhãn tiếng Việt, để Kho tài liệu trên web chia nhóm
+    "Văn bản 1101" thành Sách giáo khoa, Sách giáo viên, Thông tư...
+
+    "dinh_dang": tầng 1 - giao diện bỏ qua tầng này khi chia nhóm, vì PDF và
+    Word cùng là sách giáo khoa thì nên đếm chung.
+    "thu_muc": tầng 2 và 3 (loại nội dung, loại văn bản quy phạm).
+    """
+    nhan = {
+        loai: ten.split(" (")[0]  # "Giáo án (kế hoạch bài dạy)" -> "Giáo án"
+        for loai, ten in NHAN_LOAI_NOI_DUNG.items()
+    }
+    nhan[THU_MUC_CHUA_PHAN_LOAI] = "Chưa phân loại"
+    nhan[THU_MUC_VAN_BAN_KHAC] = "Loại khác"
+    nhan.update({thu_muc: loai for loai, thu_muc in THU_MUC_LOAI_VAN_BAN.items()})
+    return {"dinh_dang": dict(NHAN_THU_MUC_DINH_DANG), "thu_muc": nhan}
 
 
 def thu_muc_he_dieu_hanh(thu_muc_con: str) -> str:

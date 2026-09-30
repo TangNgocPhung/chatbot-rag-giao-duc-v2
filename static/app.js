@@ -189,6 +189,10 @@ let statusTimer = null;
 let messageSequence = 0;
 let documentsCache = [];
 let documentKindFilter = 'tat_ca';
+// Nhánh thư mục đang chọn bên dưới loại tài liệu, ví dụ ['van_ban_quy_pham', 'thong_tu'].
+let documentFolderFilter = [];
+// Nhãn tiếng Việt của thư mục, máy chủ gửi kèm /api/documents (xep_thu_muc_kho.nhan_thu_muc).
+let nhanThuMucKho = { dinh_dang: {}, thu_muc: {} };
 let modelsCache = [];
 let currentModel = '';
 let historyQuery = '';
@@ -2565,6 +2569,46 @@ const kindLabels = {
   anh: 'Ảnh',
 };
 
+// "pdf/van_ban_quy_pham/thong_tu" -> ['van_ban_quy_pham', 'thong_tu']. Bỏ tầng định
+// dạng (pdf, word) để sách giáo khoa dạng PDF và Word được đếm chung một nhóm.
+function tangThuMuc(taiLieu) {
+  const phan = (taiLieu.folder || '').split(/[\\/]/).filter(Boolean);
+  if (phan.length && nhanThuMucKho.dinh_dang?.[phan[0]]) phan.shift();
+  return phan;
+}
+
+// Thư mục chưa có nhãn (quản trị viên tự tạo): "tai_lieu_tap_huan" -> "Tai lieu tap huan".
+function nhanThuMuc(khoa) {
+  if (!khoa) return 'Chưa chia thư mục';
+  const nhan = nhanThuMucKho.thu_muc?.[khoa];
+  if (nhan) return nhan;
+  const chu = khoa.replace(/_/g, ' ');
+  return chu.charAt(0).toLocaleUpperCase('vi-VN') + chu.slice(1);
+}
+
+const khopLoaiTaiLieu = (taiLieu) => (
+  documentKindFilter === 'tat_ca' || (taiLieu.kind || 'van_ban') === documentKindFilter
+);
+
+const khopThuMuc = (taiLieu) => {
+  const tang = tangThuMuc(taiLieu);
+  return documentFolderFilter.every((khoa, i) => (tang[i] || '') === khoa);
+};
+
+function taoChipLoc(chu, dangChon, khiBam) {
+  const button = window.document.createElement('button');
+  button.type = 'button';
+  button.className = `filter-chip${dangChon ? ' active' : ''}`;
+  button.setAttribute('aria-pressed', String(dangChon));
+  button.textContent = chu;
+  button.addEventListener('click', () => {
+    khiBam();
+    renderDocumentFilters();
+    renderDocuments(elements.documentSearch.value);
+  });
+  return button;
+}
+
 function renderDocumentFilters() {
   if (!elements.documentFilters) return;
   const counts = new Map();
@@ -2574,18 +2618,58 @@ function renderDocumentFilters() {
   }
   const kinds = ['tat_ca', ...[...counts.keys()].sort()];
   elements.documentFilters.replaceChildren();
+  const hangLoai = window.document.createElement('div');
+  hangLoai.className = 'filter-row';
   for (const kind of kinds) {
-    const button = window.document.createElement('button');
-    button.type = 'button';
-    button.className = `filter-chip${documentKindFilter === kind ? ' active' : ''}`;
     const total = kind === 'tat_ca' ? documentsCache.length : counts.get(kind);
-    button.textContent = `${kindLabels[kind] || kind} ${total}`;
-    button.addEventListener('click', () => {
+    hangLoai.append(taoChipLoc(`${kindLabels[kind] || kind} ${total}`, documentKindFilter === kind, () => {
       documentKindFilter = kind;
-      renderDocumentFilters();
-      renderDocuments(elements.documentSearch.value);
-    });
-    elements.documentFilters.append(button);
+      documentFolderFilter = [];
+    }));
+  }
+  elements.documentFilters.append(hangLoai);
+
+  // Chọn một loại (Văn bản...) thì chia tiếp theo thư mục: Sách giáo khoa, Sách
+  // giáo viên, Văn bản quy phạm; chọn Văn bản quy phạm thì chia tiếp Thông tư,
+  // Nghị định... "Tất cả" không chia: trình chiếu, video không có thư mục con.
+  if (documentKindFilter === 'tat_ca') {
+    documentFolderFilter = [];
+    return;
+  }
+  let nguon = documentsCache.filter(khopLoaiTaiLieu);
+  for (let tang = 0; ; tang += 1) {
+    const dem = new Map();
+    for (const taiLieu of nguon) {
+      const khoa = tangThuMuc(taiLieu)[tang] || '';
+      dem.set(khoa, (dem.get(khoa) || 0) + 1);
+    }
+    const daChon = documentFolderFilter[tang];
+    // Nhánh đã chọn không còn (vừa gỡ tệp cuối cùng của nó) thì bỏ chọn.
+    if (daChon !== undefined && !dem.has(daChon)) documentFolderFilter = documentFolderFilter.slice(0, tang);
+    // Chỉ một nhóm "không có thư mục con" thì không có gì để chia.
+    if (!dem.size || (dem.size === 1 && dem.has(''))) {
+      documentFolderFilter = documentFolderFilter.slice(0, tang);
+      return;
+    }
+    const hang = window.document.createElement('div');
+    hang.className = 'filter-row filter-row-con';
+    hang.setAttribute('role', 'group');
+    hang.setAttribute('aria-label', tang === 0 ? 'Lọc theo thư mục' : 'Lọc theo thư mục con');
+    hang.append(taoChipLoc(`Tất cả ${nguon.length}`, documentFolderFilter[tang] === undefined, () => {
+      documentFolderFilter = documentFolderFilter.slice(0, tang);
+    }));
+    // Nhiều tệp đứng trước; "Chưa chia thư mục" luôn ở cuối.
+    const nhom = [...dem.entries()].sort((a, b) => (
+      (a[0] === '') - (b[0] === '') || b[1] - a[1] || nhanThuMuc(a[0]).localeCompare(nhanThuMuc(b[0]), 'vi')
+    ));
+    for (const [khoa, soTep] of nhom) {
+      hang.append(taoChipLoc(`${nhanThuMuc(khoa)} ${soTep}`, documentFolderFilter[tang] === khoa, () => {
+        documentFolderFilter = [...documentFolderFilter.slice(0, tang), khoa];
+      }));
+    }
+    elements.documentFilters.append(hang);
+    if (documentFolderFilter[tang] === undefined) return;
+    nguon = nguon.filter((taiLieu) => (tangThuMuc(taiLieu)[tang] || '') === documentFolderFilter[tang]);
   }
 }
 
@@ -2943,7 +3027,8 @@ function renderDocuments(query = '') {
   const normalizedQuery = query.trim().toLocaleLowerCase('vi-VN');
   const documents = documentsCache.filter((document) =>
     `${document.name} ${document.folder}`.toLocaleLowerCase('vi-VN').includes(normalizedQuery)
-    && (documentKindFilter === 'tat_ca' || (document.kind || 'van_ban') === documentKindFilter)
+    && khopLoaiTaiLieu(document)
+    && khopThuMuc(document)
   );
   elements.documentList.replaceChildren();
   if (!documents.length) {
@@ -3025,6 +3110,7 @@ async function openDocumentLibrary() {
     if (!response.ok) throw new Error('Không đọc được kho tài liệu.');
     const payload = await response.json();
     documentsCache = payload.documents || [];
+    nhanThuMucKho = payload.nhan_thu_muc || nhanThuMucKho;
     const summary = payload.summary || {};
     elements.libraryCount.textContent = (summary.total || 0).toLocaleString('vi-VN');
     const summaryParts = [
