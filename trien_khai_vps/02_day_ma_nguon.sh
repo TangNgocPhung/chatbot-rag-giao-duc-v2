@@ -219,12 +219,28 @@ $SCP "$TEP_MK"  "$NGUOI_SSH@$MAY_CHU:/tmp/mk.txt" >/dev/null
 # day 21:01 lam mat RAG_TU_NAP_CHI_MUC=0 (tep duyet ban ngay bi bao "can cap
 # nhat chi muc" thay vi cho luot dem) va dua mo hinh mac dinh ve llama3.2:3b.
 # Lan dau trien khai chua co gi de giu thi dung mac dinh cho VPS.
-$SSH "$NHU_ROOT bash -c 'for k in RAG_EMAIL_QUAN_TRI RAG_SMTP_TAI_KHOAN RAG_SMTP_MAT_KHAU RAG_SMTP_MAY_CHU RAG_SMTP_CONG RAG_SMTP_NGUOI_GUI RAG_LLM_MODEL RAG_TU_NAP_CHI_MUC; do
-        grep -q \"^\$k=\" /tmp/chatbot-rag.env || grep \"^\$k=\" /etc/chatbot-rag.env >> /tmp/chatbot-rag.env 2>/dev/null || true
+#
+# Ghep vao tep tam CUA ROOT chu khong ghi noi vao /tmp/chatbot-rag.env: tep do
+# do scp tao nen thuoc tai khoan SSH (debian), ma Debian dat
+# fs.protected_regular=2 - root cung khong duoc mo-de-ghi tep cua nguoi khac
+# trong /tmp. "grep >> /tmp/chatbot-rag.env" bi tu choi, "|| true" nuot loi, env
+# moi mat ca ba khoa (30/9/2026 hai lan lien, tu khi 02 chay bang debian).
+# Mat khoa nao env cu dang co thi DUNG truoc khi cai, khong cai env thieu.
+KHOA_GIU="RAG_EMAIL_QUAN_TRI RAG_SMTP_TAI_KHOAN RAG_SMTP_MAT_KHAU RAG_SMTP_MAY_CHU RAG_SMTP_CONG RAG_SMTP_NGUOI_GUI RAG_LLM_MODEL RAG_TU_NAP_CHI_MUC"
+$SSH "$NHU_ROOT bash -c 'set -e; T=\$(mktemp); cat /tmp/chatbot-rag.env > \$T
+      for k in $KHOA_GIU; do
+        grep -q \"^\$k=\" \$T || grep \"^\$k=\" /etc/chatbot-rag.env >> \$T 2>/dev/null || true
       done
-      grep -q ^RAG_LLM_MODEL= /tmp/chatbot-rag.env || echo RAG_LLM_MODEL=llama3.2:3b >> /tmp/chatbot-rag.env
-      grep -q ^RAG_TU_NAP_CHI_MUC= /tmp/chatbot-rag.env || echo RAG_TU_NAP_CHI_MUC=0 >> /tmp/chatbot-rag.env'
-      $NHU_ROOT install -o root -g rag -m 640 /tmp/chatbot-rag.env /etc/chatbot-rag.env && rm -f /tmp/chatbot-rag.env && echo 'Da ghi /etc/chatbot-rag.env'"
+      grep -q ^RAG_LLM_MODEL= \$T || echo RAG_LLM_MODEL=llama3.2:3b >> \$T
+      grep -q ^RAG_TU_NAP_CHI_MUC= \$T || echo RAG_TU_NAP_CHI_MUC=0 >> \$T
+      for k in $KHOA_GIU; do
+        if grep -q \"^\$k=\" /etc/chatbot-rag.env 2>/dev/null && ! grep -q \"^\$k=\" \$T; then
+          echo \"[LOI] env moi mat \$k - giu nguyen /etc/chatbot-rag.env cu.\"; rm -f \$T; exit 1
+        fi
+      done
+      install -o root -g rag -m 640 \$T /etc/chatbot-rag.env
+      rm -f \$T /tmp/chatbot-rag.env
+      echo Da ghi /etc/chatbot-rag.env'"
 
 # KHOA_QUAN_TRI=1 thi dat mat khau cho cac duong dan quan tri; mac dinh 0 =
 # khong chan gi, dung yeu cau "bo het cho hoi mat khau" ngay 15/09/2026.
