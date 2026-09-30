@@ -1838,7 +1838,7 @@ class RAGService:
             "type": "goi_y",
             "goi_y": goi_y_cau_hoi.goi_y_tiep_theo(
                 muc.get("cau_hoi", ""), muc.get("nguon", []),
-                cau_tra_loi=muc.get("tra_loi", ""),
+                cau_tra_loi=muc.get("tra_loi", ""), phan_loai=self.phan_loai,
             ),
         }
         yield {
@@ -2201,7 +2201,7 @@ class RAGService:
                 "type": "goi_y",
                 "goi_y": goi_y_cau_hoi.goi_y_tiep_theo(
                     question, cac_nguon, cau_tra_loi=cau_tra_loi,
-                    cau_hoi_truoc=cau_hoi_truoc,
+                    cau_hoi_truoc=cau_hoi_truoc, phan_loai=self.phan_loai,
                 ),
             }
             # Chỉ cache câu trả lời đã qua hậu kiểm. Câu có trích dẫn sai hoặc số

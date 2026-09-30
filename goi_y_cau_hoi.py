@@ -450,9 +450,18 @@ def _chu_the_giua_cau(chu_the: str) -> str:
     return chu_the
 
 
+# Nhãn kèm số ("lớp 8", "tuần 3", "học kì 2") in đậm chỉ để nhấn vào con số,
+# đứng riêng thì "Tài liệu còn nói gì thêm về lớp 8?" không biết lớp 8 môn gì.
+_NHAN_KEM_SO = re.compile(
+    r"^(?:lớp|khối|tuần|tiết|bài|tập|học kì|học kỳ|năm|bậc|cấp)\s+\d+$", re.IGNORECASE
+)
+
+
 def _la_cum_dung_duoc(cum: str, cau_hoi_chuan: str) -> bool:
     khoa = _chuan_hoa(cum)
     if len(khoa) < 3 or khoa.replace(" ", "").isdigit():
+        return False
+    if _NHAN_KEM_SO.match(cum.strip()):
         return False
     if any(khoa == tu or khoa.startswith(tu + " ") for tu in _CUM_BO_QUA):
         return False
@@ -686,12 +695,15 @@ def goi_y_tiep_theo(
     so_luong: int = SO_GOI_Y_TIEP,
     cau_tra_loi: str = "",
     cau_hoi_truoc: str = "",
+    phan_loai=None,
 ) -> list[str]:
     """Gợi ý hỏi tiếp sau một câu trả lời có trích nguồn.
 
     cau_hoi_truoc: câu hỏi trước đó khi câu này là câu nối tiếp ("còn năng lực
     chung thì sao?") - câu nối tiếp hiếm khi tự nêu chủ thể, mượn của câu trước
     để gợi ý vẫn bám đúng chuyện đang hỏi.
+    phan_loai: bảng phân loại kho; câu hỏi nhắc tới môn mà không tách được chủ
+    thể thì gợi ý thêm sách cùng môn kho có (như lúc từ chối).
     """
     cac_nguon = [nguon for nguon in (cac_nguon or []) if isinstance(nguon, dict)]
     if cau_tra_loi:
@@ -721,6 +733,16 @@ def goi_y_tiep_theo(
             else:
                 ung_vien.append(cau)
     chu_the = tach_chu_de(cau_hoi)[0] or tach_chu_de(cau_hoi_truoc)[0]
+    # Không có động từ chính ("Tiếng trung dạy từ lớp mấy") nhưng nhắc tới một
+    # môn thì môn đó là chủ thể, và sách cùng môn trong kho là thứ hỏi tiếp được.
+    goi_y_theo_mon = []
+    if not chu_the:
+        nhan = (phan_loai_giao_duc.nhan_dien_cau_hoi(cau_hoi)
+                or phan_loai_giao_duc.nhan_dien_cau_hoi(cau_hoi_truoc))
+        if len(nhan.get("mon_hoc", [])) == 1:
+            lop = nhan.get("lop") or []
+            chu_the = f"môn {nhan['mon_hoc'][0]}" + (f" lớp {lop[0]}" if len(lop) == 1 else "")
+            goi_y_theo_mon = _goi_y_theo_mon(nhan, phan_loai or {}, None)
     tu_y_chinh = _cau_hoi_tu_y_chinh(rut_y_chinh(cau_tra_loi, cau_hoi), chu_the)
     if tu_y_chinh:
         # Đã có ý chính bám câu trả lời thì câu hỏi theo Điều chỉ được chen vào
@@ -742,6 +764,7 @@ def goi_y_tiep_theo(
     ten_nguon_dau = _ten_goi(cac_nguon[0]) if cac_nguon else None
     if ten_nguon_dau:
         ung_vien.append(f"Tóm tắt những nội dung chính của {ten_nguon_dau}")
+    ung_vien += goi_y_theo_mon
     # Câu chung "đối tượng áp dụng, lộ trình" chỉ hợp khi nguồn là văn bản quản
     # lý; nguồn là sách giáo khoa hay bài giảng thì hỏi vậy là lạc đề.
     # "nội dung này" đổi thành đúng thứ đang hỏi - phạm vi "về ..." của câu hỏi,
