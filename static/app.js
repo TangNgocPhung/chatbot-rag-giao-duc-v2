@@ -2586,6 +2586,15 @@ function nhanThuMuc(khoa) {
   return chu.charAt(0).toLocaleUpperCase('vi-VN') + chu.slice(1);
 }
 
+// "pdf/van_ban_quy_pham/thong_tu" -> "PDF › Văn bản quy phạm › Thông tư" cho dòng phụ
+// dưới tên tệp. Giữ cả tầng định dạng: ở đây là đường dẫn của một tệp, không phải nhóm.
+function tenThuMucHienThi(taiLieu) {
+  const phan = (taiLieu.folder || '').split(/[\\/]/).filter(Boolean);
+  return phan.map((khoa, i) => (
+    (i === 0 && nhanThuMucKho.dinh_dang?.[khoa]) || nhanThuMuc(khoa)
+  )).join(' › ');
+}
+
 const khopLoaiTaiLieu = (taiLieu) => (
   documentKindFilter === 'tat_ca' || (taiLieu.kind || 'van_ban') === documentKindFilter
 );
@@ -3026,7 +3035,8 @@ function renderDocuments(query = '') {
   }
   const normalizedQuery = query.trim().toLocaleLowerCase('vi-VN');
   const documents = documentsCache.filter((document) =>
-    `${document.name} ${document.folder}`.toLocaleLowerCase('vi-VN').includes(normalizedQuery)
+    // Tìm được cả theo nhãn tiếng Việt ("thông tư") lẫn tên thư mục gốc ("thong_tu").
+    `${document.name} ${document.folder} ${tenThuMucHienThi(document)}`.toLocaleLowerCase('vi-VN').includes(normalizedQuery)
     && khopLoaiTaiLieu(document)
     && khopThuMuc(document)
   );
@@ -3079,7 +3089,7 @@ function renderDocuments(query = '') {
     name.textContent = document.name;
     const meta = window.document.createElement('small');
     meta.textContent = [
-      document.folder,
+      tenThuMucHienThi(document),
       formatFileSize(document.size_bytes),
       // Chỉ quản trị viên nhận được các trường này từ máy chủ.
       document.nguoi_gui ? `đưa vào bởi ${document.nguoi_gui} (${dinhDangNgay(document.gui_luc)})` : '',
