@@ -186,6 +186,30 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(payload["documents"][0]["name"], "tai-lieu.txt")
         self.assertNotIn(directory, response.text)
 
+    def test_document_inventory_gui_thu_muc_va_nhan_de_chia_nhom(self):
+        """Kho tài liệu chia "Văn bản" thành Sách giáo khoa, Thông tư... nhờ
+        đường dẫn thư mục (luôn dấu "/") và bảng nhãn gửi kèm."""
+        with tempfile.TemporaryDirectory() as directory:
+            data_directory = os.path.join(directory, "data")
+            thu_muc = os.path.join(data_directory, "pdf", "van_ban_quy_pham", "thong_tu")
+            os.makedirs(thu_muc)
+            with open(os.path.join(thu_muc, "tt.txt"), "w", encoding="utf-8") as tep:
+                tep.write("Thông tư")
+            ledger_path = os.path.join(directory, "ledger.json")
+            with open(ledger_path, "w", encoding="utf-8") as ledger:
+                json.dump({}, ledger)
+            with (
+                patch("rag_service.DATA_PATH", data_directory),
+                patch("rag_service.DUONG_DAN_SO_GHI_CHEP", ledger_path),
+            ):
+                payload = self.client.get("/api/documents").json()
+        self.assertEqual(payload["documents"][0]["folder"], "pdf/van_ban_quy_pham/thong_tu")
+        nhan = payload["nhan_thu_muc"]
+        self.assertEqual(nhan["dinh_dang"]["pdf"], "PDF")
+        self.assertEqual(nhan["thu_muc"]["sach_giao_khoa"], "Sách giáo khoa")
+        self.assertEqual(nhan["thu_muc"]["sach_giao_vien"], "Sách giáo viên")
+        self.assertEqual(nhan["thu_muc"]["thong_tu"], "Thông tư")
+
     def test_document_inventory_bo_qua_lech_mtime_do_chep_kho(self):
         """Kho chép sang máy khác bằng tar mất phần lẻ giây của mtime; chỉ mục
         vẫn còn nguyên nên tài liệu không được rơi về "Chờ cập nhật"."""
