@@ -1457,6 +1457,7 @@ class RAGService:
                         "chieu": muc["chieu"],
                         "nhan": muc["nhan"],
                         "tep": muc["tep"][0] if muc["tep"] else None,
+                        "tu_ngay": muc["tu_ngay"],
                         "url": (
                             f"/api/source?name={quote(muc['tep'][0])}" if muc["tep"] else None
                         ),

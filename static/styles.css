@@ -674,6 +674,7 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .lien-quan-muc b { color: var(--ink-mute); font-weight: 650; }
 a.lien-quan-muc:hover { color: var(--blue); text-decoration: underline; }
 .lien-quan-muc.ngoai-kho { color: var(--ink-mute); }
+.lien-quan-ngay { color: var(--ink-mute); white-space: nowrap; }
 /* Chỉ tô màu chiều bị tác động ("Bị thay thế bởi..."); "Thay thế: X" là thông tin thường. */
 .lien-quan-muc.quan-he-thay_the.chieu-vao b { color: var(--danger-ink); }
 .lien-quan-muc.quan-he-sua_doi.chieu-vao b, .lien-quan-muc.quan-he-bai_bo_mot_phan.chieu-vao b { color: var(--warn-ink); }

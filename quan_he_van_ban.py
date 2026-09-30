@@ -51,6 +51,10 @@ TEN_QUAN_HE = {
     "kem_theo": ("Ban hành kèm theo", "Có văn bản kèm theo"),
 }
 
+# Quan hệ làm đổi hiệu lực văn bản kia từ một ngày cụ thể - ngày hiệu lực của
+# văn bản tác động. Hướng dẫn/kèm theo không có mốc riêng.
+QUAN_HE_CO_MOC = {"thay_the", "bai_bo_mot_phan", "sua_doi"}
+
 # Thứ tự ưu tiên khi chọn văn bản đi kèm để đưa thêm vào prompt: cái nào đọc
 # thiếu thì câu trả lời SAI đứng trước, cái chỉ làm câu trả lời ĐẦY ĐỦ HƠN đứng sau.
 # (loại quan hệ, chiều) - "vao": văn bản kia tác động lên văn bản đang trích.
@@ -445,7 +449,13 @@ class SoQuanHe:
         """
         Mọi văn bản có quan hệ với tệp này, kể cả văn bản KHÔNG có trong kho
         (vẫn đáng biết "đã thay thế Thông tư 17/2012"), theo thứ tự ưu tiên.
-        Mỗi mục: {quan_he, chieu, mo_ta, so_hieu, nhan, tep}.
+        Mỗi mục: {quan_he, chieu, mo_ta, so_hieu, nhan, tep, tu_ngay}.
+
+        tu_ngay: ngày quan hệ bắt đầu có tác dụng (ISO), tức ngày hiệu lực của
+        văn bản tác động (bên thay thế/sửa đổi/bãi bỏ) - "thay thế Thông tư 33
+        từ ngày nào". Chỉ lấy ngày hiệu lực đọc được thật, không đoán từ ngày
+        ban hành như _ngay_bat_dau: ghi sai ngày còn tệ hơn để trống.
+        None với quan hệ không mang mốc thời gian (hướng dẫn, kèm theo).
         """
         nut = self.nut_cua_tep.get(ten_file)
         if not nut:
@@ -469,6 +479,7 @@ class SoQuanHe:
                     "so_hieu": None if kia.startswith("tep:") else kia,
                     "nhan": self.nhan_nut(kia),
                     "tep": [t for t in self.tep_cua_nut.get(kia, []) if not self._la_du_thao(t)],
+                    "tu_ngay": self.ngay_hieu_luc(q.tu) if loai in QUAN_HE_CO_MOC else None,
                 })
         # Văn bản thay thế đứng trước: giao diện cắt bớt thì phần quan trọng còn.
         return ket_qua[:gioi_han]
