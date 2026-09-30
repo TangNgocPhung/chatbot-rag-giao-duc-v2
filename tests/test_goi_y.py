@@ -500,9 +500,46 @@ class GoiYBamChuDeCauHoiTests(unittest.TestCase):
             all("Chương trình giáo dục phổ thông 2018" in cau for cau in goi_y[:2]), goi_y
         )
 
-    def test_khong_tach_duoc_chu_the_thi_giu_khuon_cu(self):
+    TRA_LOI_TIENG_TRUNG = (
+        "Việc giảng dạy Tiếng Trung Quốc bắt đầu từ **lớp 8**. SGK Tiếng Trung Quốc 8 "
+        "phục vụ Chương trình môn Tiếng Trung Quốc [1]. Người học có thể chuyển sang "
+        "học bằng Tiếng Trung Quốc [1]."
+    )
+    NGUON_TIENG_TRUNG = [{"name": "08-sgv-tieng-trung-quoc-8.pdf"}]
+
+    def test_khong_co_dong_tu_nhung_nhac_mon_thi_goi_y_sach_cung_mon(self):
+        """VPS 30/9 "Tiếng trung dạy từ lớp mấy": trước ra "...về lớp 8?" và
+        "...về nội dung này?"."""
+        self.assertEqual(
+            goi_y_cau_hoi.goi_y_tiep_theo(
+                "Tiếng trung dạy từ lớp mấy", self.NGUON_TIENG_TRUNG,
+                cau_tra_loi=self.TRA_LOI_TIENG_TRUNG, phan_loai=KHO_NGOAI_NGU,
+            ),
+            [
+                "Nói rõ hơn về Tiếng Trung Quốc",
+                "Sách giáo khoa Tiếng Trung Quốc lớp 3 gồm những bài học nào?",
+                "Sách giáo khoa Tiếng Trung Quốc lớp 6 gồm những bài học nào?",
+            ],
+        )
+
+    def test_khong_co_bang_phan_loai_thi_cau_chung_gan_ten_mon(self):
         goi_y = goi_y_cau_hoi.goi_y_tiep_theo(
-            "Tiếng trung dạy từ lớp mấy", NGUON_SGV, cau_tra_loi=TRA_LOI_CT_2018
+            "Tiếng trung dạy từ lớp mấy", self.NGUON_TIENG_TRUNG,
+            cau_tra_loi=self.TRA_LOI_TIENG_TRUNG,
+        )
+        self.assertIn("Còn tài liệu nào khác trong kho nói về môn Tiếng Trung Quốc?", goi_y)
+        self.assertFalse([cau for cau in goi_y if "lớp 8" in cau or "nội dung này" in cau], goi_y)
+
+    def test_nhan_kem_so_khong_phai_y_chinh(self):
+        self.assertEqual(
+            goi_y_cau_hoi.rut_y_chinh("Bắt đầu từ **lớp 8**, ôn tập vào **học kì 2**.", ""),
+            [],
+        )
+
+    def test_khong_tach_duoc_chu_the_thi_giu_khuon_cu(self):
+        # Không động từ chính, không nhắc môn nào: không có gì để gắn.
+        goi_y = goi_y_cau_hoi.goi_y_tiep_theo(
+            "Tóm tắt giúp tôi", NGUON_SGV, cau_tra_loi=TRA_LOI_CT_2018
         )
         self.assertEqual(goi_y[0], "Nói rõ hơn về phẩm chất chủ yếu")
 
