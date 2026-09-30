@@ -1,0 +1,59 @@
+{
+  "mo_ta": "Bộ câu hỏi đo tính năng hỏi theo mốc thời gian (quan_he_van_ban.che_do_thoi_gian và đồ thị hiệu lực). Mỗi cặp văn bản cũ - mới có câu hỏi nêu mốc TRƯỚC ngày văn bản mới có hiệu lực (đúng là văn bản cũ) và SAU ngày đó (đúng là văn bản mới). Nhãn là SỐ HIỆU văn bản chứ không phải tên file: benchmark_moc_thoi_gian.py tra ho_so_van_ban để đổi ra file trong kho, văn bản nào chưa có trong kho thì câu đó bị bỏ qua chứ không tính là trượt. so_hieu_dung: văn bản có hiệu lực tại mốc được hỏi. so_hieu_sai: phiên bản khác của cùng quy định, KHÔNG áp dụng tại mốc đó - phải xếp dưới văn bản đúng. che_do_mong_doi: chế độ thời gian mà quan_he_van_ban.che_do_thoi_gian phải chọn - \"lich_su\" (tra quy định tại mốc quá khứ, mở kho văn bản cũ) hoặc \"hien_hanh\" (năm hiện tại, hay câu kiểm soát có năm nằm trong tên văn bản). Năm trong câu hỏi được chọn cách xa ngày chuyển giao, để sai lệch vài tháng khi trích ngày hiệu lực không đổi nhãn. da_doi_chieu: true với cặp đã có trong sổ quan hệ nhập tay so_quan_he_van_ban.json (quan hệ và ngày hiệu lực đã đối chiếu nguyên văn điều khoản hiệu lực thi hành); false với cặp viết theo hiểu biết chung, CHƯA đối chiếu - phải kiểm với chính văn bản trong kho trước khi đưa số liệu của các cặp này vào báo cáo.",
+  "cap_van_ban": {
+    "dinh_muc_pho_thong": {"cu": "28/2009/TT-BGDĐT", "moi": "5/2025/TT-BGDĐT", "moi_co_hieu_luc": "2025-03-24", "noi_dung": "Chế độ làm việc (định mức tiết dạy) của giáo viên phổ thông", "da_doi_chieu": false},
+    "day_them": {"cu": "17/2012/TT-BGDĐT", "moi": "29/2024/TT-BGDĐT", "moi_co_hieu_luc": "2025-02-14", "noi_dung": "Quy định về dạy thêm, học thêm", "da_doi_chieu": false},
+    "dieu_le_trung_hoc": {"cu": "12/2011/TT-BGDĐT", "moi": "32/2020/TT-BGDĐT", "moi_co_hieu_luc": "2020-11-01", "noi_dung": "Điều lệ trường trung học cơ sở, trung học phổ thông", "da_doi_chieu": false},
+    "hoc_phi": {"cu": "86/2015/NĐ-CP", "moi": "81/2021/NĐ-CP", "moi_co_hieu_luc": "2021-10-15", "noi_dung": "Cơ chế thu, quản lý học phí và chính sách miễn, giảm học phí", "da_doi_chieu": false},
+    "chuc_danh_thpt": {"cu": "23/2015/TTLT-BGDĐT", "moi": "4/2021/TT-BGDĐT", "moi_co_hieu_luc": "2021-03-20", "noi_dung": "Mã số, tiêu chuẩn chức danh nghề nghiệp giáo viên THPT", "da_doi_chieu": false},
+    "luat_giao_duc": {"cu": "38/2005/QH11", "moi": "43/2019/QH14", "moi_co_hieu_luc": "2020-07-01", "noi_dung": "Luật Giáo dục", "da_doi_chieu": true},
+    "luat_gddh": {"cu": "8/2012/QH13", "moi": "125/2025/QH15", "moi_co_hieu_luc": "2026-01-01", "noi_dung": "Luật Giáo dục đại học", "da_doi_chieu": true},
+    "luat_gdnn": {"cu": "74/2014/QH13", "moi": "124/2025/QH15", "moi_co_hieu_luc": "2026-01-01", "noi_dung": "Luật Giáo dục nghề nghiệp", "da_doi_chieu": true},
+    "luat_tre_em": {"cu": "25/2004/QH11", "moi": "102/2016/QH13", "moi_co_hieu_luc": "2017-06-01", "noi_dung": "Luật Bảo vệ, chăm sóc và giáo dục trẻ em -> Luật Trẻ em", "da_doi_chieu": true},
+    "cu_tuyen": {"cu": "134/2006/NĐ-CP", "moi": "141/2020/NĐ-CP", "moi_co_hieu_luc": "2021-01-23", "noi_dung": "Chế độ cử tuyển", "da_doi_chieu": true},
+    "du_hoc": {"cu": "5/2013/QĐ-TTg", "moi": "86/2021/NĐ-CP", "moi_co_hieu_luc": "2021-12-01", "noi_dung": "Công dân Việt Nam ra nước ngoài học tập", "da_doi_chieu": true},
+    "luong_co_so": {"cu": "24/2023/NĐ-CP", "moi": "73/2024/NĐ-CP", "moi_co_hieu_luc": "2024-07-01", "noi_dung": "Mức lương cơ sở", "da_doi_chieu": false}
+  },
+  "cau_hoi": [
+    {"cau_hoi": "Năm 2020, định mức tiết dạy của giáo viên trung học cơ sở là bao nhiêu tiết mỗi tuần?", "cap": "dinh_muc_pho_thong", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["28/2009/TT-BGDĐT"], "so_hieu_sai": ["5/2025/TT-BGDĐT"]},
+    {"cau_hoi": "Năm học 2018-2019 giáo viên tiểu học phải dạy bao nhiêu tiết một tuần?", "cap": "dinh_muc_pho_thong", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["28/2009/TT-BGDĐT"], "so_hieu_sai": ["5/2025/TT-BGDĐT"]},
+    {"cau_hoi": "Trước khi có Thông tư 05/2025, thời gian làm việc trong năm học của giáo viên phổ thông được quy định thế nào?", "cap": "dinh_muc_pho_thong", "loai": "truoc_khi_co", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["28/2009/TT-BGDĐT"], "so_hieu_sai": ["5/2025/TT-BGDĐT"]},
+    {"cau_hoi": "Năm 2026, giáo viên trung học phổ thông phải dạy bao nhiêu tiết mỗi tuần?", "cap": "dinh_muc_pho_thong", "loai": "sau_thay_the", "che_do_mong_doi": "hien_hanh", "so_hieu_dung": ["5/2025/TT-BGDĐT"], "so_hieu_sai": ["28/2009/TT-BGDĐT"]},
+
+    {"cau_hoi": "Năm 2020, những trường hợp nào không được tổ chức dạy thêm, học thêm?", "cap": "day_them", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["17/2012/TT-BGDĐT"], "so_hieu_sai": ["29/2024/TT-BGDĐT"]},
+    {"cau_hoi": "Trước khi có Thông tư 29/2024, tổ chức dạy thêm trong nhà trường cần những điều kiện gì?", "cap": "day_them", "loai": "truoc_khi_co", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["17/2012/TT-BGDĐT"], "so_hieu_sai": ["29/2024/TT-BGDĐT"]},
+    {"cau_hoi": "Năm 2026, giáo viên dạy thêm ngoài nhà trường phải tuân thủ những quy định nào?", "cap": "day_them", "loai": "sau_thay_the", "che_do_mong_doi": "hien_hanh", "so_hieu_dung": ["29/2024/TT-BGDĐT"], "so_hieu_sai": ["17/2012/TT-BGDĐT"]},
+
+    {"cau_hoi": "Năm 2015, điều lệ trường trung học quy định mỗi lớp có tối đa bao nhiêu học sinh?", "cap": "dieu_le_trung_hoc", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["12/2011/TT-BGDĐT"], "so_hieu_sai": ["32/2020/TT-BGDĐT"]},
+    {"cau_hoi": "Trước khi có Thông tư 32/2020, hội đồng trường của trường trung học gồm những thành viên nào?", "cap": "dieu_le_trung_hoc", "loai": "truoc_khi_co", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["12/2011/TT-BGDĐT"], "so_hieu_sai": ["32/2020/TT-BGDĐT"]},
+    {"cau_hoi": "Năm 2023, điều lệ trường trung học quy định nhiệm vụ của giáo viên chủ nhiệm lớp như thế nào?", "cap": "dieu_le_trung_hoc", "loai": "sau_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["32/2020/TT-BGDĐT"], "so_hieu_sai": ["12/2011/TT-BGDĐT"]},
+
+    {"cau_hoi": "Năm học 2019-2020, những đối tượng nào được miễn học phí?", "cap": "hoc_phi", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["86/2015/NĐ-CP"], "so_hieu_sai": ["81/2021/NĐ-CP"]},
+    {"cau_hoi": "Năm học 2023-2024, những đối tượng nào được miễn học phí?", "cap": "hoc_phi", "loai": "sau_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["81/2021/NĐ-CP"], "so_hieu_sai": ["86/2015/NĐ-CP"]},
+
+    {"cau_hoi": "Năm 2019, giáo viên trung học phổ thông hạng II phải đạt trình độ đào tạo nào?", "cap": "chuc_danh_thpt", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["23/2015/TTLT-BGDĐT"], "so_hieu_sai": ["4/2021/TT-BGDĐT"]},
+    {"cau_hoi": "Năm 2023, tiêu chuẩn về trình độ đào tạo của giáo viên trung học phổ thông hạng II là gì?", "cap": "chuc_danh_thpt", "loai": "sau_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["4/2021/TT-BGDĐT"], "so_hieu_sai": ["23/2015/TTLT-BGDĐT"]},
+
+    {"cau_hoi": "Năm 2018, Luật Giáo dục quy định trình độ chuẩn được đào tạo của giáo viên tiểu học là gì?", "cap": "luat_giao_duc", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["38/2005/QH11"], "so_hieu_sai": ["43/2019/QH14"]},
+    {"cau_hoi": "Luật Giáo dục năm 2019 quy định trình độ chuẩn được đào tạo của giáo viên tiểu học là gì?", "cap": "luat_giao_duc", "loai": "nam_trong_ten", "che_do_mong_doi": "hien_hanh", "so_hieu_dung": ["43/2019/QH14"], "so_hieu_sai": ["38/2005/QH11"]},
+    {"cau_hoi": "Quy định hiện nay về trình độ chuẩn của giáo viên tiểu học khác năm 2018 thế nào?", "cap": "luat_giao_duc", "loai": "so_sanh", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["43/2019/QH14", "38/2005/QH11"], "so_hieu_sai": []},
+
+    {"cau_hoi": "Tháng 3/2024 mức lương cơ sở là bao nhiêu?", "cap": "luong_co_so", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["24/2023/NĐ-CP"], "so_hieu_sai": ["73/2024/NĐ-CP"]},
+    {"cau_hoi": "Tháng 12/2024 mức lương cơ sở là bao nhiêu?", "cap": "luong_co_so", "loai": "sau_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["73/2024/NĐ-CP"], "so_hieu_sai": ["24/2023/NĐ-CP"]},
+
+    {"cau_hoi": "Năm 2023, Luật Giáo dục đại học quy định quyền tự chủ của cơ sở giáo dục đại học gồm những nội dung gì?", "cap": "luat_gddh", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["8/2012/QH13"], "so_hieu_sai": ["125/2025/QH15"]},
+    {"cau_hoi": "Luật Giáo dục đại học hiện hành quy định quyền tự chủ của cơ sở giáo dục đại học gồm những nội dung gì?", "cap": "luat_gddh", "loai": "sau_thay_the", "che_do_mong_doi": "hien_hanh", "so_hieu_dung": ["125/2025/QH15"], "so_hieu_sai": ["8/2012/QH13"]},
+
+    {"cau_hoi": "Năm 2020, Luật Giáo dục nghề nghiệp quy định những trình độ đào tạo nào?", "cap": "luat_gdnn", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["74/2014/QH13"], "so_hieu_sai": ["124/2025/QH15"]},
+    {"cau_hoi": "Luật Giáo dục nghề nghiệp hiện hành quy định những trình độ đào tạo nào?", "cap": "luat_gdnn", "loai": "sau_thay_the", "che_do_mong_doi": "hien_hanh", "so_hieu_dung": ["124/2025/QH15"], "so_hieu_sai": ["74/2014/QH13"]},
+
+    {"cau_hoi": "Năm 2010, trẻ em có những quyền cơ bản nào?", "cap": "luat_tre_em", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["25/2004/QH11"], "so_hieu_sai": ["102/2016/QH13"]},
+    {"cau_hoi": "Năm 2020, trẻ em có những quyền cơ bản nào?", "cap": "luat_tre_em", "loai": "sau_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["102/2016/QH13"], "so_hieu_sai": ["25/2004/QH11"]},
+
+    {"cau_hoi": "Năm 2019, những đối tượng nào được xét tuyển theo chế độ cử tuyển?", "cap": "cu_tuyen", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["134/2006/NĐ-CP"], "so_hieu_sai": ["141/2020/NĐ-CP"]},
+    {"cau_hoi": "Năm 2023, những đối tượng nào được xét tuyển theo chế độ cử tuyển?", "cap": "cu_tuyen", "loai": "sau_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["141/2020/NĐ-CP"], "so_hieu_sai": ["134/2006/NĐ-CP"]},
+
+    {"cau_hoi": "Năm 2019, công dân Việt Nam ra nước ngoài học tập được quản lý như thế nào?", "cap": "du_hoc", "loai": "truoc_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["5/2013/QĐ-TTg"], "so_hieu_sai": ["86/2021/NĐ-CP"]},
+    {"cau_hoi": "Năm 2024, công dân Việt Nam ra nước ngoài học tập được quản lý như thế nào?", "cap": "du_hoc", "loai": "sau_thay_the", "che_do_mong_doi": "lich_su", "so_hieu_dung": ["86/2021/NĐ-CP"], "so_hieu_sai": ["5/2013/QĐ-TTg"]}
+  ]
+}

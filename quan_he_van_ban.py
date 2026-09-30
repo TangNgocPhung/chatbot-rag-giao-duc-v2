@@ -100,6 +100,50 @@ DUONG_DAN_XUAT = os.path.abspath(os.getenv(
 ))
 
 
+# Năm/ngày đứng sau tên văn bản là một phần của tên, không phải mốc: "Luật Giáo
+# dục năm 2019", "Chương trình giáo dục phổ thông năm 2018", "Thông tư ban hành
+# ngày 30/12/2024". Coi là mốc thì chính văn bản được hỏi bị tra theo năm cũ -
+# Luật Giáo dục 2019 có hiệu lực từ 1/7/2020, nên "năm 2019" lại ra Luật 2005.
+#
+# Chỉ tính là tên khi giữa loại văn bản và con số không có từ hỏi hay động từ:
+# "Văn bản nào quy định định mức năm 2020?" vẫn là hỏi theo năm 2020.
+MAU_TEN_VAN_BAN = re.compile(
+    r"\b(?:luat|hien phap|thong tu|nghi dinh|nghi quyet|quyet dinh|chi thi|cong van"
+    r"|van ban|dieu le|chuong trinh|ban hanh)\b"
+)
+MAU_CAT_TEN = re.compile(r"\b(?:nao|gi|sao|bao nhieu|quy dinh|ap dung)\b")
+# Giới từ thời gian ngay trước mốc: có nó thì chắc chắn là mốc, kể cả khi mệnh
+# đề có tên văn bản ("Luật Giáo dục quy định thế nào vào năm 2020").
+# Câu đã bỏ dấu nên "từ" và "tư" trùng nhau: "tu" đứng sau "thong" là Thông tư.
+MAU_GIOI_TU_THOI_GIAN = re.compile(
+    r"\b(truoc|sau|(?<!thong )tu|den|toi|trong|vao|tai|cuoi|dau|giua)\s*$"
+)
+
+
+def _la_moc_that(chuoi: str, vi_tri: int) -> tuple[bool, str | None]:
+    """(có phải mốc thời gian không, giới từ đứng ngay trước nếu có)."""
+    gioi_tu = MAU_GIOI_TU_THOI_GIAN.search(chuoi[max(0, vi_tri - 12): vi_tri])
+    if gioi_tu:
+        return True, gioi_tu.group(1)
+    cac_dau = list(re.finditer(r"[,.;:?!()\n]", chuoi[:vi_tri]))
+    menh_de = chuoi[cac_dau[-1].end(): vi_tri] if cac_dau else chuoi[:vi_tri]
+    cac_ten = list(MAU_TEN_VAN_BAN.finditer(menh_de))
+    if not cac_ten:
+        return True, None
+    return bool(MAU_CAT_TEN.search(menh_de[cac_ten[-1].end():])), None
+
+
+def _theo_gioi_tu(dau_ky: date, cuoi_ky: date, gioi_tu: str | None) -> date:
+    """Một ngày đại diện cho kỳ [dau_ky, cuoi_ky] theo giới từ đứng trước nó."""
+    if gioi_tu == "truoc":
+        return dau_ky - timedelta(days=1)
+    if gioi_tu == "sau":
+        return cuoi_ky + timedelta(days=1)
+    if gioi_tu == "tu":
+        return dau_ky
+    return cuoi_ky
+
+
 def thoi_diem_trong_cau_hoi(cau_hoi: str, hom_nay: date | None = None) -> date | None:
     """
     Ngày mà câu hỏi muốn tra hiệu lực, hoặc None nếu hỏi về hiện tại.
@@ -107,27 +151,43 @@ def thoi_diem_trong_cau_hoi(cau_hoi: str, hom_nay: date | None = None) -> date |
     "Năm 2023 quy định dạy thêm thế nào?" cần văn bản ÁP DỤNG năm 2023, dù nay
     nó đã bị thay - chính vì thế văn bản cũ được giữ lại chứ không xoá. Chỉ có
     năm thì lấy ngày cuối năm (quy định đang áp dụng khi năm đó khép lại).
-    Mốc từ năm nay trở đi coi như hỏi hiện tại; số hiệu "29/2023" không phải
-    mốc thời gian vì mẫu đòi chữ "năm/ngày/tháng" đứng trước.
+    Giới từ đổi mốc: "trước năm 2023" là ngày cuối cùng TRƯỚC năm đó, "sau năm
+    2023" là ngày đầu tiên SAU năm đó, "từ năm 2023" là ngày đầu năm đó. Mốc từ
+    hôm nay trở đi coi như hỏi hiện tại; số hiệu "29/2023" không phải mốc thời
+    gian vì mẫu đòi chữ "năm/ngày/tháng" đứng trước.
     """
     chuoi = van_ban_meta._bo_dau_thuong(cau_hoi or "")
     hom_nay = hom_nay or date.today()
     ung_vien = None
-    if khop := MAU_NGAY_CU_THE.search(chuoi):
+    for khop in MAU_NGAY_CU_THE.finditer(chuoi):
+        la_moc, gioi_tu = _la_moc_that(chuoi, khop.start())
+        if not la_moc:
+            continue
         ngay, thang, nam = (int(x) for x in khop.groups())
         try:
-            ung_vien = date(nam, thang, ngay)
+            ung_vien = _theo_gioi_tu(date(nam, thang, ngay), date(nam, thang, ngay), gioi_tu)
         except ValueError:
             return None
-    elif khop := MAU_THANG_NAM.search(chuoi):
-        thang, nam = (int(x) for x in khop.groups())
-        if 1 <= thang <= 12:
+        break
+    if ung_vien is None:
+        for khop in MAU_THANG_NAM.finditer(chuoi):
+            la_moc, gioi_tu = _la_moc_that(chuoi, khop.start())
+            thang, nam = (int(x) for x in khop.groups())
+            if not la_moc or not 1 <= thang <= 12:
+                continue
             # Ngày cuối tháng = ngày đầu tháng sau lùi một ngày.
-            ung_vien = date(nam + (thang == 12), thang % 12 + 1, 1) - timedelta(days=1)
-    elif khop := MAU_NAM.search(chuoi):
-        nam = int(khop.group(1))
-        if nam < hom_nay.year:
-            ung_vien = date(nam, 12, 31)
+            cuoi_thang = date(nam + (thang == 12), thang % 12 + 1, 1) - timedelta(days=1)
+            ung_vien = _theo_gioi_tu(date(nam, thang, 1), cuoi_thang, gioi_tu)
+            break
+    if ung_vien is None:
+        for khop in MAU_NAM.finditer(chuoi):
+            la_moc, gioi_tu = _la_moc_that(chuoi, khop.start())
+            if not la_moc:
+                continue
+            nam = int(khop.group(1))
+            if gioi_tu in ("truoc", "sau", "tu") or nam < hom_nay.year:
+                ung_vien = _theo_gioi_tu(date(nam, 1, 1), date(nam, 12, 31), gioi_tu)
+            break
     if ung_vien and 1990 <= ung_vien.year and ung_vien < hom_nay:
         return ung_vien
     return None

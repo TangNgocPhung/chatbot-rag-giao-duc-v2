@@ -67,6 +67,68 @@ class TrichQuanHeTests(unittest.TestCase):
     def test_so_hieu_thu_tuong_giu_chu_g(self):
         self.assertEqual(vm.trich_so_hieu("Quyết định số 05/2013/QĐ-TTg ngày 15"), ["5/2013/QĐ-TTg"])
 
+    def test_dieu_le_khong_phai_mot_dieu_khoan(self):
+        # "Điều lệ" là tên văn bản được ban hành kèm, không phải "Điều 5".
+        quan_he = vm.trich_quan_he_day_du(
+            "Thông tư này thay thế Điều lệ trường trung học ban hành kèm theo "
+            "Thông tư số 12/2011/TT-BGDĐT"
+        )
+        self.assertEqual(quan_he["thay_the"], ["12/2011/TT-BGDĐT"])
+        self.assertEqual(quan_he["sua_doi"], [])
+
+    def test_moi_so_hieu_xet_rieng_pham_vi(self):
+        # Chỉ nhìn số hiệu đầu tiên thì B cũng thành thay thế toàn bộ, và ở chế
+        # độ hiện hành cả văn bản B bị lọc bỏ khỏi câu trả lời.
+        quan_he = vm.trich_quan_he_day_du(
+            "Bãi bỏ Thông tư số 1/2019/TT-BGDĐT và khoản 2 Điều 5 Thông tư số "
+            "12/2020/TT-BGDĐT."
+        )
+        self.assertEqual(quan_he["thay_the"], ["1/2019/TT-BGDĐT"])
+        self.assertEqual(quan_he["bai_bo_mot_phan"], ["12/2020/TT-BGDĐT"])
+
+    def test_dieu_khoan_thi_hanh_neu_van_ban_cu_truoc_dong_tu(self):
+        # Thông tư và Nghị định cũng viết kiểu này, không chỉ Luật.
+        for cau, mong_doi in [
+            ("Thông tư số 17/2012/TT-BGDĐT ngày 16 tháng 5 năm 2012 của Bộ trưởng Bộ "
+             "Giáo dục và Đào tạo ban hành Quy định về dạy thêm, học thêm hết hiệu lực "
+             "kể từ ngày Thông tư này có hiệu lực thi hành.", ["17/2012/TT-BGDĐT"]),
+            ("Nghị định số 24/2023/NĐ-CP ngày 14 tháng 5 năm 2023 của Chính phủ hết "
+             "hiệu lực thi hành kể từ ngày Nghị định này có hiệu lực.", ["24/2023/NĐ-CP"]),
+        ]:
+            with self.subTest(cau=cau[:40]):
+                self.assertEqual(vm.trich_quan_he_day_du(cau)["thay_the"], mong_doi)
+        quan_he = vm.trich_quan_he_day_du(
+            "Khoản 2 Điều 5 Thông tư số 12/2020/TT-BGDĐT hết hiệu lực kể từ ngày "
+            "Thông tư này có hiệu lực."
+        )
+        self.assertEqual(quan_he["bai_bo_mot_phan"], ["12/2020/TT-BGDĐT"])
+
+    def test_het_hieu_luc_khong_do_van_ban_nay_thi_bo_qua(self):
+        for cau in [
+            # Chú thích về quan hệ giữa hai văn bản KHÁC.
+            "Nghị định số 71/2020/NĐ-CP hết hiệu lực theo quy định tại "
+            "Nghị định số 311/2025/NĐ-CP.",
+            # Số hiệu nằm trước dấu chấm phẩy; chủ ngữ của "hết hiệu lực" là
+            # "các quy định trái với Thông tư này", không phải Nghị định 37/2025.
+            "Căn cứ Nghị định số 37/2025/NĐ-CP; các quy định trước đây trái với "
+            "Thông tư này hết hiệu lực kể từ ngày Thông tư này có hiệu lực.",
+        ]:
+            with self.subTest(cau=cau[:40]):
+                self.assertFalse(any(vm.trich_quan_he_day_du(cau).values()))
+
+    def test_dieu_khoan_thi_hanh_noi_quan_he_toan_kho(self):
+        ho_so = vm.xay_dung_ho_so({
+            "moi.pdf": van_ban(
+                "29/2024/TT-BGDĐT",
+                "Điều 9. Hiệu lực thi hành\n1. Thông tư này có hiệu lực thi hành kể từ "
+                "ngày 14 tháng 02 năm 2025.\n2. Thông tư số 17/2012/TT-BGDĐT ngày 16 "
+                "tháng 5 năm 2012 ban hành Quy định về dạy thêm, học thêm hết hiệu lực "
+                "kể từ ngày Thông tư này có hiệu lực thi hành.",
+            ),
+            "cu.pdf": van_ban("17/2012/TT-BGDĐT", "Quy định về dạy thêm."),
+        })
+        self.assertEqual(ho_so["cu.pdf"].bi_thay_the_boi, ["moi.pdf"])
+
     def test_huong_dan_co_so_hieu(self):
         so, ten = vm.trich_huong_dan(van_ban(
             "5/2026/TT-BGDĐT",
@@ -289,6 +351,52 @@ class ThoiDiemTests(unittest.TestCase):
         self.assertEqual(che_do("Năm 2023 giáo viên dạy bao nhiêu tiết?"), "lich_su")
         self.assertEqual(che_do("Giáo viên dạy bao nhiêu tiết một tuần?"), "hien_hanh")
         self.assertEqual(che_do("Nghị định 124/2024 quy định gì?"), "hien_hanh")
+
+    def test_nam_trong_ten_van_ban_khong_phai_moc(self):
+        # Coi là mốc thì "Luật Giáo dục năm 2019" bị tra tại 31/12/2019 - khi
+        # Luật 2019 chưa có hiệu lực (1/7/2020) - và trả lời theo Luật 2005.
+        che_do = lambda cau: qh.che_do_thoi_gian(cau, self.HOM_NAY)[0]
+        for cau in [
+            "Luật Giáo dục năm 2019 quy định trình độ chuẩn của giáo viên tiểu học là gì?",
+            "Chương trình giáo dục phổ thông năm 2018 có mấy môn?",
+            "Thông tư ban hành ngày 30/12/2024 về dạy thêm quy định gì?",
+        ]:
+            with self.subTest(cau=cau):
+                self.assertEqual(che_do(cau), "hien_hanh")
+        # "tư" trong "Thông tư" không phải giới từ "từ" (câu đã bỏ dấu).
+        self.assertEqual(che_do("Thông tư năm 2020 về dạy thêm có gì mới?"), "hien_hanh")
+        # Có từ hỏi / động từ chen giữa thì năm không còn là một phần của tên.
+        for cau in [
+            "Văn bản nào quy định định mức tiết dạy năm 2020?",
+            "Thông tư 17/2012 quy định thế nào năm 2020?",
+        ]:
+            with self.subTest(cau=cau):
+                self.assertEqual(che_do(cau), "lich_su")
+        # Có giới từ thời gian thì vẫn là mốc, kể cả khi có tên văn bản.
+        self.assertEqual(che_do("Luật Giáo dục quy định thế nào vào năm 2019?"), "lich_su")
+        # Tên văn bản ở mệnh đề khác không chặn mốc.
+        self.assertEqual(
+            qh.thoi_diem_trong_cau_hoi("Theo Thông tư 28/2009, năm 2020 dạy mấy tiết?", self.HOM_NAY),
+            date(2020, 12, 31),
+        )
+
+    def test_truoc_moc_la_truoc_ky_do(self):
+        tim = lambda cau: qh.thoi_diem_trong_cau_hoi(cau, self.HOM_NAY)
+        self.assertEqual(tim("Trước năm 2020 định mức thế nào?"), date(2019, 12, 31))
+        self.assertEqual(tim("Trước tháng 9/2020 thì sao?"), date(2020, 8, 31))
+        self.assertEqual(tim("Trước ngày 5/9/2020 thì sao?"), date(2020, 9, 4))
+        # Trước một mốc chưa tới thì vẫn là hỏi hiện tại.
+        self.assertIsNone(tim("Trước năm 2027 thì sao?"))
+
+    def test_sau_va_tu_moc(self):
+        tim = lambda cau: qh.thoi_diem_trong_cau_hoi(cau, self.HOM_NAY)
+        self.assertEqual(tim("Sau năm 2020 định mức thế nào?"), date(2021, 1, 1))
+        self.assertEqual(tim("Kể từ năm 2021 thì sao?"), date(2021, 1, 1))
+        self.assertEqual(tim("Sau ngày 30/6/2024 lương cơ sở bao nhiêu?"), date(2024, 7, 1))
+        # Khoảng mở về phía sau lấy ngày nó bắt đầu; bắt đầu từ tương lai thì
+        # là hỏi hiện tại.
+        self.assertEqual(tim("Sau năm 2025 thì sao?"), date(2026, 1, 1))
+        self.assertIsNone(tim("Sau năm 2026 thì sao?"))
 
     def test_hieu_luc_tai_moc_qua_khu(self):
         so, _ = kho_mau()

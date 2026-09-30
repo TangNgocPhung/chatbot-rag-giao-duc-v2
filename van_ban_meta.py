@@ -93,10 +93,18 @@ MAU_HET_HIEU_LUC_KHI_NAY = re.compile(
 # hiệu lực MỘT PHẦN. Trước đây câu này bị tính như thay thế toàn bộ, nên một
 # Nghị định bị bãi bỏ vài điều cũng bị gắn nhãn "đã bị thay thế" và bị hạ bậc
 # khi truy hồi - trong khi phần còn lại vẫn đang áp dụng.
+#
+# Điều/khoản/Chương/Mục phải kèm số thứ tự: "thay thế Điều lệ trường trung học
+# ban hành kèm theo Thông tư số 12/2011" là thay TOÀN BỘ (Thông tư 12/2011 chỉ
+# có một việc là ban hành Điều lệ đó), còn "Chương trình", "mục tiêu", "mục
+# lục" chẳng phải đơn vị nào của văn bản.
 MAU_MOT_PHAN = re.compile(
-    r"\b(?:đi[eềể]u|kho[aả]n|đi[eể]m|ch[uư][oơ]ng|m[uụ]c|ph[uụ]\s*l[uụ]c|c[uụ]m\s*t[uừ]|một\s*số)\b",
+    r"\b(?:đi[eềể]u\s*\d|kho[aả]n\s*\d|đi[eể]m\s*[a-zđ]\b|ch[uư][oơ]ng\s*[ivxlc\d]+\b"
+    r"|m[uụ]c\s*[ivxlc\d]+\b|ph[uụ]\s*l[uụ]c|c[uụ]m\s*t[uừ]|mẫu\s*số|biểu\s*mẫu"
+    r"|(?:một\s*số|các)\s*(?:đi[eềể]u|kho[aả]n|nội\s*dung|quy\s*định))",
     re.IGNORECASE,
 )
+MAU_CUM_TU = re.compile(r"c[uụ]m\s*t[uừ]", re.IGNORECASE)
 # "Nghị định này quy định chi tiết một số điều của Luật Giáo dục số 43/2019/QH14",
 # "Thông tư này hướng dẫn thi hành Nghị định số 71/2020/NĐ-CP". Chỉ dò ở trích
 # yếu và điều đầu tiên (phạm vi điều chỉnh): trong thân bài, "hướng dẫn" là
@@ -429,14 +437,56 @@ def trich_co_quan(phan_dau: str) -> str | None:
     return None
 
 
-def _vi_tri_so_hieu_dau(chuoi: str) -> int:
-    """Vị trí số hiệu đầu tiên trong chuỗi (-1 nếu không có)."""
-    cac_vi_tri = [
-        khop.start()
-        for mau in (MAU_SO_HIEU, MAU_SO_KHONG_NAM, MAU_SO_HIEU_LUAT)
-        for khop in [mau.search(chuoi)] if khop
-    ]
-    return min(cac_vi_tri) if cac_vi_tri else -1
+def _so_hieu_kem_vi_tri(chuoi: str) -> list[tuple[int, int, str]]:
+    """(đầu, cuối, số hiệu chuẩn hoá) của mọi số hiệu, sắp theo vị trí. Cùng
+    luật che vùng như trich_so_hieu để "2020/TT-BGDĐT" trong đuôi một số hiệu
+    đầy đủ không bị đọc thành số hiệu riêng."""
+    chuoi = chuoi or ""
+    ket_qua: list[tuple[int, int, str]] = []
+    cac_vung: list[tuple[int, int]] = []
+    for khop in MAU_SO_HIEU.finditer(chuoi):
+        cac_vung.append((khop.start(), khop.end()))
+        ket_qua.append((khop.start(), khop.end(), chuan_hoa_so_hieu(khop)))
+    for khop in MAU_SO_KHONG_NAM.finditer(chuoi):
+        if any(a <= khop.start() < b for a, b in cac_vung):
+            continue
+        so, loai, co_quan = (phan.strip() for phan in khop.groups())
+        ket_qua.append((khop.start(), khop.end(),
+                        f"{int(so)}/{chuan_hoa_ma(loai.upper())}-{chuan_hoa_ma(co_quan)}"))
+    for khop in MAU_SO_HIEU_LUAT.finditer(chuoi):
+        if any(a <= khop.start() < b for a, b in cac_vung):
+            continue
+        so, nam, khoa = (phan.strip() for phan in khop.groups())
+        ket_qua.append((khop.start(), khop.end(), f"{int(so)}/{nam}/{khoa.upper()}"))
+    return sorted(ket_qua)
+
+
+def _xep_theo_pham_vi(dong_tu: str, doan: str, quan_he: dict[str, list[str]]) -> None:
+    """
+    Xếp từng số hiệu trong đoạn vào thay_the / bai_bo_mot_phan / sua_doi.
+
+    Mỗi số hiệu chỉ xét khúc chữ nằm giữa nó và số hiệu (hoặc đầu đoạn) đứng
+    ngay trước: "Bãi bỏ Thông tư số A và khoản 2 Điều 5 Thông tư số B" là bãi
+    bỏ trọn A nhưng chỉ một phần B. Chỉ nhìn số hiệu đầu tiên thì B cũng thành
+    "thay thế toàn bộ" - và ở chế độ hiện hành, cả văn bản B bị lọc bỏ.
+    """
+    het_khuc_truoc = 0
+    for bat_dau, ket_thuc, so_hieu in _so_hieu_kem_vi_tri(doan):
+        phan_truoc = doan[het_khuc_truoc:bat_dau]
+        het_khuc_truoc = ket_thuc
+        if not dong_tu.startswith(("bãi bỏ", "thay thế", "hết hiệu lực")):
+            dich = "sua_doi"
+        elif not MAU_MOT_PHAN.search(phan_truoc):
+            dich = "thay_the"
+        elif dong_tu.startswith("thay thế") or MAU_CUM_TU.search(phan_truoc):
+            # Thay một điều khoản bằng nội dung mới, hay thay/bỏ vài cụm từ, là
+            # SỬA ĐỔI: văn bản kia vẫn áp dụng, chỉ khác chữ.
+            dich = "sua_doi"
+        else:
+            # Bãi bỏ hẳn điều, khoản, điểm: phần đó hết hiệu lực.
+            dich = "bai_bo_mot_phan"
+        if so_hieu not in quan_he[dich]:
+            quan_he[dich].append(so_hieu)
 
 
 def trich_quan_he(van_ban: str) -> tuple[list[str], list[str]]:
@@ -456,15 +506,12 @@ def trich_quan_he_day_du(van_ban: str) -> dict[str, list[str]]:
     Bỏ qua câu ở thể bị động ("được sửa đổi, bổ sung bởi Luật số ...") vì khi đó
     chiều quan hệ ngược lại, và chiều đó sẽ được ghi nhận từ phía văn bản kia.
     """
-    thay_the: list[str] = []
-    bai_bo_mot_phan: list[str] = []
-    sua_doi: list[str] = []
+    quan_he: dict[str, list[str]] = {"thay_the": [], "bai_bo_mot_phan": [], "sua_doi": []}
     van_ban = van_ban or ""
     for khop in MAU_QUAN_HE.finditer(van_ban):
         dong_tu = khop.group(1).lower()
         bi_dong = bool(khop.group(2))
-        cac_so_hieu = trich_so_hieu(khop.group(3))
-        if not cac_so_hieu or bi_dong:
+        if not trich_so_hieu(khop.group(3)) or bi_dong:
             continue
         # Chủ ngữ phải là chính văn bản này ("Thông tư này thay thế..."). Nếu
         # ngay trước động từ đã có một số hiệu khác thì câu đang nói về văn bản
@@ -475,25 +522,8 @@ def trich_quan_he_day_du(van_ban: str) -> dict[str, list[str]]:
             continue
         if MAU_BI_DONG_TRUOC.search(truoc_do) and MAU_BI_DONG_SAU.match(khop.group(3)):
             continue
-        if dong_tu.startswith(("bãi bỏ", "thay thế", "hết hiệu lực")):
-            # Giữa động từ và số hiệu có "Điều/khoản/điểm..." thì chỉ một phần
-            # văn bản kia bị bãi bỏ.
-            vi_tri = _vi_tri_so_hieu_dau(khop.group(3))
-            phan_truoc = khop.group(3)[: max(vi_tri, 0)]
-            if not MAU_MOT_PHAN.search(phan_truoc):
-                dich = thay_the
-            elif dong_tu.startswith("thay thế") or re.search(r"c[uụ]m\s*t[uừ]", phan_truoc, re.IGNORECASE):
-                # Thay một điều khoản bằng nội dung mới, hay thay/bỏ vài cụm
-                # từ, là SỬA ĐỔI: văn bản kia vẫn áp dụng, chỉ khác chữ.
-                dich = sua_doi
-            else:
-                # Bãi bỏ hẳn điều, khoản, điểm: phần đó hết hiệu lực.
-                dich = bai_bo_mot_phan
-        else:
-            dich = sua_doi
-        for so_hieu in cac_so_hieu:
-            if so_hieu not in dich:
-                dich.append(so_hieu)
+        _xep_theo_pham_vi(dong_tu, khop.group(3), quan_he)
+
     # Luật và Nghị định hay viết ngược chiều: "Luật Giáo dục đại học số
     # 08/2012/QH13 đã được sửa đổi ... theo Luật số 32/2013/QH13, ... hết hiệu
     # lực kể từ ngày Luật này có hiệu lực". Số hiệu đứng TRƯỚC động từ nên vòng
@@ -515,17 +545,25 @@ def trich_quan_he_day_du(van_ban: str) -> dict[str, list[str]]:
             default=0,
         )
         menh_de = truoc[ranh_gioi:]
-        vi_tri = _vi_tri_so_hieu_dau(menh_de)
-        if vi_tri < 0:
+        # Nhưng phần SAU dấu chấm phẩy cuối không có số hiệu nào thì chủ ngữ của
+        # "hết hiệu lực" là thứ khác: "... Nghị định số 37/2025/NĐ-CP; các quy
+        # định trái với Thông tư này hết hiệu lực kể từ ngày Thông tư này có
+        # hiệu lực" không làm Nghị định 37/2025 hết hiệu lực.
+        if ";" in menh_de and not trich_so_hieu(menh_de.rsplit(";", 1)[1]):
             continue
-        so_hieu = trich_so_hieu(menh_de[vi_tri:])[0]
-        dich = bai_bo_mot_phan if MAU_MOT_PHAN.search(menh_de[:vi_tri]) else thay_the
-        if so_hieu not in dich:
-            dich.append(so_hieu)
+        cac_vi_tri = _so_hieu_kem_vi_tri(menh_de)
+        if not cac_vi_tri:
+            continue
+        bat_dau, _, so_hieu = cac_vi_tri[0]
+        dich = "bai_bo_mot_phan" if MAU_MOT_PHAN.search(menh_de[:bat_dau]) else "thay_the"
+        if so_hieu not in quan_he[dich]:
+            quan_he[dich].append(so_hieu)
     # Cùng một văn bản vừa bị thay toàn bộ vừa bị bãi bỏ vài điều (hai câu khác
     # nhau) thì mức toàn bộ thắng.
-    bai_bo_mot_phan = [s for s in bai_bo_mot_phan if s not in thay_the]
-    return {"thay_the": thay_the, "bai_bo_mot_phan": bai_bo_mot_phan, "sua_doi": sua_doi}
+    quan_he["bai_bo_mot_phan"] = [
+        s for s in quan_he["bai_bo_mot_phan"] if s not in quan_he["thay_the"]
+    ]
+    return quan_he
 
 
 def _vung_pham_vi(van_ban: str) -> str:

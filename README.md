@@ -75,6 +75,8 @@ Mỗi tệp được băm SHA-256 và đối chiếu với sổ ghi chép, nên 
 
 ![Nạp và cập nhật kho tri thức](so_do_nap_kho_tri_thuc.svg)
 
+Có văn bản mới thì không huấn luyện lại mô hình, chỉ cập nhật kho rồi dựng lại hồ sơ và đồ thị quan hệ văn bản. Văn bản cũ bị thay thế được giữ lại chứ không xóa: câu hỏi hiện hành lọc nó ra, câu hỏi về quy định trước đây hoặc tại một mốc thời gian thì mở lại nó. Lý do và cách xử lý từng trường hợp ở [PHUONG_AN_CAP_NHAT_TRI_THUC.md](PHUONG_AN_CAP_NHAT_TRI_THUC.md).
+
 ### Hỏi đáp trực tuyến
 
 Câu hỏi kèm tệp, câu tính toán và câu trùng cache rẽ ra sớm. Phần còn lại qua truy hồi lai, cổng chặn lạc đề và cảnh báo hiệu lực rồi mới tới mô hình ngôn ngữ; câu trả lời được hậu kiểm trước khi lưu cache.
@@ -270,6 +272,23 @@ Câu hỏi mới thêm vào bộ phải được gán tập trước khi chạy:
 Chế độ `--ir` đo chất lượng **xếp hạng** của khối truy hồi bằng bộ chỉ số IR/QA kinh điển — MRR, Hit@K, Recall@K, nDCG@K, MAP (công thức nằm trong `chi_so_ir.py`). Không gọi LLM nên chạy vài phút, kết quả ghi ra `ket_qua_chi_so_ir_<tập>.json` và bảng markdown `bang_chi_so_ir_<tập>.md`.
 
 Hai chế độ còn lại: `--nhanh` đo truy hồi kèm cổng chặn lạc đề, `--bo` gọi đủ LLM để đo thêm trích dẫn và số liệu (chậm, khoảng 150 giây/câu trên CPU).
+
+Hỏi theo mốc thời gian có bộ câu hỏi riêng, `bo_cau_hoi_moc_thoi_gian.json`. Bộ này gồm 29 câu trên 12 cặp văn bản cũ - mới (6 cặp có nhãn đã đối chiếu với sổ quan hệ nhập tay), mỗi cặp có câu hỏi trước và sau ngày văn bản mới có hiệu lực, cùng câu kiểm soát kiểu "Luật Giáo dục năm 2019":
+
+```powershell
+.\.venv\Scripts\python.exe benchmark_moc_thoi_gian.py
+```
+
+Mỗi câu được truy hồi hai lần trên cùng chỉ mục: một lần ép chế độ hiện hành, một lần để hệ thống tự chọn chế độ. Bảng kết quả so hai cột: chọn chế độ đúng, Hit@1, MRR, tỉ lệ bản đúng mốc xếp trước bản sai mốc, và bản sai mốc có lọt vào prompt không, kèm kiểm định McNemar chính xác. Nhãn là số hiệu văn bản; văn bản nào chưa có trong kho thì câu đó bị bỏ qua và được liệt kê ra.
+
+Độ chính xác của bộ trích quan hệ (thay thế / bãi bỏ một phần / sửa đổi) đo bằng nhãn tay:
+
+```powershell
+.\.venv\Scripts\python.exe danh_gia_trich_quan_he.py xuat --so 80   # lấy mẫu câu ra nhan_quan_he.csv
+.\.venv\Scripts\python.exe danh_gia_trich_quan_he.py cham            # P/R/F1, khoảng tin cậy, ma trận nhầm lẫn
+```
+
+Thêm `--ma-nguon <thư mục git worktree>` vào lệnh `cham` để chấm bộ trích của một phiên bản mã nguồn khác trên cùng bộ nhãn.
 
 Kiểm thử tự động nằm trong thư mục `tests`:
 
