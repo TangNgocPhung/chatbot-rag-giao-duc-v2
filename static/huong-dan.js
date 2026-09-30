@@ -5,6 +5,10 @@
    HUONG_DAN_SU_DUNG.md ngay trong một hộp thoại. Nội dung lấy từ máy chủ (/api/huong-dan) chứ không chép vào trang,
    để bản trên GitHub và bản trên giao diện luôn là một: sửa tệp .md là xong.
 
+   Tài liệu dài nên không trải thành một trang cuộn: mỗi mục "## n. …" là một
+   trang, phần mở đầu cùng Mục lục là trang đầu. Cột trái liệt kê các trang
+   (màn hẹp thì ẩn, dùng nút Mục lục), cuối trang có nút Trước / Tiếp.
+
    Bộ dựng Markdown bên dưới chỉ lo đúng phần cú pháp tài liệu đó dùng: tiêu
    đề, đoạn, danh sách lồng nhau, bảng, khối trích dẫn, đường kẻ, chữ đậm,
    nghiêng, mã và liên kết. Không phải bộ dựng đầy đủ - tiêu đề gạch dưới
@@ -18,6 +22,11 @@
     dong: $id('huongDanDong'),
     mucLuc: $id('huongDanMucLuc'),
     noiDung: $id('huongDanNoiDung'),
+    dieuHuong: $id('huongDanDieuHuong'),
+    chan: $id('huongDanChan'),
+    truoc: $id('huongDanTruoc'),
+    tiep: $id('huongDanTiep'),
+    soTrang: $id('huongDanSoTrang'),
   };
   if (!hd.hop || !hd.noiDung) return;
 
@@ -249,8 +258,10 @@
       try {
         const phanHoi = await fetch('/api/huong-dan', { cache: 'no-cache' });
         if (!phanHoi.ok) throw new Error(String(phanHoi.status));
-        hd.noiDung.innerHTML = dungMarkdown(await phanHoi.text());
+        chiaTrang(dungMarkdown(await phanHoi.text()));
+        veDieuHuong();
         daTai = true;
+        denTrang(0);
       } catch {
         baoTrangThai('Chưa tải được hướng dẫn. Hãy kiểm tra kết nối mạng rồi thử lại.', true);
       } finally {
@@ -262,10 +273,97 @@
 
   const kieuCuon = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
 
+  // ---------- Chia trang ----------
+  // Mỗi trang: { so, ten, nut: [các phần tử của trang] }. Các phần tử được
+  // dựng một lần rồi chuyển qua lại giữa các trang, không dựng lại.
+  let cacTrang = [];
+  let trangHienTai = 0;
+  const nutDieuHuong = [];
+
+  function chiaTrang(html) {
+    const tam = document.createElement('div');
+    tam.innerHTML = html;
+    cacTrang = [{ so: '', ten: 'Giới thiệu', nut: [] }];
+    [...tam.children].forEach((nut) => {
+      // "## n. …" dựng thành h3. Mục lục ở lại trang đầu cùng phần mở đầu.
+      if (nut.tagName === 'H3' && nut.id !== TIEN_TO_ID + MA_MUC_LUC) {
+        const [, so = '', ten = nut.textContent] = nut.textContent.match(/^(\d+)\.\s+(.*)$/) || [];
+        cacTrang.push({ so, ten, nut: [nut] });
+        return;
+      }
+      cacTrang[cacTrang.length - 1].nut.push(nut);
+    });
+    // Đường kẻ "---" ngăn các mục trong tệp; ở mép trang thì thừa.
+    cacTrang.forEach((trang) => {
+      while (trang.nut.length && trang.nut[0].tagName === 'HR') trang.nut.shift();
+      while (trang.nut.length && trang.nut[trang.nut.length - 1].tagName === 'HR') trang.nut.pop();
+    });
+  }
+
+  function veDieuHuong() {
+    if (!hd.dieuHuong) return;
+    nutDieuHuong.length = 0;
+    const ds = document.createElement('ol');
+    cacTrang.forEach((trang, i) => {
+      const nut = document.createElement('button');
+      nut.type = 'button';
+      const so = document.createElement('span');
+      so.className = 'hd-dh-so';
+      so.textContent = trang.so || 'i';
+      so.setAttribute('aria-hidden', 'true');
+      nut.append(so, document.createTextNode(trang.ten));
+      nut.addEventListener('click', () => denTrang(i));
+      nutDieuHuong.push(nut);
+      const muc = document.createElement('li');
+      muc.append(nut);
+      ds.append(muc);
+    });
+    hd.dieuHuong.replaceChildren(ds);
+  }
+
+  function tenDayDu(trang) {
+    return trang.so ? `${trang.so}. ${trang.ten}` : trang.ten;
+  }
+
+  function datNutChuyen(nut, trang) {
+    nut.classList.toggle('an', !trang);
+    nut.disabled = !trang;
+    nut.querySelector('strong').textContent = trang ? tenDayDu(trang) : '';
+  }
+
+  function denTrang(i, dich = null) {
+    if (!cacTrang.length) return;
+    trangHienTai = Math.max(0, Math.min(i, cacTrang.length - 1));
+    hd.noiDung.replaceChildren(...cacTrang[trangHienTai].nut);
+    if (dich && dich !== cacTrang[trangHienTai].nut[0]) dich.scrollIntoView({ block: 'start' });
+    else hd.noiDung.scrollTop = 0;
+
+    nutDieuHuong.forEach((nut, k) => {
+      if (k === trangHienTai) nut.setAttribute('aria-current', 'page');
+      else nut.removeAttribute('aria-current');
+    });
+    nutDieuHuong[trangHienTai]?.scrollIntoView({ block: 'nearest' });
+
+    hd.chan?.classList.remove('hidden');
+    if (hd.truoc) datNutChuyen(hd.truoc, cacTrang[trangHienTai - 1]);
+    if (hd.tiep) datNutChuyen(hd.tiep, cacTrang[trangHienTai + 1]);
+    if (hd.soTrang) hd.soTrang.textContent = `${trangHienTai + 1} / ${cacTrang.length}`;
+  }
+
+  // Liên kết #mục có thể trỏ tới tiêu đề ở trang khác: tìm trang chứa nó.
   function cuonToi(ma) {
-    const dich = hd.noiDung.querySelector(`#${CSS.escape(TIEN_TO_ID + ma)}`);
-    if (dich) dich.scrollIntoView({ behavior: kieuCuon(), block: 'start' });
-    return Boolean(dich);
+    const id = TIEN_TO_ID + ma;
+    const chon = `#${CSS.escape(id)}`;
+    for (let i = 0; i < cacTrang.length; i += 1) {
+      for (const nut of cacTrang[i].nut) {
+        const dich = nut.id === id ? nut : nut.querySelector(chon);
+        if (!dich) continue;
+        if (i === trangHienTai) dich.scrollIntoView({ behavior: kieuCuon(), block: 'start' });
+        else denTrang(i, dich);
+        return true;
+      }
+    }
+    return false;
   }
 
   function moHuongDan() {
@@ -280,7 +378,17 @@
     if (event.target === hd.hop) hd.hop.close();
   });
   hd.mucLuc?.addEventListener('click', () => {
-    if (!cuonToi(MA_MUC_LUC)) hd.noiDung.scrollTo({ top: 0, behavior: kieuCuon() });
+    if (!cuonToi(MA_MUC_LUC)) denTrang(0);
+  });
+  hd.truoc?.addEventListener('click', () => denTrang(trangHienTai - 1));
+  hd.tiep?.addEventListener('click', () => denTrang(trangHienTai + 1));
+  hd.hop.addEventListener('keydown', (event) => {
+    if (!daTai || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.target.closest('input, textarea, select')) return;
+    if (event.key === 'ArrowRight') denTrang(trangHienTai + 1);
+    else if (event.key === 'ArrowLeft') denTrang(trangHienTai - 1);
+    else return;
+    event.preventDefault();
   });
   hd.noiDung.addEventListener('click', (event) => {
     const lk = event.target.closest('a[href^="#"]');
