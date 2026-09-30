@@ -240,19 +240,23 @@ def bo_loc_pham_vi():
 
 
 @app.get("/api/goi-y")
-def goi_y_mo_dau(so_luong: int = 6, che_do: str | None = None):
+def goi_y_mo_dau(so_luong: int = 6, che_do: str | None = None, vai_tro: str | None = None):
     """Câu hỏi gợi ý cho màn hình chào.
 
     Mặc định là bộ câu tĩnh, kèm "nhom" để giao diện vẽ đủ các câu theo từng
     chủ đề. Chế độ "metadata" (RAG_GOI_Y_MO_DAU hoặc tham số che_do) dựng câu
     từ hồ sơ văn bản qua cây quyết định, mỗi lần gọi một mẻ khác, không có nhóm.
+    vai_tro (người dùng tự chọn) chỉ đưa câu của vai trò đó lên đầu; mã lạ bị
+    bỏ qua như chưa chọn.
     """
     che_do = goi_y_cau_hoi.che_do_goi_y_mo_dau(che_do)
+    vai_tro = goi_y_cau_hoi.chuan_hoa_vai_tro(vai_tro)
     return {
         "che_do": che_do,
-        "goi_y": service.goi_y_mo_dau(so_luong, che_do),
+        "vai_tro": vai_tro,
+        "goi_y": service.goi_y_mo_dau(so_luong, che_do, vai_tro),
         "nhom": (
-            goi_y_cau_hoi.nhom_goi_y_tinh()
+            goi_y_cau_hoi.nhom_goi_y_tinh(vai_tro)
             if che_do == goi_y_cau_hoi.CHE_DO_TINH else []
         ),
     }

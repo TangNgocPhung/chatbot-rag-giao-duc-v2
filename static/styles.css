@@ -742,6 +742,11 @@ a.lien-quan-muc:hover { color: var(--blue); text-decoration: underline; }
    dùng trên màn hẹp (xem khối @media bên dưới). */
 .suggestion-chips.theo-nhom { flex-direction: column; flex-wrap: nowrap; gap: 14px; }
 .suggestion-group-title { margin-bottom: 7px; color: var(--ink-soft); font-size: 12px; font-weight: 700; }
+.theo-vai-tro .suggestion-group-title { color: var(--blue-ink); }
+/* Ô "Gợi ý dành cho": chọn vai trò ngay trên màn hình chào (vai-tro.js). */
+.vai-tro-chon { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--ink-soft); font-size: 12.5px; }
+.vai-tro-chon select { min-width: 0; max-width: 100%; padding: 5px 8px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; cursor: pointer; }
+.vai-tro-chon select:focus-visible { outline: none; border-color: var(--blue-line); box-shadow: 0 0 0 3px var(--ring); }
 .suggestion-toggle { display: none; align-self: center; padding: 7px 16px; color: var(--blue); background: transparent; border: 1px solid var(--blue-line); border-radius: 20px; font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; transition: background .18s; }
 .suggestion-toggle:hover { background: var(--surface); }
 
@@ -1300,6 +1305,12 @@ body:not([data-so-tay="1"]) .can-so-tay { display: none !important; }
 .gt-tra-loi p b { color: var(--blue-ink); font-size: 11.5px; font-weight: 800; }
 .gt-nguon { display: flex; align-items: center; gap: 7px; padding-top: 8px; color: var(--ink-soft); border-top: 1px solid var(--line); font-size: 11.5px; }
 .gt-nguon b { display: grid; place-items: center; width: 18px; height: 18px; color: white; background: var(--blue); border-radius: 50%; font-size: 10.5px; }
+.gt-vai-tro { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 14px 0 12px; }
+.gt-vai-tro button { padding: 10px 12px; color: var(--ink-body); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 13px; font-weight: 650; text-align: left; cursor: pointer; transition: border-color .18s, background .18s, color .18s; }
+.gt-vai-tro button:hover { color: var(--blue-ink); border-color: var(--blue-line); }
+.gt-vai-tro button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.gt-vai-tro button[aria-pressed="true"] { color: var(--blue-ink); background: var(--blue-soft); border-color: var(--blue); }
+.gt-vai-tro button:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .gt-cham { display: flex; justify-content: center; gap: 6px; margin: 18px 0 16px; }
 .gt-cham span { width: 7px; height: 7px; background: var(--line-strong); border-radius: 999px; transition: width .2s, background .2s; }
 .gt-cham span.dang-xem { width: 20px; background: var(--blue); }

@@ -1473,7 +1473,8 @@ class RAGService:
         return sources
 
     def goi_y_mo_dau(
-        self, so_luong: int = goi_y_cau_hoi.SO_GOI_Y_MO_DAU, che_do: str | None = None
+        self, so_luong: int = goi_y_cau_hoi.SO_GOI_Y_MO_DAU, che_do: str | None = None,
+        vai_tro: str | None = None,
     ) -> list[str]:
         """Câu hỏi gợi ý cho màn hình chào: bộ câu tĩnh, hoặc metadata văn bản
         qua cây quyết định (xem goi_y_cau_hoi.goi_y_mo_dau).
@@ -1489,7 +1490,7 @@ class RAGService:
             ho_so = self.ho_so_van_ban or van_ban_meta.tai_ho_so()
             tinh_trang = self.tinh_trang_hieu_luc or hieu_luc_bo_sung.tai()
         return goi_y_cau_hoi.goi_y_mo_dau(
-            ho_so, so_luong, che_do=che_do, tinh_trang=tinh_trang
+            ho_so, so_luong, che_do=che_do, tinh_trang=tinh_trang, vai_tro=vai_tro
         )
 
     @staticmethod

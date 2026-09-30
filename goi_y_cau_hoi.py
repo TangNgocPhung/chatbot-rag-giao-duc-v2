@@ -2,10 +2,11 @@
 
 Hai chỗ cần gợi ý: màn hình chào (ngoài bốn thẻ chủ đề cố định) và cuối mỗi câu
 trả lời. Màn hình chào mặc định là bộ 17 câu viết tay chia bốn nhóm chủ đề, lần
-nào mở cũng như nhau. Không dùng bộ tĩnh (RAG_GOI_Y_MO_DAU=metadata) thì màn
-hình chào, cũng như hàng hỏi tiếp, dựng câu từ metadata văn bản - số hiệu, nhãn
-hiệu lực, quan hệ thay thế - đi qua một cây quyết định viết tay
-(_nhanh_theo_nguon). Không chỗ nào gọi thêm mô hình: một lượt sinh nữa trên CPU
+nào mở cũng như nhau; người dùng đã chọn vai trò (học sinh, phụ huynh...) thì
+thêm một nhóm câu của vai trò đó lên đầu. Không dùng bộ tĩnh
+(RAG_GOI_Y_MO_DAU=metadata) thì màn hình chào, cũng như hàng hỏi tiếp, dựng
+câu từ metadata văn bản - số hiệu, nhãn hiệu lực, quan hệ thay thế - đi qua
+một cây quyết định viết tay (_nhanh_theo_nguon). Không chỗ nào gọi thêm mô hình: một lượt sinh nữa trên CPU
 là thêm hàng chục giây chỉ để có một hàng nút bấm, mà câu do mô hình tự nghĩ
 lại hay hỏi sang thứ kho không có tài liệu để trả lời.
 """
@@ -62,6 +63,69 @@ NHOM_GOI_Y_CHU_DE = (
 GOI_Y_CHU_DE = tuple(cau for _, cac_cau in NHOM_GOI_Y_CHU_DE for cau in cac_cau)
 # Đủ để một lần gọi API lấy trọn bộ câu tĩnh.
 SO_GOI_Y_TOI_DA = len(GOI_Y_CHU_DE)
+
+# Vai trò người dùng tự chọn ở màn hình chào (static/vai-tro.js giữ cùng danh
+# sách mã). Vai trò CHỈ đổi câu gợi ý, không lọc tài liệu khi truy hồi: môn,
+# lớp là thuộc tính của tài liệu nên lọc trước được, còn vai trò là thuộc tính
+# của người hỏi - phụ huynh cũng hỏi lương giáo viên, giáo viên cũng hỏi học
+# phí. Lọc cứng theo vai trò thì kho có văn bản vẫn trả lời "không tìm thấy".
+# Người dùng tự khai, không xác thực, nên cũng không bao giờ dùng để cấp quyền.
+VAI_TRO = (
+    ("hoc_sinh", "Học sinh"),
+    ("sinh_vien", "Sinh viên"),
+    ("giao_vien", "Giáo viên, giảng viên"),
+    ("can_bo_quan_ly", "Cán bộ quản lý"),
+    ("phu_huynh", "Phụ huynh"),
+)
+
+# Mỗi vai trò một nhóm câu viết từ nhu cầu thật của người đó, nhưng chỉ lấy
+# chủ đề kho có văn bản trả lời được: câu trong bộ tĩnh hoặc bộ benchmark, và
+# câu đi thẳng vào công cụ tính (lương, định mức tiết dạy, điểm trung bình
+# môn - tests/test_goi_y.py giữ cho các câu này còn nhận đúng công cụ). Nhu
+# cầu kho không đáp được (điểm chuẩn, chỗ học thêm, giải bài từng bước) thì
+# HUONG_DAN_SU_DUNG.md nói thẳng, không đưa lên thành gợi ý.
+GOI_Y_THEO_VAI_TRO = {
+    "hoc_sinh": ("Dành cho học sinh", (
+        "Điểm thường xuyên 8, 9, giữa kì 7, cuối kì 8 thì điểm trung bình môn học kì là bao nhiêu?",
+        "Học sinh THCS, THPT được xếp loại kết quả học tập theo những mức nào?",
+        "Học sinh phổ thông được miễn học phí và sách giáo khoa trong những trường hợp nào?",
+        "Khung cơ cấu hệ thống giáo dục quốc dân gồm những cấp học và trình độ nào?",
+        "Việc liên thông giữa trung học nghề, trung cấp, cao đẳng và đại học được quy định thế nào?",
+        "Học bạ số trong cơ sở giáo dục phổ thông được quản lý và sử dụng ra sao?",
+    )),
+    "sinh_vien": ("Dành cho sinh viên", (
+        "Kế hoạch bài dạy theo Công văn 5512 gồm những phần nào?",
+        "Ma trận và bản đặc tả đề kiểm tra được xây dựng theo các bước nào?",
+        "Chương trình giáo dục phổ thông 2018 đặt ra những yêu cầu nào về phẩm chất và năng lực?",
+        "Quỹ Học bổng Quốc gia được tổ chức, quản lý và sử dụng ra sao?",
+        "Quy chế tuyển sinh và đào tạo sau đại học quy định gì về điều kiện dự tuyển?",
+        "Việc liên thông giữa trung học nghề, trung cấp, cao đẳng và đại học được quy định thế nào?",
+    )),
+    "giao_vien": ("Dành cho giáo viên, giảng viên", (
+        "Giáo viên THCS dạy bao nhiêu tiết một tuần?",
+        "Lương giáo viên THPT hạng III bậc 1 hiện nay là bao nhiêu?",
+        "Điểm thường xuyên 8, 9, giữa kì 7, cuối kì 8 thì điểm trung bình môn học kì là bao nhiêu?",
+        "Kế hoạch bài dạy theo Công văn 5512 gồm những phần nào?",
+        "Nhà giáo và cán bộ quản lý giáo dục được hưởng phụ cấp ưu đãi theo nghề thế nào?",
+        "Chuẩn nghề nghiệp giảng viên đại học gồm những tiêu chuẩn nào?",
+    )),
+    "can_bo_quan_ly": ("Dành cho cán bộ quản lý", (
+        "Sở Giáo dục và Đào tạo có những chức năng, nhiệm vụ và quyền hạn nào?",
+        "Hướng dẫn xây dựng trường học an toàn, phòng chống tai nạn thương tích gồm những yêu cầu nào?",
+        "Lộ trình nâng trình độ chuẩn được đào tạo của giáo viên mầm non, tiểu học, trung học cơ sở ra sao?",
+        "Tiêu chuẩn, định mức sử dụng máy móc, thiết bị chuyên dùng trong giáo dục quy định thế nào?",
+        "Quy định về tự chủ của cơ sở giáo dục đại học gồm những nội dung nào?",
+        "Nhà giáo thỉnh giảng và nhà giáo hợp đồng sau khi nghỉ hưu được quy định ra sao?",
+    )),
+    "phu_huynh": ("Dành cho phụ huynh", (
+        "Trường có được tổ chức dạy thêm có thu tiền cho học sinh đang học chính khóa không?",
+        "Học sinh phổ thông được miễn học phí và sách giáo khoa trong những trường hợp nào?",
+        "Con tôi được điểm thường xuyên 7, 8, giữa kì 6, cuối kì 7 thì điểm trung bình môn học kì là bao nhiêu?",
+        "Việc đánh giá học sinh tiểu học được thực hiện theo những hình thức nào?",
+        "Chính sách hỗ trợ bữa ăn trưa cho học sinh tiểu học ở xã biên giới áp dụng cho đối tượng nào?",
+        "Học bạ số trong cơ sở giáo dục phổ thông được quản lý và sử dụng ra sao?",
+    )),
+}
 
 # Tên tệp bắt đầu bằng một trong các từ này thì đọc lên đã thành tên văn bản,
 # chỉ cần ghép thêm phần hỏi.
@@ -265,25 +329,49 @@ def che_do_goi_y_mo_dau(che_do: str | None = None) -> str:
     return gia_tri if gia_tri in CAC_CHE_DO else CHE_DO_TINH
 
 
-def nhom_goi_y_tinh() -> list[dict]:
-    """Bộ câu tĩnh giữ nguyên bốn nhóm, để giao diện vẽ theo chủ đề."""
-    return [
-        {"chu_de": chu_de, "cau_hoi": list(cac_cau)}
-        for chu_de, cac_cau in NHOM_GOI_Y_CHU_DE
-    ]
+def chuan_hoa_vai_tro(vai_tro: str | None) -> str | None:
+    """Mã vai trò hợp lệ, hoặc None khi không chọn hay gửi giá trị lạ."""
+    ma = str(vai_tro or "").strip().casefold()
+    return ma if ma in GOI_Y_THEO_VAI_TRO else None
 
 
-def goi_y_tinh(so_luong: int | None = None) -> list[str]:
+def nhom_goi_y_tinh(vai_tro: str | None = None) -> list[dict]:
+    """Bộ câu tĩnh giữ nguyên bốn nhóm, để giao diện vẽ theo chủ đề.
+
+    Có vai trò thì nhóm của vai trò đó đứng đầu, đánh dấu "vai_tro" để giao
+    diện hiện sẵn nhóm này; bốn nhóm chủ đề vẫn đi sau (bỏ câu đã có ở nhóm
+    đầu) để người dùng không mất lối sang chủ đề khác.
+    """
+    ma = chuan_hoa_vai_tro(vai_tro)
+    ket_qua = []
+    da_co: set[str] = set()
+    if ma:
+        chu_de, cac_cau = GOI_Y_THEO_VAI_TRO[ma]
+        ket_qua.append({"chu_de": chu_de, "cau_hoi": list(cac_cau), "vai_tro": ma})
+        da_co.update(cac_cau)
+    for chu_de, cac_cau in NHOM_GOI_Y_CHU_DE:
+        con_lai = [cau for cau in cac_cau if cau not in da_co]
+        if con_lai:
+            ket_qua.append({"chu_de": chu_de, "cau_hoi": con_lai})
+    return ket_qua
+
+
+def goi_y_tinh(so_luong: int | None = None, vai_tro: str | None = None) -> list[str]:
     """Bộ câu tĩnh, thứ tự cố định: lần lượt mỗi nhóm một câu.
 
     Xen kẽ các nhóm để khi chỉ cần vài câu (lời từ chối chỉ chừa ba chỗ) vẫn
-    trải đủ các chủ đề thay vì dồn cả vào nhóm đầu.
+    trải đủ các chủ đề thay vì dồn cả vào nhóm đầu. Có vai trò thì câu của vai
+    trò đó đi trước, phần còn lại vẫn xen kẽ như trên.
     """
     xen_ke = [
         cau
         for vong in zip_longest(*(cac_cau for _, cac_cau in NHOM_GOI_Y_CHU_DE))
         for cau in vong if cau
     ]
+    ma = chuan_hoa_vai_tro(vai_tro)
+    if ma:
+        cua_vai_tro = GOI_Y_THEO_VAI_TRO[ma][1]
+        xen_ke = list(cua_vai_tro) + [cau for cau in xen_ke if cau not in cua_vai_tro]
     return xen_ke if so_luong is None else xen_ke[:_chan_so_luong(so_luong)]
 
 
@@ -315,19 +403,24 @@ def goi_y_mo_dau(
     bo_ngau_nhien=None,
     che_do: str | None = None,
     tinh_trang=None,
+    vai_tro: str | None = None,
 ) -> list[str]:
     """Gợi ý cho màn hình chào.
 
     Mặc định là bộ câu tĩnh, lần nào gọi cũng như nhau. Chế độ "metadata" dựng
     câu từ hồ sơ văn bản trong kho qua cây quyết định và đổi mẻ mỗi lần gọi;
     kho có ít văn bản dùng được quá thì bù bằng câu tĩnh để hàng gợi ý không
-    bao giờ trống.
+    bao giờ trống. Có vai trò thì câu của vai trò đó đứng đầu ở cả hai chế độ.
     """
     so_luong = _chan_so_luong(so_luong)
     if che_do_goi_y_mo_dau(che_do) == CHE_DO_TINH:
-        return goi_y_tinh(so_luong)
+        return goi_y_tinh(so_luong, vai_tro)
+    # Chỉ nửa mẻ là câu của vai trò: chế độ này để mỗi lần "Đổi gợi ý" ra câu
+    # mới từ kho, để câu cố định chiếm hết thì nút đó bấm cũng như không.
+    ma = chuan_hoa_vai_tro(vai_tro)
+    cua_vai_tro = list(GOI_Y_THEO_VAI_TRO[ma][1][:(so_luong + 1) // 2]) if ma else []
     tu_kho = goi_y_tu_kho(ho_so, tinh_trang, bo_ngau_nhien or random, gioi_han=so_luong)
-    return _loc_trung(tu_kho + goi_y_tinh(), gioi_han=so_luong)
+    return _loc_trung(cua_vai_tro + tu_kho + goi_y_tinh(), gioi_han=so_luong)
 
 
 # Cụm từ rút từ câu trả lời mà đem đi hỏi tiếp thì vô nghĩa: lời dẫn, nhãn vị
