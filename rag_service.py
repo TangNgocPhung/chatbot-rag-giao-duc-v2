@@ -1563,7 +1563,10 @@ class RAGService:
             if status not in status_counts:
                 status = "pending"
             status_counts[status] += 1
-            relative_folder = os.path.dirname(os.path.relpath(path, DATA_PATH))
+            # Luôn dùng "/" để giao diện tách tầng thư mục như nhau trên Windows.
+            relative_folder = os.path.dirname(
+                os.path.relpath(path, DATA_PATH)
+            ).replace(os.sep, "/")
             documents.append({
                 "name": filename,
                 "folder": "Kho chính" if relative_folder in {"", "."} else relative_folder,
@@ -1586,6 +1589,7 @@ class RAGService:
                 **status_counts,
                 "removed": len(set(ledger) - current_paths),
             },
+            "nhan_thu_muc": xep_thu_muc_kho.nhan_thu_muc(),
         }
 
     @staticmethod

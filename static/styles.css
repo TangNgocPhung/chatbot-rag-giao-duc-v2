@@ -417,7 +417,12 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .source-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .source-chip[href]:hover { border-color: var(--line-strong); background: var(--blue-soft-2); }
 /* --- Lọc kho tài liệu theo loại --- */
-.document-filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 22px 10px; }
+.document-filters { display: flex; flex-direction: column; gap: 7px; padding: 0 22px 10px; }
+.filter-row { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Hàng thư mục con (Sách giáo khoa, Thông tư...): lùi vào, vạch trái cho thấy là cấp dưới của hàng trên. */
+.filter-row-con { margin-left: 8px; padding-left: 10px; border-left: 2px solid var(--line); }
+.filter-row-con .filter-chip { padding: 4px 10px; font-size: 10.5px; }
+.filter-row-con .filter-chip.active { color: var(--blue-ink); background: var(--blue-soft); border-color: var(--blue); }
 .filter-chip { padding: 5px 11px; color: var(--ink-soft); background: var(--surface-3); border: 1px solid var(--line); border-radius: 20px; font-size: 11px; font-weight: 650; cursor: pointer; }
 .filter-chip:hover { background: var(--blue-soft-2); }
 .filter-chip.active { color: white; background: var(--blue); border-color: var(--blue); }
