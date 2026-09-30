@@ -532,6 +532,14 @@ def rut_y_chinh(cau_tra_loi: str, cau_hoi: str = "") -> list[tuple[str, bool]]:
     def chi_trong_bang(cum: str) -> bool:
         return cum.replace("**", "").casefold() not in ngoai_bang
 
+    # Ý nêu tên một môn mà câu hỏi không hỏi tới ("Giáo dục Tin học" khi hỏi về
+    # cả chương trình): câu trả lời điểm qua từng môn, gợi ý thì không nên lạc
+    # sang riêng một môn. Hỏi đúng môn đó thì giữ.
+    mon_da_hoi = phan_loai_giao_duc.mon_nhac_toi(cau_hoi)
+
+    def lac_mon(cum: str) -> bool:
+        return bool(phan_loai_giao_duc.mon_nhac_toi(cum) - mon_da_hoi)
+
     ung_vien.sort(key=lambda muc: (
         chi_trong_bang(muc[0]),
         bool(cap_pham_vi) and not (_cap_tu(muc[0]) & cap_pham_vi),
@@ -542,8 +550,14 @@ def rut_y_chinh(cau_tra_loi: str, cau_hoi: str = "") -> list[tuple[str, bool]]:
     da_thay: list[str] = []
     so_ngoai_bang = 0
     for cum, ten_rieng in ung_vien:
-        cum = re.sub(r"\s+", " ", _TRICH_DAN.sub("", cum)).strip(" :.,;")
+        cum = _TRICH_DAN.sub("", cum)
+        # "Giáo dục Tin học (Năng lực tin học)": phần trong ngoặc là chú thích,
+        # nhét vào câu gợi ý chỉ làm rối.
+        cum = re.sub(r"\s*\([^()]*\)", "", cum)
+        cum = re.sub(r"\s+", " ", cum).strip(" :.,;-")
         if len(cum.split()) > 8 or not _la_cum_dung_duoc(cum, cau_hoi_chuan):
+            continue
+        if lac_mon(cum):
             continue
         # Đã có hai ý nói ngoài bảng thì thôi hẳn ý chỉ có trong ô bảng: nhét
         # vào chỗ thứ ba là lạc sang một môn, một dòng lẻ của bảng.
@@ -560,6 +574,29 @@ def rut_y_chinh(cau_tra_loi: str, cau_hoi: str = "") -> list[tuple[str, bool]]:
     return ket_qua
 
 
+def _ha_chu_hoa_le(cum: str) -> str:
+    """Hạ chữ viết hoa đứng lẻ khi đặt cụm vào giữa câu hỏi.
+
+    "Sính lễ" in đậm đầu dòng chỉ viết hoa vì đứng đầu dòng; mô hình còn hay
+    viết hoa tuỳ hứng ("Phẩm chất và Năng lực chung"). Hai chữ hoa liền nhau là
+    tên riêng ("Việt Nam", "Luật Giáo dục") thì giữ; chữ viết tắt ("THPT") cũng
+    giữ. Giữa cụm chỉ hạ chữ có dấu tiếng Việt: tên tiếng Anh "Rational Agent
+    for Generating" viết hoa từng chữ là đúng.
+    """
+    tu = cum.split()
+    if len(tu) < 2:
+        return cum
+    la_hoa = [len(t) > 1 and t[0].isupper() and t[1:].islower() for t in tu]
+    for so, hoa in enumerate(la_hoa):
+        if not hoa:
+            continue
+        ke_ben = (so > 0 and la_hoa[so - 1]) or (so + 1 < len(tu) and la_hoa[so + 1])
+        co_dau = so == 0 or bool(_KY_TU_CO_DAU.search(tu[so].casefold()))
+        if not ke_ben and co_dau:
+            tu[so] = tu[so][0].lower() + tu[so][1:]
+    return " ".join(tu)
+
+
 def _cau_hoi_tu_y_chinh(
     y_chinh: list[tuple[str, bool]], chu_the: str | None = None
 ) -> list[str]:
@@ -574,12 +611,8 @@ def _cau_hoi_tu_y_chinh(
     mau_gan = ("Nói rõ hơn về {} trong {}", "{} trong {} gồm những gì?", "Giải thích thêm về {} trong {}")
     ct = _chu_the_giua_cau(chu_the) if chu_the else None
     for so, (cum, la_ten) in enumerate(y_chinh):
-        # "Sính lễ" in đậm đầu dòng chỉ viết hoa vì đứng đầu dòng; đặt vào giữa
-        # câu hỏi thì hạ xuống. Tên riêng và chữ viết tắt ("THPT") giữ nguyên.
-        tu = cum.split()
-        if (not la_ten and len(tu) > 1 and tu[0][1:].islower()
-                and (tu[1].islower() or tu[1].isdigit())):
-            cum = cum[0].lower() + cum[1:]
+        if not la_ten:
+            cum = _ha_chu_hoa_le(cum)
         # Ý đã chạm chủ thể ("Chương trình tổng thể" khi hỏi về chương trình)
         # thì gắn thêm chỉ lặp chữ; tên riêng thì "Hùng Vương gồm những gì" vô nghĩa.
         cau = None

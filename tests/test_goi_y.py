@@ -425,10 +425,44 @@ class GoiYBamChuDeCauHoiTests(unittest.TestCase):
         tra_loi = (
             "Các môn đều hướng tới phẩm chất chủ yếu. [1]\n\n"
             "| Môn | Năng lực |\n|---|---|\n"
-            "| Thể dục | **năng lực thể chất** |\n| Tin học | **năng lực tin học** |\n"
+            "| Thể dục | **năng lực thể chất** |\n| Mọi môn | **năng lực tự học** |\n"
         )
         y_chinh = [cum for cum, _ in goi_y_cau_hoi.rut_y_chinh(tra_loi, CAU_HOI_CT_2018)]
-        self.assertEqual(y_chinh, ["năng lực thể chất", "năng lực tin học"])
+        self.assertEqual(y_chinh, ["năng lực thể chất", "năng lực tự học"])
+
+    def test_y_neu_ten_mon_khong_duoc_hoi_thi_bo(self):
+        """Câu trả lời thật trên VPS 30/9: điểm qua từng môn bằng gạch đầu dòng."""
+        tra_loi = (
+            "- **Phẩm chất và Năng lực chung**: mọi bài học đều góp phần hình thành [1].\n"
+            "- **Giáo dục Tin học (Năng lực tin học)**: phát triển năng lực tin học [4].\n"
+        )
+        self.assertEqual(
+            goi_y_cau_hoi.rut_y_chinh(tra_loi, CAU_HOI_CT_2018),
+            [("Phẩm chất và Năng lực chung", False)],
+        )
+        # Hỏi đúng môn đó thì giữ, và bỏ phần chú thích trong ngoặc.
+        self.assertIn(
+            ("Giáo dục Tin học", False),
+            goi_y_cau_hoi.rut_y_chinh(tra_loi, "Môn Tin học đặt ra yêu cầu nào về năng lực?"),
+        )
+
+    def test_ha_chu_hoa_le_nhung_giu_ten_rieng(self):
+        self.assertEqual(
+            goi_y_cau_hoi.goi_y_tiep_theo(
+                CAU_HOI_CT_2018, NGUON_SGV,
+                cau_tra_loi="- **Phẩm chất và Năng lực chung**: hình thành dần [1].",
+            )[0],
+            "Nói rõ hơn về phẩm chất và năng lực chung trong Chương trình giáo dục phổ thông 2018",
+        )
+        self.assertEqual(goi_y_cau_hoi._ha_chu_hoa_le("Luật Giáo dục sửa đổi"), "Luật Giáo dục sửa đổi")
+        self.assertEqual(
+            goi_y_cau_hoi._ha_chu_hoa_le("Rational Agent for Generating"),
+            "Rational Agent for Generating",
+        )
+        self.assertEqual(
+            goi_y_cau_hoi._ha_chu_hoa_le("Khung trình độ quốc gia Việt Nam"),
+            "khung trình độ quốc gia Việt Nam",
+        )
 
     def test_cau_noi_tiep_muon_chu_the_cua_cau_truoc(self):
         goi_y = goi_y_cau_hoi.goi_y_tiep_theo(

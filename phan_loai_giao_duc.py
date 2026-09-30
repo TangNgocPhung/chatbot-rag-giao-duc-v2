@@ -566,6 +566,13 @@ _CONG_VAN_SO = re.compile(r"\bcong van(?= so| \d)")
 _DANH_SACH_LOP = re.compile(r"\b(?:lop|khoi) ((?:\d{1,2} )+)")
 
 
+def mon_nhac_toi(van_ban: str) -> set[str]:
+    """Các môn mà một cụm chữ nêu tên, không đòi dấu hiệu trường lớp - dùng
+    cho cụm ngắn như tiêu đề ý "Giáo dục Tin học (Năng lực tin học)"."""
+    chuoi = _CONG_VAN_SO.sub("congvan", _chuan_hoa(van_ban)).replace(" hoc sinh ", " hocsinh ")
+    return set(_bo_mon_bi_bao_trum(_tim_nhan(chuoi, _MON_DA_BIEN_DICH)))
+
+
 def nhan_dien_cau_hoi(cau_hoi: str) -> dict:
     """Môn, lớp, cấp học mà câu hỏi nhắc tới - cùng từ điển dùng cho tên file.
 
