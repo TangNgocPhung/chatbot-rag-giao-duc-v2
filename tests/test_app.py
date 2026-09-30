@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 import phan_loai_giao_duc
 import tep_dinh_kem
 from api import HUONG_DAN_SU_DUNG, app
-from rag_service import THU_MUC_TEP_TRONG_KHO, service
+from rag_service import service
 from web_loader import nen_ngu_canh_theo_cau_hoi, tim_url_trong_cau_hoi
 
 
@@ -246,7 +246,12 @@ class LuuTepDinhKemVaoKhoTests(unittest.TestCase):
         self.addCleanup(service.tep_cho_nap.clear)
 
     def _duong_dan_trong_kho(self, ten: str) -> str:
-        return os.path.join(self.kho, THU_MUC_TEP_TRONG_KHO, ten)
+        """Thư mục con cụ thể do xep_thu_muc_kho chọn (có test riêng); ở đây
+        chỉ cần biết tệp có nằm trong kho hay không."""
+        for goc, _, ten_files in os.walk(self.kho):
+            if ten in ten_files:
+                return os.path.join(goc, ten)
+        return os.path.join(self.kho, ten)
 
     def test_attachment_is_copied_into_library(self):
         trang_thai, thong_bao = service.luu_tep_vao_kho(self.tep_tai_len, "quy-che.txt")
@@ -255,6 +260,12 @@ class LuuTepDinhKemVaoKhoTests(unittest.TestCase):
         self.assertIn("kho tài liệu", thong_bao)
         self.assertTrue(os.path.isfile(self._duong_dan_trong_kho("quy-che.txt")))
         self.assertEqual(service.tep_cho_nap, ["quy-che.txt"])
+        # Tệp .txt không có trang bìa để phân loại: chỉ xếp theo định dạng.
+        self.assertEqual(
+            os.path.relpath(self._duong_dan_trong_kho("quy-che.txt"), self.kho),
+            os.path.join("van_ban_khac", "quy-che.txt"),
+        )
+        self.assertIn("data_giao_duc/van_ban_khac", thong_bao)
 
     def test_same_content_is_not_copied_twice(self):
         service.luu_tep_vao_kho(self.tep_tai_len, "quy-che.txt")

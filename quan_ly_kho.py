@@ -343,7 +343,8 @@ def tra_ve_cho_duyet(ma: str) -> str:
 
 
 def khoi_phuc(ma: str, duong_dan_dich) -> str:
-    """duong_dan_dich(ten) -> đường dẫn trống trong kho (tránh trùng tên)."""
+    """duong_dan_dich(ten, duong_dan_rac) -> đường dẫn trống trong kho (tránh
+    trùng tên). Truyền kèm tệp trong thùng rác để đọc nội dung mà xếp thư mục."""
     dong = _connect().execute("SELECT * FROM thung_rac WHERE id = ?", (ma,)).fetchone()
     if dong is None:
         raise LoiQuanLyKho("Không tìm thấy tệp trong thùng rác.", 404)
@@ -352,7 +353,7 @@ def khoi_phuc(ma: str, duong_dan_dich) -> str:
         return tra_ve_cho_duyet(ma)
     if not os.path.isfile(dong["duong_dan_rac"]):
         raise LoiQuanLyKho("Tệp trong thùng rác không còn trên đĩa.", 410)
-    dich = duong_dan_dich(dong["ten"])
+    dich = duong_dan_dich(dong["ten"], dong["duong_dan_rac"])
     os.makedirs(os.path.dirname(dich), exist_ok=True)
     shutil.move(dong["duong_dan_rac"], dich)
     with _khoa:

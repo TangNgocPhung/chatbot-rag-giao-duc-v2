@@ -228,6 +228,44 @@ bash trien_khai_vps/03_day_tai_lieu.sh <IP_VPS> debian
 "mở tài liệu gốc"; chưa đẩy xong thì chatbot vẫn trả lời và trích dẫn đủ vì chỉ
 mục đã có.
 
+Script so hai bên theo **tên tệp**, nên tệp VPS đã xếp vào thư mục con (bước
+dưới) không bị đẩy lại vào gốc kho.
+
+### Bước 5b — Xếp kho vào thư mục con theo loại
+
+Tệp mới vào kho tự nằm đúng thư mục (`RAG_XEP_THU_MUC_THEO_LOAI=1`, mặc định).
+Tệp đang nằm phẳng ở gốc kho thì xếp một lần bằng tay:
+
+```bash
+sudo systemctl stop chatbot-rag
+cd /opt/chatbot-rag
+sudo -u rag .venv/bin/python xep_kho_theo_loai.py --thu-xem   # xem trước + báo cáo CSV
+sudo -u rag .venv/bin/python xep_kho_theo_loai.py             # làm thật
+sudo systemctl start chatbot-rag
+```
+
+```
+data_giao_duc/
+├── pdf/ và word/        (chia tiếp theo nội dung)
+│   ├── sach_giao_khoa/  sach_bai_tap/  sach_giao_vien/
+│   ├── giao_an/  bai_giang/  de_kiem_tra/
+│   ├── van_ban_quy_pham/{luat, nghi_dinh, thong_tu, thong_tu_lien_tich,
+│   │                     quyet_dinh, nghi_quyet, chi_thi, cong_van,
+│   │                     huong_dan, ke_hoach, thong_bao, khac}/
+│   └── chua_phan_loai/  ← không đủ dấu hiệu thì để đây, không đoán
+├── trinh_chieu/  video/  am_thanh/  hinh_anh/  bang_tinh/  phu_de/  van_ban_khac/
+```
+
+- Script sửa luôn sổ ghi chép, chỉ mục FAISS và `drive_state.json` nên **không
+  phải lập chỉ mục lại**. Bản cũ được sao lưu cạnh tệp gốc, đuôi
+  `.truoc-khi-xep-loai-<giờ>`.
+- Chỉ đụng tệp ở **gốc** kho. Máy xếp sai thì kéo tệp sang thư mục đúng
+  (WinSCP) - chạy lại script cũng không đụng tới nó. Trích dẫn vẫn mở được
+  ngay (tìm tệp theo tên), nhưng trình cập nhật chỉ mục không nhận ra "chuyển
+  chỗ": lượt cập nhật kế tiếp gỡ vector ở đường dẫn cũ rồi embed lại riêng tệp
+  đó. Kéo vài tệp thì không sao; kéo hàng trăm tệp thì mất nhiều giờ CPU.
+- `03_day_tai_lieu.sh` đẩy tệp mới vào gốc kho; chạy lại script này để xếp.
+
 ---
 
 ## Vận hành

@@ -79,6 +79,57 @@ def duong_dan_dich(ten: str, thu_muc_con: str) -> str:
     """Nơi cất một tệp tải từ Drive về, tùy chế độ kho phẳng hay cây thư mục."""
     return os.path.join(DATA_PATH, "" if KHO_PHANG else thu_muc_con, ten)
 
+
+# ------------------------------------------------------------
+# KHO XẾP THEO LOẠI (xep_thu_muc_kho.py)
+# ------------------------------------------------------------
+# Tệp có thể đã được chuyển vào thư mục con (pdf/sach_bai_tap/...) sau khi tải
+# về. Nếu lượt đồng bộ sau vẫn tìm nó ở gốc kho thì sẽ không thấy, tải lại rồi
+# để hai bản trùng tên - trích dẫn không mở được nữa. Nên phải tìm tệp ở nơi
+# nó THẬT SỰ đang nằm trước khi quyết định tải.
+def _xep_theo_loai() -> bool:
+    return os.getenv("RAG_XEP_THU_MUC_THEO_LOAI", "1") == "1"
+
+
+def _chi_muc_ten_trong_kho() -> dict[str, str]:
+    """{tên thường hoá: đường dẫn} cho cả kho. Tên trùng thì bỏ: không biết
+    bản nào là của Drive thì thà tải lại còn hơn ghi đè nhầm."""
+    theo_ten: dict[str, str | None] = {}
+    for goc, _, ten_files in os.walk(DATA_PATH):
+        for ten in ten_files:
+            khoa = ten.casefold()
+            theo_ten[khoa] = None if khoa in theo_ten else os.path.join(goc, ten)
+    return {khoa: duong_dan for khoa, duong_dan in theo_ten.items() if duong_dan}
+
+
+def _vi_tri_da_biet(ban_ghi: dict, ten: str, theo_ten: dict[str, str]) -> str | None:
+    """Tệp này đang nằm ở đâu trong kho, nếu đã có."""
+    cu = ban_ghi.get("duong_dan")
+    if cu:
+        duong_dan = os.path.join(DATA_PATH, cu)
+        if os.path.basename(duong_dan) == ten and os.path.isfile(duong_dan):
+            return duong_dan
+    return theo_ten.get(ten.casefold())
+
+
+def _xep_vao_thu_muc(duong_dan: str, ten: str) -> str:
+    """Chuyển tệp vừa tải về vào thư mục con theo loại. Lỗi thì để nguyên."""
+    try:
+        import xep_thu_muc_kho
+
+        thu_muc = xep_thu_muc_kho.thu_muc_he_dieu_hanh(
+            xep_thu_muc_kho.chon_thu_muc(ten, duong_dan)
+        )
+        dich = os.path.join(DATA_PATH, thu_muc, ten)
+        if os.path.normcase(dich) == os.path.normcase(duong_dan) or os.path.exists(dich):
+            return duong_dan
+        os.makedirs(os.path.dirname(dich), exist_ok=True)
+        shutil.move(duong_dan, dich)
+        return dich
+    except Exception as exc:
+        print(f"⚠️ Không xếp được thư mục cho {ten}: {exc}")
+        return duong_dan
+
 # Tải liên tục hàng trăm file làm Google chặn tạm IP ("your computer or network
 # may be sending automated queries", HTTP 403). Nghỉ giữa các lần tải và chờ dài
 # rồi thử lại thì đi hết kho mà không bị chặn.
@@ -379,6 +430,8 @@ def dong_bo(
 
     danh_sach = liet_ke_qua_api(THU_MUC_DRIVE) if API_KEY else liet_ke_qua_manifest()
     trang_thai = doc_trang_thai()
+    xep = _xep_theo_loai()
+    theo_ten = _chi_muc_ten_trong_kho() if xep else {}
     con_tren_drive = set()
     chan_lien_tiep = 0
 
@@ -408,8 +461,9 @@ def dong_bo(
             ket_qua.bo_qua.append(f"{ten} (>{GIOI_HAN_MB}MB)")
             continue
 
-        dich = duong_dan_dich(ten, muc.get("thu_muc", ""))
         ban_ghi = trang_thai.get(ma_file) or {}
+        da_biet = _vi_tri_da_biet(ban_ghi, ten, theo_ten)
+        dich = da_biet or duong_dan_dich(ten, muc.get("thu_muc", ""))
         van_con = os.path.exists(dich)
         giong_nhau = (
             van_con
@@ -445,6 +499,10 @@ def dong_bo(
             _tai_co_thu_lai(ma_file, dich, mime, bao_tien_do)
             if NGHI_GIAY:
                 time.sleep(NGHI_GIAY)
+            # Tệp mới thì xếp vào thư mục theo loại; tệp đã có chỗ (bản cập
+            # nhật trên Drive) thì giữ chỗ cũ để đường dẫn trong chỉ mục không đổi.
+            if xep and not da_biet and os.path.isfile(dich):
+                dich = _xep_vao_thu_muc(dich, ten)
             trang_thai[ma_file] = {
                 "duong_dan": os.path.relpath(dich, DATA_PATH),
                 "md5": muc.get("md5Checksum") or _md5_file(dich),
