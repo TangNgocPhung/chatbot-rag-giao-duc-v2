@@ -45,6 +45,28 @@ class TrichQuanHeTests(unittest.TestCase):
             self.assertEqual(quan_he["sua_doi"], ["21/2025/TT-BGDĐT"], cau)
             self.assertEqual(quan_he["bai_bo_mot_phan"], [], cau)
 
+    def test_so_hieu_dung_truoc_het_hieu_luc(self):
+        # Kiểu câu của Luật/Nghị định: số hiệu đứng TRƯỚC động từ. Chỉ lấy số
+        # đầu mệnh đề - Luật 74/2014/QH13 trong danh sách sửa đổi vẫn còn hiệu lực.
+        quan_he = vm.trich_quan_he_day_du(
+            "Điều 45. Hiệu lực thi hành\n1. Luật này có hiệu lực thi hành từ ngày 01 tháng 01 năm 2026.\n"
+            "3. Luật Giáo dục đại học số 08/2012/QH13 đã được sửa đổi, bổ sung một số điều theo\n"
+            "Luật số 32/2013/QH13, Luật số 74/2014/QH13 và Luật số 34/2018/QH14 hết hiệu lực thi hành\n"
+            "kể từ ngày Luật này có hiệu lực."
+        )
+        self.assertEqual(quan_he["thay_the"], ["8/2012/QH13"])
+
+    def test_liet_ke_dieu_khoan_co_cham_phay_van_la_mot_phan(self):
+        quan_he = vm.trich_quan_he_day_du(
+            "3. Điều 6, Điều 12; khoản 4, 5, 6 Điều 35 của Nghị định. số 142/2025/NĐ-CP ngày 12 "
+            "tháng 6 năm 2025 của Chính phủ hết hiệu lực kể từ ngày Nghị định này có hiệu lực thi hành."
+        )
+        self.assertEqual(quan_he["bai_bo_mot_phan"], ["142/2025/NĐ-CP"])
+        self.assertEqual(quan_he["thay_the"], [])
+
+    def test_so_hieu_thu_tuong_giu_chu_g(self):
+        self.assertEqual(vm.trich_so_hieu("Quyết định số 05/2013/QĐ-TTg ngày 15"), ["5/2013/QĐ-TTg"])
+
     def test_huong_dan_co_so_hieu(self):
         so, ten = vm.trich_huong_dan(van_ban(
             "5/2026/TT-BGDĐT",

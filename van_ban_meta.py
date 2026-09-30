@@ -34,8 +34,10 @@ DUONG_DAN_META_LLM = os.path.abspath(os.getenv(
 # "27/2020/TT-BGDĐT", "81/2021/NĐ-CP", "123/2025/QH15".
 # \s* ở mọi mối nối vì OCR hay chèn xuống dòng hoặc khoảng trắng thừa
 # ("02/2022/TT-\nBGDĐT", "28/2023/NĐ- CP").
+# Mã cơ quan có thể kết thúc bằng chữ thường duy nhất "g" của "TTg"
+# ("05/2013/QĐ-TTg"); thiếu nó thì số hiệu bị cắt thành "QĐ-TT".
 MAU_SO_HIEU = re.compile(
-    r"(\d{1,4})\s*/\s*(\d{4})\s*/\s*([A-ZĐ]{2,7})\s*[-–]\s*([A-ZĐ][A-ZĐ0-9]{1,14})"
+    r"(\d{1,4})\s*/\s*(\d{4})\s*/\s*([A-ZĐ]{2,7})\s*[-–]\s*([A-ZĐ][A-ZĐ0-9]{1,14}(?:g(?![a-zà-ỹ]))?)"
 )
 # Quyết định/Chỉ thị của Thủ tướng và công văn không có năm trong số hiệu:
 # "527/QĐ-TTg", "20/CT-TTg", "5512/BGDĐT-GDTrH".
@@ -79,6 +81,14 @@ MAU_QUAN_HE = re.compile(
 # Nhận ra cặp dấu hiệu này mới tránh được kết luận ngược "71 sửa đổi 311".
 MAU_BI_DONG_TRUOC = re.compile(r"\b(được|bị)\s*$", re.IGNORECASE)
 MAU_BI_DONG_SAU = re.compile(r"^\s*(theo|tại|bởi)\b", re.IGNORECASE)
+# "... số X hết hiệu lực kể từ ngày Luật này có hiệu lực": chữ "này" gắn quan
+# hệ vào chính văn bản đang đọc, không phải một câu kể về văn bản khác.
+MAU_HET_HIEU_LUC_KHI_NAY = re.compile(
+    r"hết\s*hiệu\s*lực(?:\s*thi\s*hành)?[^.;]{0,40}?"
+    r"(?:luật|nghị\s*định|thông\s*tư(?:\s*liên\s*tịch)?|quyết\s*định|nghị\s*quyết)"
+    r"\s*này\s*(?:bắt\s*đầu\s*)?có\s*hiệu\s*lực",
+    re.IGNORECASE,
+)
 # "bãi bỏ Điều 5, khoản 2 Điều 7 của Thông tư số ..." chỉ làm văn bản kia mất
 # hiệu lực MỘT PHẦN. Trước đây câu này bị tính như thay thế toàn bộ, nên một
 # Nghị định bị bãi bỏ vài điều cũng bị gắn nhãn "đã bị thay thế" và bị hạ bậc
@@ -484,6 +494,34 @@ def trich_quan_he_day_du(van_ban: str) -> dict[str, list[str]]:
         for so_hieu in cac_so_hieu:
             if so_hieu not in dich:
                 dich.append(so_hieu)
+    # Luật và Nghị định hay viết ngược chiều: "Luật Giáo dục đại học số
+    # 08/2012/QH13 đã được sửa đổi ... theo Luật số 32/2013/QH13, ... hết hiệu
+    # lực kể từ ngày Luật này có hiệu lực". Số hiệu đứng TRƯỚC động từ nên vòng
+    # trên bỏ qua. Chỉ lấy số hiệu ĐẦU mệnh đề - các số sau là luật sửa đổi của
+    # nó, vd Luật 74/2014/QH13 (Giáo dục nghề nghiệp) vẫn còn nguyên hiệu lực.
+    for khop in MAU_HET_HIEU_LUC_KHI_NAY.finditer(van_ban):
+        # OCR xuống dòng giữa câu, nên gộp khoảng trắng rồi mới tìm đầu mệnh
+        # đề: sau số thứ tự khoản "3. ", dấu hai chấm, hoặc dấu chấm hết câu
+        # (chữ hoa theo sau). KHÔNG cắt ở dấu chấm phẩy: "Điều 6, Điều 12;
+        # khoản 4 Điều 35 của Nghị định số 142/2025" là một mệnh đề, cắt ở đó
+        # thì mất chữ "Điều" và bãi bỏ vài điều thành ra thay toàn bộ. OCR còn
+        # chèn dấu chấm lạc ("Nghị định. số") - chữ thường theo sau nên không tính.
+        truoc = " ".join(van_ban[max(0, khop.start() - 900): khop.start()].split())
+        ranh_gioi = max(
+            (
+                m.end() for m in re.finditer(r":|\.\s|(?:^|\s)\d{1,2}\.\s", truoc)
+                if not m.group().startswith(".") or truoc[m.end(): m.end() + 1].isupper()
+            ),
+            default=0,
+        )
+        menh_de = truoc[ranh_gioi:]
+        vi_tri = _vi_tri_so_hieu_dau(menh_de)
+        if vi_tri < 0:
+            continue
+        so_hieu = trich_so_hieu(menh_de[vi_tri:])[0]
+        dich = bai_bo_mot_phan if MAU_MOT_PHAN.search(menh_de[:vi_tri]) else thay_the
+        if so_hieu not in dich:
+            dich.append(so_hieu)
     # Cùng một văn bản vừa bị thay toàn bộ vừa bị bãi bỏ vài điều (hai câu khác
     # nhau) thì mức toàn bộ thắng.
     bai_bo_mot_phan = [s for s in bai_bo_mot_phan if s not in thay_the]
