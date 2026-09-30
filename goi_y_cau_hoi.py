@@ -452,8 +452,11 @@ def _chu_the_giua_cau(chu_the: str) -> str:
 
 # Nhãn kèm số ("lớp 8", "tuần 3", "học kì 2") in đậm chỉ để nhấn vào con số,
 # đứng riêng thì "Tài liệu còn nói gì thêm về lớp 8?" không biết lớp 8 môn gì.
+# Cả dạng liệt kê "học sinh lớp 8 và lớp 9" cũng vậy.
+_NHAN = r"(?:lớp|khối|tuần|tiết|bài|tập|học kì|học kỳ|năm|bậc|cấp)"
 _NHAN_KEM_SO = re.compile(
-    r"^(?:lớp|khối|tuần|tiết|bài|tập|học kì|học kỳ|năm|bậc|cấp)\s+\d+$", re.IGNORECASE
+    rf"^(?:học sinh\s+)?{_NHAN}\s+\d+(?:\s*(?:,|và|-|đến)\s*(?:{_NHAN}\s+)?\d+)*$",
+    re.IGNORECASE,
 )
 
 
@@ -743,7 +746,13 @@ def goi_y_tiep_theo(
             lop = nhan.get("lop") or []
             chu_the = f"môn {nhan['mon_hoc'][0]}" + (f" lớp {lop[0]}" if len(lop) == 1 else "")
             goi_y_theo_mon = _goi_y_theo_mon(nhan, phan_loai or {}, None)
-    tu_y_chinh = _cau_hoi_tu_y_chinh(rut_y_chinh(cau_tra_loi, cau_hoi), chu_the)
+    y_chinh = rut_y_chinh(cau_tra_loi, cau_hoi)
+    if goi_y_theo_mon or (chu_the or "").startswith("môn "):
+        # Chủ thể đã là môn thì "Nói rõ hơn về Tiếng Trung Quốc" chỉ hỏi lại đúng
+        # cái môn đó, không thêm gì.
+        ten_mon = _chuan_hoa(chu_the.split(" lớp ")[0].removeprefix("môn "))
+        y_chinh = [(cum, la_ten) for cum, la_ten in y_chinh if _chuan_hoa(cum) != ten_mon]
+    tu_y_chinh = _cau_hoi_tu_y_chinh(y_chinh, chu_the)
     if tu_y_chinh:
         # Đã có ý chính bám câu trả lời thì câu hỏi theo Điều chỉ được chen vào
         # khi văn bản đó đúng chủ đề đang hỏi: hỏi môn tin học mà gợi ý "Điều 1
@@ -756,7 +765,10 @@ def goi_y_tiep_theo(
                 cau for cau in ung_vien if any(ten in cau for ten in ten_lien_quan)
             ]
         cac_nguon = lien_quan if chu_de else cac_nguon
-        ung_vien = canh_bao_hieu_luc + tu_y_chinh[:2] + ung_vien[:1] + tu_y_chinh[2:]
+        # Sách cùng môn chen ngay sau hai ý chính: là thứ kho chắc chắn trả lời
+        # được, để sau ý thứ ba thì hàng ba chỗ gợi ý không bao giờ tới lượt.
+        ung_vien = (canh_bao_hieu_luc + tu_y_chinh[:2] + ung_vien[:1]
+                    + goi_y_theo_mon + tu_y_chinh[2:])
     else:
         ung_vien = tu_nguon
     # Tên tệp mã hóa ("11-sgk-tin-hoc-11-...pdf") nhét vào câu gợi ý thì không
@@ -764,7 +776,7 @@ def goi_y_tiep_theo(
     ten_nguon_dau = _ten_goi(cac_nguon[0]) if cac_nguon else None
     if ten_nguon_dau:
         ung_vien.append(f"Tóm tắt những nội dung chính của {ten_nguon_dau}")
-    ung_vien += goi_y_theo_mon
+    ung_vien += [cau for cau in goi_y_theo_mon if cau not in ung_vien]
     # Câu chung "đối tượng áp dụng, lộ trình" chỉ hợp khi nguồn là văn bản quản
     # lý; nguồn là sách giáo khoa hay bài giảng thì hỏi vậy là lạc đề.
     # "nội dung này" đổi thành đúng thứ đang hỏi - phạm vi "về ..." của câu hỏi,

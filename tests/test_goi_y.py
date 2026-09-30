@@ -515,10 +515,11 @@ class GoiYBamChuDeCauHoiTests(unittest.TestCase):
                 "Tiếng trung dạy từ lớp mấy", self.NGUON_TIENG_TRUNG,
                 cau_tra_loi=self.TRA_LOI_TIENG_TRUNG, phan_loai=KHO_NGOAI_NGU,
             ),
+            # "Tiếng Trung Quốc" là chính môn làm chủ thể nên không thành gợi ý.
             [
-                "Nói rõ hơn về Tiếng Trung Quốc",
                 "Sách giáo khoa Tiếng Trung Quốc lớp 3 gồm những bài học nào?",
                 "Sách giáo khoa Tiếng Trung Quốc lớp 6 gồm những bài học nào?",
+                "Sách giáo khoa Tiếng Trung Quốc lớp 10 gồm những bài học nào?",
             ],
         )
 
@@ -532,8 +533,33 @@ class GoiYBamChuDeCauHoiTests(unittest.TestCase):
 
     def test_nhan_kem_so_khong_phai_y_chinh(self):
         self.assertEqual(
-            goi_y_cau_hoi.rut_y_chinh("Bắt đầu từ **lớp 8**, ôn tập vào **học kì 2**.", ""),
-            [],
+            goi_y_cau_hoi.rut_y_chinh(
+                "Bắt đầu từ **lớp 8**, ôn tập vào **học kì 2**, áp dụng cho "
+                "**học sinh lớp 8 và lớp 9**, **lớp 3, 4, 5**. **Học sinh khuyết tật** được miễn.",
+                "",
+            ),
+            [("Học sinh khuyết tật", False)],
+        )
+
+    def test_chu_the_la_mon_thi_khong_hoi_lai_ten_mon_va_sach_chen_som(self):
+        """VPS 30/9 lần hai: "Học sinh lớp 8 và lớp 9 trong môn Tiếng Trung Quốc
+        gồm những gì?", "Nói rõ hơn về Tiếng Trung Quốc", sách thì bị đẩy ra ngoài."""
+        tra_loi = (
+            "Việc dạy **Tiếng Trung Quốc** áp dụng cho **học sinh lớp 8 và lớp 9** [1].\n"
+            "- **Trình độ yêu cầu**: giao tiếp đơn giản [1].\n"
+            "- **Tính chất giai đoạn**: phát triển và nâng cao [2].\n"
+            "- **Kĩ năng viết**: viết chữ Hán [2].\n"
+        )
+        self.assertEqual(
+            goi_y_cau_hoi.goi_y_tiep_theo(
+                "Tiếng trung dạy từ lớp mấy", self.NGUON_TIENG_TRUNG,
+                cau_tra_loi=tra_loi, phan_loai=KHO_NGOAI_NGU,
+            ),
+            [
+                "Nói rõ hơn về trình độ yêu cầu trong môn Tiếng Trung Quốc",
+                "Tính chất giai đoạn trong môn Tiếng Trung Quốc gồm những gì?",
+                "Sách giáo khoa Tiếng Trung Quốc lớp 3 gồm những bài học nào?",
+            ],
         )
 
     def test_khong_tach_duoc_chu_the_thi_giu_khuon_cu(self):
