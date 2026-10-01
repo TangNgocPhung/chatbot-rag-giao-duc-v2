@@ -30,6 +30,12 @@ class ChonMoHinhTests(unittest.TestCase):
             self.assertEqual(self.dich_vu.chon_mo_hinh("qwen3.5:9b"), "llama3.2:3b")
             self.assertEqual(self.dich_vu.chon_mo_hinh("qwen2.5:3b-instruct"), "qwen2.5:3b-instruct")
 
+    def test_vua_khoi_dong_may_van_hoi_danh_sach_mo_hinh(self):
+        # Trên Linux, time.monotonic() tính từ lúc khởi động máy: phút đầu tiên
+        # đồng hồ còn dưới 60 nhưng lần gọi đầu vẫn phải lấy danh sách mô hình.
+        with patch("rag_service.time.monotonic", return_value=10.0):
+            self.assertEqual(self.dich_vu.chon_mo_hinh("qwen2.5:3b-instruct"), "qwen2.5:3b-instruct")
+
     def test_chuoi_rieng_dung_dung_mo_hinh_va_duoc_nho(self):
         self.dich_vu.rag_chain = "chuoi-mac-dinh"
         with patch("rag_service.tao_llm", side_effect=lambda ten, **_: f"llm:{ten}") as tao, \
