@@ -651,6 +651,34 @@ def nhan_dien_cau_hoi(cau_hoi: str) -> dict:
     return ket_qua
 
 
+# Chỉ TÊN GỌI của cấp học. CAP_HOC dùng cho phân loại tệp nên nhận cả dấu hiệu
+# ngầm ("tín chỉ", "sinh viên" -> Đại học); để biết câu hỏi đã CHỌN cấp học
+# chưa thì dấu hiệu ngầm sai - trường cao đẳng cũng tính tín chỉ.
+CAP_HOC_TEN_GOI: dict[str, str] = {
+    "Mầm non": r"mam non|mau giao|nha tre",
+    "Tiểu học": r"tieu hoc",
+    "THCS": r"trung hoc co so|thcs",
+    "THPT": r"trung hoc pho thong|thpt",
+    "Giáo dục thường xuyên": r"giao duc thuong xuyen|gdtx",
+    "Giáo dục nghề nghiệp": r"giao duc nghe nghiep|cao dang|trung cap",
+    "Đại học": r"dai hoc|sau dai hoc|thac si|tien si",
+}
+_CAP_TEN_GOI_DA_BIEN_DICH = {
+    ten: re.compile(rf"\b(?:{_them_dang_viet_lien(mau)})\b")
+    for ten, mau in CAP_HOC_TEN_GOI.items()
+}
+
+
+def cap_hoc_nhac_toi(van_ban: str) -> list[str]:
+    """Cấp học mà một đoạn chữ (câu hỏi hay đoạn văn bản) gọi tên, hoặc suy từ
+    "lớp n". Không đòi dấu hiệu môn học như nhan_dien_cau_hoi - "giáo viên tiểu
+    học dạy mấy tiết" không nêu môn nào mà vẫn đã chọn cấp học. Theo thứ tự
+    của CAP_HOC."""
+    chuoi = _CONG_VAN_SO.sub("congvan", _chuan_hoa(van_ban))
+    cap = set(_tim_nhan(chuoi, _CAP_TEN_GOI_DA_BIEN_DICH)) | set(_cap_tu_lop(_tim_lop(chuoi)))
+    return [ten for ten in CAP_HOC if ten in cap]
+
+
 def khong_mau_thuan(metadata: dict, pham_vi: dict) -> bool:
     """Bản lỏng của khop: chunk chưa gắn nhãn một trường thì coi như qua.
 

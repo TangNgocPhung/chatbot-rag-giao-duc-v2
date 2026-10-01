@@ -31,6 +31,7 @@ import quan_ly_kho
 import so_sanh_phien_ban
 import tai_khoan
 import danh_gia_hoc_sinh
+import doi_tuong_ap_dung
 import dinh_muc_tiet_day
 import dinh_muc_tiet_day_pho_thong
 import tep_dinh_kem
@@ -2425,6 +2426,11 @@ class RAGService:
                 documents, retrieval_question, thoi_diem
             )
             documents = self._them_tham_chieu(documents, retrieval_question, thoi_diem)
+            # Ô câu hỏi để trống (cấp học, loại hình trường, vùng) mà bằng chứng
+            # trải nhiều giá trị: báo cho mô hình và gợi ý câu hỏi đã điền sẵn.
+            pham_vi_mo_ho = doi_tuong_ap_dung.phan_tich(retrieval_question, [
+                (so, d.page_content, d.metadata.get("cap_hoc")) for so, d in enumerate(documents, 1)
+            ])
             cac_nguon = self._sources(
                 documents, self.ho_so_van_ban, self.tinh_trang_hieu_luc, retrieval_question,
                 so_quan_he=self.so_quan_he, hom_nay=thoi_diem,
@@ -2470,6 +2476,9 @@ class RAGService:
                 context = (
                     "TÌNH TRẠNG VĂN BẢN ĐƯỢC HỎI: " + " ".join(ghi_chu_hieu_luc) + "\n\n" + context
                 )
+            ghi_chu_pham_vi = doi_tuong_ap_dung.ghi_chu_prompt(pham_vi_mo_ho)
+            if ghi_chu_pham_vi:
+                context = ghi_chu_pham_vi + "\n\n" + context
             ghi_chu_thu_bac = self._ghi_chu_thu_bac(documents)
             if ghi_chu_thu_bac:
                 context = ghi_chu_thu_bac + "\n\n" + context
@@ -2519,11 +2528,19 @@ class RAGService:
                 retrieval_question[: -len(question)].rstrip("\n")
                 if retrieval_question != question else ""
             )
+            # Ô còn trống: câu hỏi đã điền sẵn đứng đầu, bấm là hỏi lại đúng
+            # trường hợp. Câu nối tiếp thì không - "Còn THCS thì sao (Tiểu học)?"
+            # vô nghĩa.
             yield {
                 "type": "goi_y",
-                "goi_y": goi_y_cau_hoi.goi_y_tiep_theo(
-                    question, cac_nguon, cau_tra_loi=cau_tra_loi,
-                    cau_hoi_truoc=cau_hoi_truoc, phan_loai=self.phan_loai,
+                "goi_y": doi_tuong_ap_dung.ghep_goi_y(
+                    doi_tuong_ap_dung.cau_hoi_lam_ro(question, pham_vi_mo_ho)
+                    if not cau_hoi_truoc else [],
+                    goi_y_cau_hoi.goi_y_tiep_theo(
+                        question, cac_nguon, cau_tra_loi=cau_tra_loi,
+                        cau_hoi_truoc=cau_hoi_truoc, phan_loai=self.phan_loai,
+                    ),
+                    goi_y_cau_hoi.SO_GOI_Y_TIEP,
                 ),
             }
             # Chỉ cache câu trả lời đã qua hậu kiểm. Câu có trích dẫn sai hoặc số
