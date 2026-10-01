@@ -245,11 +245,29 @@ Kết quả OCR, phiên âm và sổ ghi chép giúp lần chạy tiếp theo ti
 
 Bộ câu hỏi chuẩn nằm ở `bo_cau_hoi_benchmark.json` (127 câu, trong đó 97 câu có nhãn nguồn đúng và 30 câu cố tình ngoài phạm vi kho).
 
+### Tập dev và tập test
+
+Hệ thống không huấn luyện mô hình nào, nhưng vẫn có tham số được **chọn theo kết quả đo**: trọng số rerank trong `hybrid_retrieval.py`, ngưỡng chặn lạc đề, số chunk đưa vào prompt. Chọn tham số trên bộ câu nào thì điểm trên chính bộ đó là ước lượng lạc quan. Vì vậy trường `tap` chia bộ câu hỏi thành hai phần, phân tầng theo nhóm:
+
+| Tập | Số câu | Dùng để |
+| --- | --- | --- |
+| `dev` | 76 (58 có nhãn + 18 ngoài phạm vi) | Tinh chỉnh tham số, quét ngưỡng; chạy bao nhiêu lần cũng được |
+| `test` | 51 (39 có nhãn + 12 ngoài phạm vi) | Chỉ chạy **sau khi** đã đóng băng tham số; lấy số liệu này vào báo cáo |
+
+Mọi chế độ của `benchmark_chatbot.py` mặc định chạy trên `dev`. `--tap test` lấy số cho báo cáo, `--tap tat_ca` chạy cả 127 câu để so với các lần đo trước khi chia. Quét ngưỡng (`--do-nguong`) bị chặn trên tập test. Mỗi tập ghi ra tệp kết quả riêng (`bang_chi_so_ir_dev.md`, `bang_chi_so_ir_test.md`; `bang_chi_so_ir.md` là bản cả bộ).
+
 ```powershell
-.\.venv\Scripts\python.exe benchmark_chatbot.py --ir
+.\.venv\Scripts\python.exe benchmark_chatbot.py --ir               # tinh chỉnh trên dev
+.\.venv\Scripts\python.exe benchmark_chatbot.py --ir --tap test    # số liệu báo cáo, chạy một lần
 ```
 
-Chế độ `--ir` đo chất lượng **xếp hạng** của khối truy hồi bằng bộ chỉ số IR/QA kinh điển — MRR, Hit@K, Recall@K, nDCG@K, MAP (công thức nằm trong `chi_so_ir.py`). Không gọi LLM nên chạy vài phút, kết quả ghi ra `ket_qua_chi_so_ir.json` và bảng markdown `bang_chi_so_ir.md`.
+Câu hỏi mới thêm vào bộ phải được gán tập trước khi chạy: chạy `chia_tap_benchmark.py` (chỉ gán cho câu chưa có `tap`, không bao giờ đổi tập của câu cũ), hoặc gán tay `"tap": "test"`. Cách cho ước lượng sạch nhất là **viết câu test mới** mà không nhìn tên tệp trong kho, vì nhãn là một phần tên tệp và reranker có cộng điểm khớp tên tài liệu.
+
+> **Giới hạn cần nêu trong báo cáo:** các tham số hiện có được chọn khi nhìn toàn bộ 127 câu, trước khi chia tập. Tập test tách từ bộ cũ vì thế chỉ sạch đối với những lần tinh chỉnh từ nay về sau.
+
+### Các chế độ đo
+
+Chế độ `--ir` đo chất lượng **xếp hạng** của khối truy hồi bằng bộ chỉ số IR/QA kinh điển — MRR, Hit@K, Recall@K, nDCG@K, MAP (công thức nằm trong `chi_so_ir.py`). Không gọi LLM nên chạy vài phút, kết quả ghi ra `ket_qua_chi_so_ir_<tập>.json` và bảng markdown `bang_chi_so_ir_<tập>.md`.
 
 Hai chế độ còn lại: `--nhanh` đo truy hồi kèm cổng chặn lạc đề, `--bo` gọi đủ LLM để đo thêm trích dẫn và số liệu (chậm, khoảng 150 giây/câu trên CPU).
 

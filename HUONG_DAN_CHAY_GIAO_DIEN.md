@@ -208,7 +208,7 @@ Chỉ chạy **một** máy chủ trên một kho tài liệu: máy chủ tự �
 .venv\Scripts\python.exe benchmark_chatbot.py "Câu hỏi cần kiểm tra"
 ```
 
-Chạy cả bộ 127 câu hỏi chuẩn trong `bo_cau_hoi_benchmark.json` (97 câu có nhãn nguồn đúng, 30 câu cố tình ngoài phạm vi kho; chấm điểm truy hồi đúng nguồn, trích dẫn hợp lệ, số liệu có căn cứ và từ chối đúng chỗ), kết quả ghi ra `ket_qua_benchmark.json`. Chạy nhanh chỉ phần truy hồi bằng `--nhanh`, đo MRR/Hit@K bằng `--ir` (xem README):
+Chạy cả bộ 127 câu hỏi chuẩn trong `bo_cau_hoi_benchmark.json` (97 câu có nhãn nguồn đúng, 30 câu cố tình ngoài phạm vi kho; chấm điểm truy hồi đúng nguồn, trích dẫn hợp lệ, số liệu có căn cứ và từ chối đúng chỗ), kết quả ghi ra `ket_qua_benchmark_*.json`. Chạy nhanh chỉ phần truy hồi bằng `--nhanh`, đo MRR/Hit@K bằng `--ir`. Mặc định chỉ chạy trên tập `dev`; thêm `--tap test` khi đã chốt tham số và cần số liệu cho báo cáo (xem mục *Tập dev và tập test* trong README):
 
 ```powershell
 .venv\Scripts\python.exe benchmark_chatbot.py --bo
