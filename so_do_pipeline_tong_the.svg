@@ -93,7 +93,8 @@
     <!-- 3 -->
     <rect x="420" y="332" width="620" height="76" rx="12" fill="#bfe0d4" stroke="#79ae9a" stroke-width="2.4" filter="url(#bong)"/>
     <text x="730" y="362" font-size="19" font-weight="700" fill="#1f2d3d">3. Truy hồi lai (hybrid)</text>
-    <text x="730" y="390" font-size="14.5" fill="#2d3b4a">FAISS top-15 + BM25 top-15 → RRF → xếp hạng lại → 4 đoạn · áp bộ lọc phạm vi</text>
+    <text x="730" y="383" font-size="14.5" fill="#2d3b4a">FAISS top-15 + BM25 top-15 → RRF → xếp hạng lại → 4 đoạn · áp bộ lọc phạm vi</text>
+    <text x="730" y="400" font-size="13.5" fill="#2d3b4a">lọc văn bản hết hiệu lực · ưu tiên văn bản mới hơn · + tối đa 2 đoạn văn bản đi kèm</text>
     <line x1="730" y1="408" x2="730" y2="430" stroke="#6d7f96" stroke-width="2.4" marker-end="url(#mui)"/>
 
     <!-- 4 -->
@@ -105,7 +106,8 @@
     <!-- 5 -->
     <rect x="420" y="532" width="620" height="76" rx="12" fill="#c7daec" stroke="#6f8fb5" stroke-width="2" filter="url(#bong)"/>
     <text x="730" y="562" font-size="19" font-weight="700" fill="#1f2d3d">5. Gắn cảnh báo hiệu lực văn bản</text>
-    <text x="730" y="590" font-size="14.5" fill="#2d3b4a">Nguồn bị thay thế, sửa đổi, chưa có hiệu lực hoặc còn là dự thảo</text>
+    <text x="730" y="583" font-size="14.5" fill="#2d3b4a">Nguồn bị thay thế, sửa đổi, chưa có hiệu lực hoặc còn là dự thảo</text>
+    <text x="730" y="600" font-size="13.5" fill="#2d3b4a">kèm văn bản liên quan, ngày có tác dụng · hỏi mốc cũ thì tính hiệu lực tại mốc đó</text>
     <line x1="730" y1="608" x2="730" y2="630" stroke="#6d7f96" stroke-width="2.4" marker-end="url(#mui)"/>
 
     <!-- 6 -->
@@ -170,11 +172,13 @@
 
     <rect x="1380" y="432" width="176" height="74" rx="9" fill="#fffaf0" stroke="#d8bf8a" stroke-width="1.4"/>
     <text x="1468" y="462" font-size="14.5" font-weight="600" fill="#3a2e12">Gợi ý câu hỏi</text>
-    <text x="1468" y="484" font-size="13" fill="#5c4b2a">17 câu mở đầu · hỏi tiếp</text>
+    <text x="1468" y="478" font-size="13" fill="#5c4b2a">17 câu mở đầu · hỏi tiếp</text>
+    <text x="1468" y="496" font-size="12.5" fill="#5c4b2a">xếp theo vai trò người hỏi</text>
 
     <rect x="1380" y="516" width="176" height="74" rx="9" fill="#fffaf0" stroke="#d8bf8a" stroke-width="1.4"/>
     <text x="1468" y="546" font-size="14.5" font-weight="600" fill="#3a2e12">Lịch sử, sổ tay</text>
-    <text x="1468" y="568" font-size="13" fill="#5c4b2a">lưu theo tài khoản</text>
+    <text x="1468" y="562" font-size="13" fill="#5c4b2a">lưu theo tài khoản</text>
+    <text x="1468" y="580" font-size="12.5" fill="#5c4b2a">lịch sử tự xoá sau 12 tháng</text>
 
     <rect x="1380" y="600" width="176" height="74" rx="9" fill="#fffaf0" stroke="#d8bf8a" stroke-width="1.4"/>
     <text x="1468" y="630" font-size="14.5" font-weight="600" fill="#3a2e12">Chọn mô hình</text>
