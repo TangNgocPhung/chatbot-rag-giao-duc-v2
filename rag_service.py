@@ -1548,6 +1548,20 @@ class RAGService:
         for _, filename, _ in source_files:
             name_counts[filename] = name_counts.get(filename, 0) + 1
 
+        # Lớp và môn để Kho tài liệu chia tiếp "Sách giáo khoa" thành Lớp 3 ›
+        # Tiếng Anh. Lấy từ bảng phân loại lúc lập chỉ mục (có đọc cả trang đầu);
+        # tệp chưa lập chỉ mục thì suy từ tên tệp, cùng quy tắc, vài chục µs/tệp.
+        bang_phan_loai = phan_loai_giao_duc.tai()
+
+        def _lop_va_mon(ten: str) -> tuple[list[int], list[str]]:
+            muc = bang_phan_loai.get(ten)
+            if muc is None:
+                try:
+                    muc = phan_loai_giao_duc.suy_phan_loai(ten)
+                except Exception:
+                    return [], []
+            return list(muc.lop), list(muc.mon_hoc)
+
         documents = []
         status_counts = {
             "processed": 0, "no_text": 0, "duplicate": 0, "error": 0, "pending": 0,
@@ -1568,11 +1582,14 @@ class RAGService:
             relative_folder = os.path.dirname(
                 os.path.relpath(path, DATA_PATH)
             ).replace(os.sep, "/")
+            lop, mon_hoc = _lop_va_mon(filename)
             documents.append({
                 "name": filename,
                 "folder": "Kho chính" if relative_folder in {"", "."} else relative_folder,
                 "extension": os.path.splitext(filename)[1].lower().lstrip("."),
                 "kind": suy_loai_tai_lieu(filename),
+                "lop": lop,
+                "mon_hoc": mon_hoc,
                 "size_bytes": stat.st_size,
                 "modified_at": stat.st_mtime,
                 "status": status,
