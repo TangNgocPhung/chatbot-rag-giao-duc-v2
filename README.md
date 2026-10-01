@@ -287,7 +287,7 @@ Hỏi theo mốc thời gian có bộ câu hỏi riêng, `bo_cau_hoi_moc_thoi_gi
 .\.venv\Scripts\python.exe benchmark_moc_thoi_gian.py
 ```
 
-Mỗi câu được truy hồi ba lần trên cùng chỉ mục: ép chế độ hiện hành, để hệ thống tự chọn chế độ, và tự chọn kèm `RAG_HA_BAC_NGOAI_MOC=1`. Bảng kết quả so ba cột: chọn chế độ đúng, Hit@1, MRR, tỉ lệ bản đúng mốc xếp trước bản sai mốc, và bản sai mốc có lọt vào prompt không, kèm kiểm định McNemar chính xác. Nhãn là số hiệu văn bản; văn bản nào chưa có trong kho thì câu đó bị bỏ qua và được liệt kê ra.
+Mỗi câu được truy hồi bốn lần trên cùng chỉ mục: ép chế độ hiện hành, để hệ thống tự chọn chế độ, tự chọn kèm `RAG_HA_BAC_NGOAI_MOC=1`, và tự chọn kèm `RAG_NOI_RO_KHI_LOC_HIEU_LUC=1`. Bảng kết quả so ba nhánh đầu: chọn chế độ đúng, Hit@1, MRR, tỉ lệ bản đúng mốc xếp trước bản sai mốc, và bản sai mốc có lọt vào prompt không, kèm kiểm định McNemar chính xác. Nhãn là số hiệu văn bản; văn bản nào chưa có trong kho thì câu đó bị bỏ qua và được liệt kê ra.
 
 Độ chính xác của bộ trích quan hệ (thay thế / bãi bỏ một phần / sửa đổi) đo bằng nhãn tay:
 
@@ -334,6 +334,7 @@ Chạy tay: `.\.venv\Scripts\python.exe drive_sync.py` (thêm `--thu` để ch�
 | `RAG_WHISPER_BEAM_GIONG_NOI` | `5` | Beam size khi nhận giọng nói |
 | `RAG_LOC_HIEU_LUC` | `1` | Câu hỏi hiện hành lọc bỏ văn bản đã hết hiệu lực; `0` không lọc, văn bản đó chỉ bị hạ bậc và gắn nhãn |
 | `RAG_HA_BAC_NGOAI_MOC` | `0` | `1` hạ bậc văn bản chưa tồn tại hoặc đã bị thay tại mốc khi hỏi quy định trước đây; đo bằng `benchmark_moc_thoi_gian.py` trước khi bật |
+| `RAG_NOI_RO_KHI_LOC_HIEU_LUC` | `0` | `1` nới rổ ứng viên dense trước khi lọc văn bản hết hiệu lực, để đoạn văn bản cũ gần trùng chữ không chiếm chỗ của văn bản còn hiệu lực; đổi thứ hạng mọi câu hiện hành, nên đo cả `benchmark_moc_thoi_gian.py` lẫn `benchmark_chatbot.py --ir` trước khi bật |
 | `RAG_GOI_Y_MO_DAU` | `tinh` | Gợi ý màn hình chào: `tinh` là bộ 17 câu cố định theo 4 chủ đề, `metadata` là câu dựng từ metadata văn bản qua cây quyết định |
 
 ## Chạy công khai

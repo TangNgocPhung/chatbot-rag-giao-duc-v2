@@ -4,6 +4,7 @@ import json
 import os
 import unittest
 from datetime import date
+from unittest.mock import patch
 
 from langchain_core.documents import Document
 
@@ -163,6 +164,33 @@ class ChayMotCauTests(unittest.TestCase):
         }, 24)
         self.assertIn("17/2012/TT-BGDĐT", kq.bo_qua)
         self.assertEqual(bm.tong_hop([kq])["so_cau"], 0)
+
+    def test_nhanh_noi_ro_so_voi_bat_moc(self):
+        """Hiện hành, văn bản cũ chiếm chỗ trong rổ dense: không nới rổ thì sau
+        khi lọc chỉ còn văn bản khác chủ đề; nới rổ thì văn bản mới lấp vào."""
+        dich_vu = DichVuGia()
+
+        def retrieve(cau_hoi, so_ket_qua=None):
+            noi_ro = os.environ.get("RAG_NOI_RO_KHI_LOC_HIEU_LUC") == "1"
+            thu_tu = ["moi.pdf"] if noi_ro else ["khac.pdf"]
+            return [Document(page_content="x", metadata={"source_file": t}) for t in thu_tu]
+
+        dich_vu._retrieve = retrieve
+        kq = bm.chay_mot_cau(dich_vu, {
+            "cau_hoi": "Giáo viên THCS dạy mấy tiết mỗi tuần?", "cap": "dinh_muc",
+            "loai": "sau_thay_the", "che_do_mong_doi": "hien_hanh",
+            "so_hieu_dung": ["5/2025/TT-BGDĐT"], "so_hieu_sai": ["28/2009/TT-BGDĐT"],
+        }, 24)
+        self.assertEqual(kq.ket_qua["bat_moc"].hang_dung, None)
+        self.assertEqual(kq.ket_qua["noi_ro"].hang_dung, 1)
+        tong = bm.tong_hop([kq])
+        self.assertEqual(tong["so_sanh"]["bat_moc->noi_ro"], {"tot_len": 1, "te_di": 0, "p_mcnemar": 1.0})
+        self.assertNotEqual(os.environ.get("RAG_NOI_RO_KHI_LOC_HIEU_LUC"), "1")
+        with patch("builtins.print") as in_ra:
+            bm.in_bao_cao([kq], [])
+        da_in = "\n".join(" ".join(map(str, c.args)) for c in in_ra.call_args_list)
+        self.assertIn("Hit@1 0 → 1", da_in)
+        self.assertIn("git diff bang_chi_so_ir.md", da_in)
 
     def test_luot_loi_khong_lam_lech_cap(self):
         dung = bm.KetQuaMoc("a", "c", "l", "lich_su", nhan_moc_dung=True,

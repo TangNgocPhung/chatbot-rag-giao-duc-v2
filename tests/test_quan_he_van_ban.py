@@ -467,6 +467,34 @@ class XepHangTheoHieuLucTests(unittest.TestCase):
         # Không nới rổ ứng viên như bộ lọc phạm vi.
         self.assertEqual(vector_store.similarity_search_with_score.call_args.kwargs["k"], hr.SO_UNG_VIEN_MOI_RETRIEVER)
 
+    def test_noi_ro_khi_loc_hieu_luc_lap_cho_bi_bo(self):
+        """Bật RAG_NOI_RO_KHI_LOC_HIEU_LUC: đoạn văn bản cũ chiếm chỗ trong top
+        dense thì ứng viên xếp sau lấp vào, thứ tự của phần giữ lại không đổi."""
+        import os
+        from unittest import mock
+
+        import hybrid_retrieval as hr
+
+        n = hr.SO_UNG_VIEN_MOI_RETRIEVER
+        # Văn bản cũ gần trùng chữ văn bản mới nên dồn vào đầu danh sách dense.
+        cu = [Document(page_content=f"cũ {i}", metadata={"source_file": "cu.pdf"}) for i in range(n - 2)]
+        moi = [Document(page_content=f"mới {i}", metadata={"source_file": f"moi{i}.pdf"}) for i in range(n)]
+        xep = [(d, 0.1 * i) for i, d in enumerate(cu + moi)]
+        con_hieu_luc = lambda doc: doc.metadata["source_file"] != "cu.pdf"
+
+        def dense_giu_lai(bat):
+            vector_store = mock.Mock()
+            vector_store.similarity_search_with_score.side_effect = lambda q, k: xep[:k]
+            with mock.patch.dict(os.environ, {"RAG_NOI_RO_KHI_LOC_HIEU_LUC": "1" if bat else "0"}), \
+                    mock.patch.object(hr, "_ket_qua_bm25_co_diem", return_value=[]), \
+                    mock.patch.object(hr, "rrf_fusion", side_effect=lambda dense, bm25: dense[1]), \
+                    mock.patch.object(hr, "xep_hang_theo_lien_quan", side_effect=lambda q, docs, *a: docs):
+                return [d.metadata["source_file"] for d in
+                        hr.truy_hoi_hybrid("định mức", vector_store, None, loc_hieu_luc=con_hieu_luc)]
+
+        self.assertEqual(dense_giu_lai(False), ["moi0.pdf", "moi1.pdf"])
+        self.assertEqual(dense_giu_lai(True), [f"moi{i}.pdf" for i in range(n)])
+
 
 class ChonDoanTests(unittest.TestCase):
     def test_uu_tien_doan_nhac_so_hieu_nguon(self):

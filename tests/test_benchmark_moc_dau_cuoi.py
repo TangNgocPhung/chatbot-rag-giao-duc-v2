@@ -113,6 +113,9 @@ class BenchmarkDauCuoiTests(unittest.TestCase):
         self.assertTrue(kq.ket_qua["ha_bac"].dung_phien_ban)
         # Biến môi trường của nhánh hạ bậc không rò ra ngoài lượt đo.
         self.assertNotEqual(os.environ.get("RAG_HA_BAC_NGOAI_MOC"), "1")
+        self.assertNotEqual(os.environ.get("RAG_NOI_RO_KHI_LOC_HIEU_LUC"), "1")
+        # Kho nhỏ, bộ lọc không bỏ ứng viên dense nào: nới rổ phải ra y hệt bật mốc.
+        self.assertEqual(kq.ket_qua["noi_ro"].tai_lieu_xep_hang, kq.ket_qua["bat_moc"].tai_lieu_xep_hang)
 
     def test_cau_hien_hanh_ra_van_ban_moi(self):
         kq = bm.chay_mot_cau(self.service, {
@@ -123,6 +126,10 @@ class BenchmarkDauCuoiTests(unittest.TestCase):
         self.assertTrue(kq.nhan_moc_dung)
         for che_do in bm.CHE_DO:
             self.assertTrue(kq.ket_qua[che_do].dung_phien_ban, che_do)
+        # Câu hiện hành nên bộ lọc hiệu lực chạy thật; kho chỉ 5 đoạn, ít hơn rổ
+        # 15 ứng viên, nên nới rổ không có gì để lấp: phải ra y hệt bật mốc.
+        self.assertNotIn("tt28-2009.pdf", kq.ket_qua["noi_ro"].tai_lieu_xep_hang)
+        self.assertEqual(kq.ket_qua["noi_ro"].tai_lieu_xep_hang, kq.ket_qua["bat_moc"].tai_lieu_xep_hang)
 
     def test_du_lieu_that_khong_bi_ghi_de(self):
         self.assertTrue(van_ban_meta.DUONG_DAN_HO_SO.startswith(self._tam.name))

@@ -18,7 +18,11 @@ Bộ câu hỏi: bo_cau_hoi_moc_thoi_gian.json (45 câu, 20 cặp văn bản; 14
       mốc tắt - đúng mặc định hiện tại).
     - "hạ bậc": như bật mốc, cộng RAG_HA_BAC_NGOAI_MOC=1 - ở chế độ lịch sử có
       mốc ngày, văn bản chưa tồn tại hoặc đã bị thay tại mốc bị hạ bậc.
-  Cùng câu, cùng chỉ mục, hai nhánh liền kề chỉ khác đúng một yếu tố, nên
+    - "nới rổ": như bật mốc, cộng RAG_NOI_RO_KHI_LOC_HIEU_LUC=1 - ở chế độ hiện
+      hành, rổ ứng viên dense được nới ra trước khi lọc văn bản hết hiệu lực,
+      để đoạn văn bản cũ (gần trùng chữ văn bản mới) không chiếm chỗ của ứng
+      viên còn hiệu lực. Chỉ câu hiện hành có thể đổi kết quả. So với bật mốc.
+  Cùng câu, cùng chỉ mục, hai nhánh được so chỉ khác đúng một yếu tố, nên
   chênh lệch giữa chúng là tác động của riêng yếu tố đó.
 
   Đo ở khâu truy hồi (RAGService._retrieve), TRƯỚC bước kéo thêm văn bản đi
@@ -76,11 +80,14 @@ THU_MUC_DU_AN = os.path.dirname(os.path.abspath(__file__))
 DUONG_DAN_BO = os.path.join(THU_MUC_DU_AN, "bo_cau_hoi_moc_thoi_gian.json")
 DUONG_DAN_KET_QUA = os.path.join(THU_MUC_DU_AN, "ket_qua_moc_thoi_gian.json")
 SO_CHUNK_MAC_DINH = 24
-# Ba nhánh, mỗi nhánh thêm đúng một yếu tố so với nhánh trước:
+# Bốn nhánh, mỗi cặp được so chỉ khác đúng một yếu tố:
 #   tat_moc -> bat_moc : tác động của việc chọn chế độ lịch sử theo mốc
 #   bat_moc -> ha_bac  : tác động của RAG_HA_BAC_NGOAI_MOC (mặc định đang tắt)
-CHE_DO = ("tat_moc", "bat_moc", "ha_bac")
-CAP_SO_SANH = (("tat_moc", "bat_moc"), ("bat_moc", "ha_bac"))
+#   bat_moc -> noi_ro  : tác động của RAG_NOI_RO_KHI_LOC_HIEU_LUC (mặc định đang tắt)
+CHE_DO = ("tat_moc", "bat_moc", "ha_bac", "noi_ro")
+CAP_SO_SANH = (("tat_moc", "bat_moc"), ("bat_moc", "ha_bac"), ("bat_moc", "noi_ro"))
+# Bảng chính in ba nhánh nối tiếp; nhánh nới rổ in riêng vì nó so với bật mốc.
+CHE_DO_BANG = ("tat_moc", "bat_moc", "ha_bac")
 
 
 # ============================================================
@@ -255,8 +262,11 @@ def chay_mot_cau(service, muc: dict, so_chunk: int) -> KetQuaMoc:
     cau_truy_hoi, _ = RAGService._conversation_inputs(kq.cau_hoi, None)
     for che_do in CHE_DO:
         try:
-            ha_bac = {"RAG_HA_BAC_NGOAI_MOC": "1" if che_do == "ha_bac" else "0"}
-            with patch.dict(os.environ, ha_bac):
+            co = {
+                "RAG_HA_BAC_NGOAI_MOC": "1" if che_do == "ha_bac" else "0",
+                "RAG_NOI_RO_KHI_LOC_HIEU_LUC": "1" if che_do == "noi_ro" else "0",
+            }
+            with patch.dict(os.environ, co):
                 if che_do == "tat_moc":
                     with patch.object(quan_he_van_ban, "che_do_thoi_gian",
                                       lambda *a, **k: ("hien_hanh", None)):
@@ -278,7 +288,9 @@ def tong_hop(cac_kq: list[KetQuaMoc]) -> dict:
     do_duoc = [k for k in cac_kq if not k.bo_qua]
     ket_qua = {"so_cau": len(do_duoc), "nhan_moc_dung": sum(k.nhan_moc_dung for k in do_duoc)}
     for che_do in CHE_DO:
-        cap_luot = [(k, k.ket_qua[che_do]) for k in do_duoc if not k.ket_qua[che_do].loi]
+        # Nhánh không có (lượt đo cũ, chạy trước khi có nhánh đó) thì như lượt lỗi: không tính.
+        cap_luot = [(k, k.ket_qua[che_do]) for k in do_duoc
+                    if che_do in k.ket_qua and not k.ket_qua[che_do].loi]
         luot = [r for _, r in cap_luot]
         # "Đúng phiên bản" chỉ có nghĩa khi bản sai mốc cũng có trong kho và ít
         # nhất một trong hai bản được truy hồi.
@@ -336,7 +348,7 @@ def in_bao_cao(cac_kq: list[KetQuaMoc], chan_doan: list[dict]) -> dict:
           f"{'Đúng phiên bản':>17}{'Đúng vào prompt':>16}{'Sai lọt prompt':>15}")
 
     def ba(tt, khoa, dang="{}"):
-        return " → ".join(dang.format(tt[c][khoa]) for c in CHE_DO)
+        return " → ".join(dang.format(tt[c][khoa]) for c in CHE_DO_BANG)
 
     for loai, tt in bang.items():
         if loai in ("nhãn đã đối chiếu", "TOÀN BỘ"):
@@ -356,6 +368,16 @@ def in_bao_cao(cac_kq: list[KetQuaMoc], chan_doan: list[dict]) -> dict:
               f" · McNemar chính xác p = {ss['p_mcnemar']:.3f}")
     print("Bật RAG_HA_BAC_NGOAI_MOC mặc định chỉ khi dòng thứ hai tốt lên rõ và không "
           "tệ đi câu nào trên nhãn đã đối chiếu.")
+    bat, noi = toan_bo["bat_moc"], toan_bo["noi_ro"]
+    ss = toan_bo["so_sanh"]["bat_moc->noi_ro"]
+    print(f"\nNới rổ ứng viên khi lọc hiệu lực (bật mốc → nới rổ): Hit@1 {bat['hit@1']} → {noi['hit@1']}, "
+          f"MRR@10 {bat['mrr@10']:.2f} → {noi['mrr@10']:.2f}, đúng vào prompt "
+          f"{bat['dung_trong_cua_so']} → {noi['dung_trong_cua_so']}")
+    print(f"Đúng phiên bản: tốt lên {ss['tot_len']} câu, tệ đi {ss['te_di']} câu"
+          f" · McNemar chính xác p = {ss['p_mcnemar']:.3f}")
+    print("Nới rổ đổi thứ hạng của MỌI câu hiện hành, không riêng bộ này: trước khi bật "
+          "RAG_NOI_RO_KHI_LOC_HIEU_LUC mặc định, chạy lại benchmark_chatbot.py --ir với biến "
+          "này bằng 1 rồi git diff bang_chi_so_ir.md.")
     if toan_bo["so_cau"] < 30:
         print(f"Chỉ {toan_bo['so_cau']} câu đo được: đọc bảng như bộ ca kiểm thử, "
               "chưa phải ước lượng độ chính xác.")
@@ -387,7 +409,7 @@ def in_bao_cao(cac_kq: list[KetQuaMoc], chan_doan: list[dict]) -> dict:
 
     for truoc_ten, sau_ten in CAP_SO_SANH:
         te_di = [
-            k for k in cac_kq if not k.bo_qua
+            k for k in cac_kq if not k.bo_qua and truoc_ten in k.ket_qua and sau_ten in k.ket_qua
             and k.ket_qua[truoc_ten].dung_phien_ban and not k.ket_qua[sau_ten].dung_phien_ban
         ]
         if te_di:

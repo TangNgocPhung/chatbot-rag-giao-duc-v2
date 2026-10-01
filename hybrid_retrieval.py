@@ -499,9 +499,16 @@ def truy_hoi_hybrid(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA
     """Truy hồi 1 câu hỏi (không tách thực thể) bằng dense + BM25 + RRF.
 
     `loc_hieu_luc` (Document -> bool) bỏ đoạn của văn bản hết hiệu lực. Khác
-    `bo_loc`, nó KHÔNG nới rổ ứng viên: văn bản hết hiệu lực chỉ là phần nhỏ của
-    kho, bỏ đi vài ứng viên không làm rổ cạn, còn nới rổ thì đổi luôn thứ hạng
-    của mọi câu hỏi.
+    `bo_loc`, mặc định nó KHÔNG nới rổ ứng viên: văn bản hết hiệu lực chỉ là
+    phần nhỏ của kho, bỏ đi vài ứng viên không làm rổ cạn, còn nới rổ thì đổi
+    luôn thứ hạng của mọi câu hỏi.
+
+    Lập luận "phần nhỏ của kho" đúng trên toàn kho nhưng có thể sai đúng ở câu
+    hỏi về một quy định đã bị thay: văn bản cũ gần trùng chữ văn bản mới nên dồn
+    vào chính top ứng viên dense của câu đó, lọc xong nhánh dense còn ít ứng
+    viên. RAG_NOI_RO_KHI_LOC_HIEU_LUC=1 nới rổ như bộ lọc phạm vi để đo điều
+    này (benchmark_moc_thoi_gian.py, nhánh "noi_ro"). Câu nào bộ lọc không bỏ
+    ứng viên nào thì kết quả y hệt, vì ứng viên thêm chỉ lấp chỗ bị bỏ.
     """
     loc_ung_vien = bo_loc
     if loc_hieu_luc is not None:
@@ -516,7 +523,10 @@ def truy_hoi_hybrid(cau_hoi, vector_store, bm25_retriever, so_ket_qua=SO_KET_QUA
     # thực tế 0.1 mà không hiểu vì sao. Giữ 15, chỉ cắt sâu hơn ở đầu ra.
     so_giu = SO_UNG_VIEN_MOI_RETRIEVER
     so_ung_vien = so_giu
-    if bo_loc is not None:
+    noi_ro_hieu_luc = (
+        loc_hieu_luc is not None and os.getenv("RAG_NOI_RO_KHI_LOC_HIEU_LUC", "0") == "1"
+    )
+    if bo_loc is not None or noi_ro_hieu_luc:
         # FAISS không lọc theo metadata lúc tìm, chỉ lọc được SAU khi có kết
         # quả. Lấy đúng 15 ứng viên rồi mới lọc thì một phạm vi hẹp (một môn,
         # một lớp) thường còn lại 0-1 đoạn dù kho có sẵn hàng chục đoạn đúng,
