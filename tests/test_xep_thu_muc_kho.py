@@ -121,6 +121,15 @@ def test_quoc_hieu_viet_hoa_kieu_cu_va_cong_dien(tmp_path):
     assert chon_thu_muc(os.path.basename(tep), tep) == "word/van_ban_quy_pham/cong_dien"
 
 
+def test_cong_van_chua_dien_so_khong_thanh_van_ban_duoc_nhac(tmp_path):
+    tep = _docx(
+        tmp_path / "NLS.docx", "BỘ GIÁO DỤC VÀ ĐÀO TẠO", "Số: /BGDĐT-GDPT",
+        "V/v triển khai Thông tư số 02/2025/TT-BGDĐT về khung năng lực số",
+        "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+    )
+    assert chon_thu_muc("NLS.docx", tep) == "word/van_ban_quy_pham/cong_van"
+
+
 def test_phu_luc_ban_hanh_kem_theo_thong_tu(tmp_path):
     tep = _docx(
         tmp_path / "cttin_hoc.docx", "BỘ GIÁO DỤC VÀ ĐÀO TẠO",
