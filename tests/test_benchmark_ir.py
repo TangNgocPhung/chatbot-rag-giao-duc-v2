@@ -9,6 +9,7 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from unittest import mock
 
 import benchmark_chatbot
 
@@ -49,6 +50,28 @@ class ChamThuHangTests(unittest.TestCase):
         hong.loi_ha_tang = True
         luot = benchmark_chatbot._luot_truy_hoi([tot, hong])
         self.assertEqual(len(luot), 1)
+
+    def test_cum_la_nhan_dau_tien_khong_phan_biet_hoa_thuong(self):
+        kq = self._cham(["Luật Giáo Dục.pdf"], ["Luật Giáo Dục", "Khung"])
+        self.assertEqual(benchmark_chatbot._luot_truy_hoi([kq])[0].cum, "luật giáo dục")
+
+    def test_in_rieng_so_lieu_cau_them_sau_chia(self):
+        cu = self._cham(["a.pdf", "Luật Giáo Dục.pdf"], ["Luật Giáo Dục"])
+        moi = self._cham(["Luật Viên Chức.pdf"], ["Luật Viên Chức"])
+        moi.cau_hoi = "câu mới"
+        with mock.patch.object(benchmark_chatbot, "_cau_them_sau_chia",
+                               return_value={"câu mới"}), redirect_stdout(io.StringIO()) as ra:
+            tom_tat = benchmark_chatbot.in_bang_chi_so_ir([cu, moi], so_chunk=4)
+        self.assertEqual(tom_tat["cau_them_sau_chia"]["so_cau"], 1)
+        self.assertAlmostEqual(tom_tat["cau_them_sau_chia"]["mrr"], 1.0)
+        self.assertIn("Riêng 1 câu thêm sau khi chia tập", ra.getvalue())
+
+    def test_khong_co_cau_them_sau_chia_thi_khong_in(self):
+        kq = self._cham(["Luật Giáo Dục.pdf"], ["Luật Giáo Dục"])
+        with mock.patch.object(benchmark_chatbot, "_cau_them_sau_chia",
+                               return_value=set()), redirect_stdout(io.StringIO()):
+            tom_tat = benchmark_chatbot.in_bang_chi_so_ir([kq], so_chunk=4)
+        self.assertIsNone(tom_tat["cau_them_sau_chia"])
 
     def test_pdf_chua_ocr_van_tinh_la_truot(self):
         # Ngược lại: PDF chưa OCR là giới hạn thật, người dùng thật cũng không

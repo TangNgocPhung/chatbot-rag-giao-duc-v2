@@ -48,6 +48,9 @@ class LuotTruyHoi:
     so_lien_quan: int = 1
     so_ung_vien: int = 0  # độ dài danh sách trả về, để biết k nào còn nghĩa
     nguon_xep_hang: list[str] = field(default_factory=list)
+    # Tài liệu mà câu hỏi nhắm tới. Nhiều câu cùng hỏi một tài liệu thì kết quả
+    # của chúng đi cùng nhau, nên khoảng tin cậy phải lấy mẫu theo cụm này.
+    cum: str = ""
 
     @property
     def thu_hang_dau(self) -> int | None:
@@ -181,6 +184,51 @@ def khoang_tin_cay_bootstrap(
     return (thap, cao)
 
 
+def khoang_tin_cay_bootstrap_cum(
+    gia_tri: list[float],
+    cum: list[str],
+    so_lan: int = 2000,
+    do_tin_cay: float = 0.95,
+    hat_giong: int = 20260915,
+) -> tuple[float, float]:
+    """
+    Như khoang_tin_cay_bootstrap nhưng lấy mẫu lại theo CỤM (cluster bootstrap).
+
+    Bộ câu hỏi có nhiều câu cùng hỏi một tài liệu - ví dụ 9 câu video chỉ xoay
+    quanh 4 video. Tài liệu đó được chunk tốt thì cả loạt câu cùng trúng, chunk
+    hỏng thì cả loạt cùng trượt, nên các câu không độc lập với nhau. Lấy mẫu
+    lại từng câu như thể chúng độc lập thì khoảng tin cậy hẹp hơn thực tế. Ở
+    đây mỗi lần bốc nguyên một cụm (mọi câu của một tài liệu), rồi tính trung
+    bình trên tất cả câu bốc được.
+
+    Câu không có cụm (chuỗi rỗng) thì mỗi câu là một cụm riêng.
+    """
+    if len(gia_tri) != len(cum):
+        raise ValueError("gia_tri và cum phải dài bằng nhau")
+    if not gia_tri:
+        return (0.0, 0.0)
+    theo_cum: dict[str, list[float]] = {}
+    for thu_tu, (gt, ten) in enumerate(zip(gia_tri, cum)):
+        theo_cum.setdefault(ten or f"__cau_{thu_tu}", []).append(gt)
+    cac_cum = list(theo_cum.values())
+    if len(cac_cum) == 1:
+        trung_binh = sum(gia_tri) / len(gia_tri)
+        return (trung_binh, trung_binh)
+    rng = random.Random(hat_giong)
+    m = len(cac_cum)
+    cac_trung_binh = []
+    for _ in range(so_lan):
+        boc = rng.choices(cac_cum, k=m)
+        tong = sum(sum(c) for c in boc)
+        dem = sum(len(c) for c in boc)
+        cac_trung_binh.append(tong / dem)
+    cac_trung_binh.sort()
+    le = (1.0 - do_tin_cay) / 2.0
+    thap = cac_trung_binh[int(le * so_lan)]
+    cao = cac_trung_binh[min(so_lan - 1, int((1.0 - le) * so_lan))]
+    return (thap, cao)
+
+
 def tong_hop(cac_luot: list[LuotTruyHoi], cac_k=CAC_K_MAC_DINH,
              k_mrr: int | None = 10) -> dict:
     """
@@ -200,6 +248,10 @@ def tong_hop(cac_luot: list[LuotTruyHoi], cac_k=CAC_K_MAC_DINH,
         "k_mrr": k_mrr,
         "mrr": sum(rr) / n,
         "mrr_ktc95": [thap, cao],
+        "mrr_ktc95_theo_tai_lieu": list(
+            khoang_tin_cay_bootstrap_cum(rr, [l.cum for l in cac_luot])
+        ),
+        "so_tai_lieu": len({l.cum or f"__cau_{i}" for i, l in enumerate(cac_luot)}),
         "so_ung_vien_tb": sum(l.so_ung_vien for l in cac_luot) / n,
         # Hạng trung bình CHỈ trên các câu tìm được - trộn câu trượt vào thì
         # phải gán cho nó một hạng vô cực tuỳ tiện.

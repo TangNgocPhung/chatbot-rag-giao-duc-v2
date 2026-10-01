@@ -112,6 +112,39 @@ class TongHopTests(unittest.TestCase):
         self.assertEqual(
             (thap, cao), chi_so_ir.khoang_tin_cay_bootstrap(gia_tri, so_lan=500))
 
+    def test_bootstrap_theo_cum_rong_hon_khi_cau_cung_tai_lieu_di_cung_nhau(self):
+        # Hai tài liệu, mỗi tài liệu 4 câu cùng trúng hoặc cùng trượt: thực
+        # chất chỉ có 2 quan sát độc lập, không phải 8.
+        gia_tri = [1.0] * 4 + [0.0] * 4
+        cum = ["a"] * 4 + ["b"] * 4
+        thap_cau, cao_cau = chi_so_ir.khoang_tin_cay_bootstrap(gia_tri, so_lan=500)
+        thap_cum, cao_cum = chi_so_ir.khoang_tin_cay_bootstrap_cum(gia_tri, cum, so_lan=500)
+        self.assertGreater(cao_cum - thap_cum, cao_cau - thap_cau)
+        self.assertEqual(
+            (thap_cum, cao_cum),
+            chi_so_ir.khoang_tin_cay_bootstrap_cum(gia_tri, cum, so_lan=500))
+
+    def test_bootstrap_theo_cum_moi_cau_mot_cum_thi_nhu_ban_thuong(self):
+        gia_tri = [1.0, 0.5, 0.0, 1.0, 0.25]
+        cum = ["a", "b", "c", "d", "e"]
+        self.assertEqual(
+            chi_so_ir.khoang_tin_cay_bootstrap_cum(gia_tri, cum, so_lan=300),
+            chi_so_ir.khoang_tin_cay_bootstrap_cum(gia_tri, [""] * 5, so_lan=300))
+        thap, cao = chi_so_ir.khoang_tin_cay_bootstrap_cum(gia_tri, cum, so_lan=300)
+        self.assertLessEqual(thap, sum(gia_tri) / len(gia_tri))
+        self.assertGreaterEqual(cao, sum(gia_tri) / len(gia_tri))
+
+    def test_bootstrap_theo_cum_mot_cum_thi_khoang_suy_bien(self):
+        self.assertEqual(
+            chi_so_ir.khoang_tin_cay_bootstrap_cum([1.0, 0.0], ["a", "a"]), (0.5, 0.5))
+
+    def test_tong_hop_dem_so_tai_lieu_va_co_khoang_theo_tai_lieu(self):
+        luot = self._luot([1], [2], [])
+        luot[0].cum = luot[1].cum = "luat giao duc"
+        tt = chi_so_ir.tong_hop(luot)
+        self.assertEqual(tt["so_tai_lieu"], 2)
+        self.assertEqual(len(tt["mrr_ktc95_theo_tai_lieu"]), 2)
+
     def test_phan_bo_thu_hang_dem_du_moi_cau(self):
         luot = self._luot([1], [1], [3], [15], [])
         phan_bo = chi_so_ir.phan_bo_thu_hang(luot, k_toi_da=10)

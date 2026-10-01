@@ -106,6 +106,13 @@ class BoCauHoiThatTests(unittest.TestCase):
                 self.assertNotEqual(bool(muc.get("nguon_mong_doi")), bool(muc.get("mong_doi_tu_choi")))
                 self.assertEqual(muc["nhom"] == "ngoai_pham_vi", bool(muc.get("mong_doi_tu_choi")))
 
+    def test_danh_dau_them_sau_chia_chi_mang_gia_tri_true(self):
+        # Ghi `false` cho câu cũ là thừa và dễ gõ nhầm; thiếu trường nghĩa là câu
+        # có từ trước khi chia tập.
+        for muc in self.bo:
+            if "them_sau_chia" in muc:
+                self.assertIs(muc["them_sau_chia"], True)
+
     def test_chay_lai_script_khong_doi_gi(self):
         self.assertEqual(ct.gan_tap(self.bo), self.bo)
 

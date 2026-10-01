@@ -286,10 +286,25 @@ def _luot_truy_hoi(cac_ket_qua: list[KetQuaMotCau]) -> list[chi_so_ir.LuotTruyHo
             so_lien_quan=max(1, k.so_nguon_mong_doi),
             so_ung_vien=k.so_tai_lieu_truy_hoi,
             nguon_xep_hang=k.tai_lieu_xep_hang,
+            # Nhãn đầu tiên đại diện cho tài liệu câu hỏi nhắm tới: đủ để gom
+            # các câu cùng hỏi một tài liệu vào một cụm khi tính khoảng tin cậy.
+            cum=k.nguon_mong_doi[0].casefold() if k.nguon_mong_doi else "",
         )
         for k in cac_ket_qua
         if k.so_nguon_mong_doi and not k.loi_ha_tang
     ]
+
+
+def _cau_them_sau_chia() -> set[str]:
+    """Các câu đánh dấu `them_sau_chia`: thêm vào bộ SAU khi chia dev/test, nên
+    chưa từng được nhìn khi chọn những tham số đang dùng. Phần test của nhóm
+    này là ước lượng sạch nhất mà bộ câu hỏi cho được."""
+    try:
+        with open(DUONG_DAN_BO_CAU_HOI, encoding="utf-8") as f:
+            bo = json.load(f)["cau_hoi"]
+    except (OSError, ValueError, KeyError):
+        return set()
+    return {muc["cau_hoi"] for muc in bo if muc.get("them_sau_chia")}
 
 
 def in_bang_chi_so_ir(cac_ket_qua: list[KetQuaMotCau], so_chunk: int) -> dict:
@@ -327,8 +342,20 @@ def in_bang_chi_so_ir(cac_ket_qua: list[KetQuaMotCau], so_chunk: int) -> dict:
           + f"{tom_tat['ndcg@10']:>10.3f}{tom_tat['map@10']:>9.3f}")
 
     thap, cao = tom_tat["mrr_ktc95"]
-    print(f"\nMRR@10 = {tom_tat['mrr']:.3f}  (KTC 95% bootstrap: "
-          f"{thap:.3f} – {cao:.3f})")
+    thap_cum, cao_cum = tom_tat["mrr_ktc95_theo_tai_lieu"]
+    print(f"\nMRR@10 = {tom_tat['mrr']:.3f}  (KTC 95% bootstrap theo câu: "
+          f"{thap:.3f} – {cao:.3f}; theo tài liệu, {tom_tat['so_tai_lieu']} cụm: "
+          f"{thap_cum:.3f} – {cao_cum:.3f})")
+
+    cau_moi = _cau_them_sau_chia()
+    luot_moi = [l for l in cac_luot if l.cau_hoi in cau_moi]
+    tom_tat_moi = chi_so_ir.tong_hop(luot_moi, cac_k) if luot_moi else None
+    if tom_tat_moi:
+        thap_moi, cao_moi = tom_tat_moi["mrr_ktc95_theo_tai_lieu"]
+        print(f"Riêng {tom_tat_moi['so_cau']} câu thêm sau khi chia tập (chưa dùng "
+              f"để chọn tham số): MRR@10 = {tom_tat_moi['mrr']:.3f} "
+              f"(KTC theo tài liệu {thap_moi:.3f} – {cao_moi:.3f}), "
+              f"Hit@1 = {tom_tat_moi['hit@1'] * 100:.0f}%")
     if tom_tat["hang_trung_binh_khi_trung"]:
         print(f"Hạng trung bình khi trúng: {tom_tat['hang_trung_binh_khi_trung']:.2f} "
               f"· số câu trượt hẳn: {tom_tat['so_cau_truot']}/{tom_tat['so_cau']}")
@@ -378,6 +405,7 @@ def in_bang_chi_so_ir(cac_ket_qua: list[KetQuaMotCau], so_chunk: int) -> dict:
         print(f"      {k.cau_hoi[:74]}")
 
     return {"toan_bo": tom_tat, "theo_nhom": tom_tat_nhom,
+            "cau_them_sau_chia": tom_tat_moi,
             "phan_bo_thu_hang": phan_bo,
             "trong_cua_so_prompt": trong_cua_so / len(co_nhan),
             "so_cau_loi_ha_tang": len(ha_tang)}
@@ -758,9 +786,13 @@ def chay_do_ir(service: RAGService, nhom_loc: str | None, so_luong: int | None,
                     f"kho {trang_thai['vector_count']} vector, truy hồi sâu "
                     f"{so_chunk} chunk ({SO_KET_QUA_CUOI} chunk đi vào prompt).\n\n")
             f.write(chi_so_ir.bang_markdown(toan_bo, tom_tat["theo_nhom"]) + "\n\n")
+            thap_cum, cao_cum = toan_bo["mrr_ktc95_theo_tai_lieu"]
             f.write(
                 f"MRR@10 = {toan_bo['mrr']:.3f}, khoảng tin cậy 95% (bootstrap) "
-                f"{thap:.3f} – {cao:.3f}. Trong cửa sổ {SO_KET_QUA_CUOI} chunk thực "
+                f"{thap:.3f} – {cao:.3f} khi lấy mẫu lại theo câu, {thap_cum:.3f} – "
+                f"{cao_cum:.3f} khi lấy mẫu lại theo tài liệu ({toan_bo['so_tai_lieu']} "
+                f"cụm; các câu cùng hỏi một tài liệu không độc lập nên khoảng này "
+                f"mới là khoảng nên báo cáo). Trong cửa sổ {SO_KET_QUA_CUOI} chunk thực "
                 f"sự đi vào prompt, {tom_tat['trong_cua_so_prompt'] * 100:.0f}% câu "
                 f"có tài liệu đúng.\n\n"
                 f"Lưu ý khi đọc Hit@10: sau khử trùng nội dung và giới hạn "
@@ -768,6 +800,13 @@ def chay_do_ir(service: RAGService, nhom_loc: str | None, so_luong: int | None,
                 f"lượt chỉ còn trung bình {toan_bo['so_ung_vien_tb']:.1f} tài liệu "
                 f"riêng biệt - Hit@10 vì thế gần như đã chạm trần cấu trúc của rổ ứng "
                 f"viên, không phải trần chất lượng xếp hạng.\n")
+            moi = tom_tat.get("cau_them_sau_chia")
+            if moi:
+                thap_moi, cao_moi = moi["mrr_ktc95_theo_tai_lieu"]
+                f.write(f"\nRiêng {moi['so_cau']} câu thêm sau khi chia tập (chưa "
+                        f"từng dùng để chọn tham số): MRR@10 = {moi['mrr']:.3f} "
+                        f"(khoảng tin cậy theo tài liệu {thap_moi:.3f} – "
+                        f"{cao_moi:.3f}), Hit@1 = {moi['hit@1'] * 100:.1f}%.\n")
             if tom_tat["so_cau_loi_ha_tang"]:
                 f.write(f"\nĐã loại {tom_tat['so_cau_loi_ha_tang']} câu khỏi mẫu vì "
                         f"lỗi hạ tầng trong lúc chạy (Ollama nghẽn hoặc mất kết "
