@@ -140,7 +140,9 @@
   "27/2026/TT-BGDĐT": {"ngay_hieu_luc": "2026-04-09"},
   "30/2026/TT-BGDĐT": {"ngay_ban_hanh": "2026-04-14", "ngay_hieu_luc": "2026-04-14"},
   "76/2026/TT-BGDĐT": {"ngay_ban_hanh": "2026-09-18", "ngay_hieu_luc": "2026-11-03"},
-  "83/2026/TT-BGDĐT": {"ngay_ban_hanh": "2026-09-30", "ngay_hieu_luc": "2026-11-15"}
+  "83/2026/TT-BGDĐT": {"ngay_ban_hanh": "2026-09-30", "ngay_hieu_luc": "2026-11-15"},
+  "36/2021/TT-BGDĐT": {"ngay_ban_hanh": "2021-12-24", "ngay_hieu_luc": "2022-02-08"},
+  "15/2022/TT-BLĐTBXH": {"ngay_ban_hanh": "2022-08-29", "ngay_hieu_luc": "2022-10-14"}
  },
  "quan_he": [
   {"tu": "43/2019/QH14", "loai": "thay_the", "den": "38/2005/QH11", "can_cu": "Luật Giáo dục 2019, Điều 115 Hiệu lực thi hành"},
