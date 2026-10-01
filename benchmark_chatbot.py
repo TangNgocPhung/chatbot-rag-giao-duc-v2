@@ -19,7 +19,7 @@ TẬP DEV VÀ TẬP TEST (trường `tap` trong bộ câu hỏi, gán bằng chi
 
 BA CHẾ ĐỘ, BA MỤC ĐÍCH KHÁC NHAU
   --bo    gọi đủ cả LLM. Đo được chất lượng câu chữ (trích dẫn, số liệu) nhưng
-          tốn ~150 giây/câu trên CPU, tức gần 11 tiếng cho cả bộ 260 câu.
+          tốn ~150 giây/câu trên CPU, tức gần 12 tiếng cho cả bộ 280 câu.
   --nhanh chỉ chạy truy hồi + cổng chặn lạc đề, KHÔNG gọi LLM. Vài phút cho cả
           bộ. Đây là chế độ dùng khi tinh chỉnh tham số truy hồi hoặc ngưỡng
           chặn, vì hai thứ đó không phụ thuộc vào model sinh câu trả lời.
