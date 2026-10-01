@@ -139,6 +139,31 @@ class LuongTraLoiTests(unittest.TestCase):
         self.assertIn("PHÂN CẤP: Khối [1]", ngu_canh)
         self.assertIn("phan_cap", {e["kind"] for e in su_kien if e["type"] == "hieu_luc"})
 
+    def test_cau_hoi_thu_tuc_keo_phan_tiep_danh_sach_ho_so(self):
+        service = dich_vu()
+        dieu = "Điều 5. Hồ sơ chuyển trường"
+        dau = Document(page_content=(
+            f"{dieu}\n1. Hồ sơ chuyển trường gồm các giấy tờ sau:\na) Đơn xin chuyển trường;\nb) Học bạ;"
+        ), metadata={"source_file": "ct.pdf", "article": dieu})
+        tiep = Document(page_content=(
+            "c) Giấy giới thiệu của trường nơi đi.\n2. Trong thời hạn 3 ngày làm việc kể từ ngày nhận "
+            "đủ hồ sơ, trường nơi đến trả lời."
+        ), metadata={"source_file": "ct.pdf", "article": dieu})
+        service._doan_theo_tep = {**CHUNK, "ct.pdf": [dau, tiep]}
+        _, ngu_canh = chay(service, "Hồ sơ chuyển trường gồm những gì?", [dau])
+        self.assertIn("Đi kèm: Phần tiếp theo của cùng Điều (danh sách hồ sơ) của EVIDENCE 1", ngu_canh)
+        self.assertIn("c) Giấy giới thiệu của trường nơi đi.", ngu_canh)
+        self.assertIn("THỦ TỤC:", ngu_canh)
+        self.assertIn('[2] "Trong thời hạn 3 ngày làm việc kể từ ngày nhận đủ hồ sơ"', ngu_canh)
+
+    def test_cau_hoi_tinh_han_di_sang_cong_cu(self):
+        su_kien, ngu_canh = chay(
+            dich_vu(), "Nộp hồ sơ ngày 25/9/2026, 15 ngày làm việc thì đến ngày nào?", []
+        )
+        self.assertEqual(ngu_canh, "")
+        self.assertEqual(su_kien[-1]["cong_cu"], "tinh_han")
+        self.assertIn("16/10/2026", "".join(e["content"] for e in su_kien if e["type"] == "token"))
+
     def test_so_sanh_phien_ban_khong_goi_mo_hinh(self):
         service = dich_vu()
         su_kien, ngu_canh = chay(service, "Thông tư 08/2021 có gì mới so với bản cũ?", [])

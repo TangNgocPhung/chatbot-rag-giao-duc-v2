@@ -37,6 +37,8 @@ import dinh_muc_tiet_day
 import dinh_muc_tiet_day_pho_thong
 import tep_dinh_kem
 import tham_chieu
+import thu_tuc
+import tinh_han
 import tinh_luong
 import tinh_toan
 import trinh_doc_tai_lieu
@@ -1508,6 +1510,49 @@ class RAGService:
             nguon(tep_moi, 1, ten_moi) + nguon(tep_cu, 2, ten_cu),
         )
 
+    def _them_phan_tiep_ho_so(self, documents: list, question: str) -> list:
+        """Câu hỏi thủ tục mà đoạn truy hồi có câu "Hồ sơ ... gồm:" thì kéo thêm
+        chunk KẾ TIẾP của cùng Điều: Điều thủ tục dài bị chia chunk, danh sách
+        hồ sơ chạy sang chunk sau, và mô hình liệt kê thiếu mà không biết.
+        Tối đa RAG_SO_DOAN_TIEP_HO_SO khối (mặc định 1)."""
+        gioi_han = int(os.getenv("RAG_SO_DOAN_TIEP_HO_SO", "1"))
+        doan_theo_tep = getattr(self, "_doan_theo_tep", None) or {}
+        if gioi_han <= 0 or not doan_theo_tep or not thu_tuc.la_cau_hoi_thu_tuc(question):
+            return documents
+        da_co = {(d.metadata.get("source_file"), d.page_content) for d in documents}
+        ket_qua, so_da_them = list(documents), 0
+        for so_evidence, doc in enumerate(documents, 1):
+            if so_da_them >= gioi_han:
+                break
+            if doc.metadata.get("_di_kem") or not thu_tuc.mo_dau_danh_sach_ho_so(doc.page_content):
+                continue
+            ten_file = doc.metadata.get("source_file")
+            cac_doan = doan_theo_tep.get(ten_file, [])
+            vi_tri = next(
+                (i for i, d in enumerate(cac_doan) if d.page_content == doc.page_content), None
+            )
+            if vi_tri is None or vi_tri + 1 >= len(cac_doan):
+                continue
+            tiep = cac_doan[vi_tri + 1]
+            if tiep.metadata.get("article") != doc.metadata.get("article") or (
+                ten_file, tiep.page_content
+            ) in da_co:
+                continue
+            da_co.add((ten_file, tiep.page_content))
+            so_da_them += 1
+            nhan = self.so_quan_he.nhan_hieu_luc(ten_file, tiep.page_content)
+            ket_qua.append(type(tiep)(page_content=tiep.page_content, metadata={
+                **tiep.metadata,
+                "_loai_van_ban": self.so_quan_he.mo_ta_thu_bac(ten_file),
+                "_hieu_luc": f"{nhan['label']} - {nhan['note']}" if nhan else None,
+                "_di_kem": {
+                    "evidence": so_evidence,
+                    "vai_tro": "Phần tiếp theo của cùng Điều (danh sách hồ sơ)",
+                    "cua": self.so_quan_he.nhan_nut(self.so_quan_he.nut_cua_tep.get(ten_file, "")),
+                },
+            }))
+        return ket_qua
+
     @staticmethod
     def _phan_cap_lien_quan(documents: list, question: str, so_toi_da: int = 3) -> list:
         """[(số EVIDENCE, phan_cap.PhanCap)] - câu giao quyền trong các khối bằng
@@ -2331,6 +2376,9 @@ class RAGService:
                 ("dinh_muc_tiet_day_pho_thong", dinh_muc_tiet_day_pho_thong),
                 ("danh_gia_hoc_sinh", danh_gia_hoc_sinh),
             )),
+            # Tính hạn không phụ thuộc quy định hiện hành: "nộp ngày 1/9/2025"
+            # là mốc đã qua mà vẫn phải tính, nên đứng ngoài nhóm trên.
+            ("tinh_han", tinh_han),
             ("tinh_toan", tinh_toan),
         ):
             ket_qua_tinh = cong_cu.tra_loi(question)
@@ -2438,6 +2486,7 @@ class RAGService:
                 documents, retrieval_question, thoi_diem
             )
             documents = self._them_tham_chieu(documents, retrieval_question, thoi_diem)
+            documents = self._them_phan_tiep_ho_so(documents, retrieval_question)
             # Ô câu hỏi để trống (cấp học, loại hình trường, vùng) mà bằng chứng
             # trải nhiều giá trị: báo cho mô hình và gợi ý câu hỏi đã điền sẵn.
             pham_vi_mo_ho = doi_tuong_ap_dung.phan_tich(retrieval_question, [
@@ -2492,6 +2541,11 @@ class RAGService:
                 context = (
                     "TÌNH TRẠNG VĂN BẢN ĐƯỢC HỎI: " + " ".join(ghi_chu_hieu_luc) + "\n\n" + context
                 )
+            if thu_tuc.la_cau_hoi_thu_tuc(retrieval_question):
+                context = thu_tuc.ghi_chu_prompt([
+                    (so, cum) for so, d in enumerate(documents, 1)
+                    for cum in thu_tuc.trich_thoi_han(d.page_content)
+                ][:4]) + "\n\n" + context
             ghi_chu_phan_cap = phan_cap.ghi_chu_prompt(cac_phan_cap)
             if ghi_chu_phan_cap:
                 context = ghi_chu_phan_cap + "\n\n" + context
