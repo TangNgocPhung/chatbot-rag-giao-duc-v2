@@ -254,6 +254,19 @@
     {"cau_hoi": "Điểm chuẩn ngành Khoa học máy tính của Đại học Bách khoa Thành phố Hồ Chí Minh năm 2026 là bao nhiêu?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "dev"},
     {"cau_hoi": "Học phí chương trình thạc sĩ của Đại học RMIT Việt Nam là bao nhiêu?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "dev"},
     {"cau_hoi": "Hồ sơ xin học bổng du học Chevening của chính phủ Anh gồm những gì?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "dev"},
-    {"cau_hoi": "Nhân viên văn phòng ở doanh nghiệp tư nhân được nghỉ phép năm bao nhiêu ngày?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "test"}
+    {"cau_hoi": "Nhân viên văn phòng ở doanh nghiệp tư nhân được nghỉ phép năm bao nhiêu ngày?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "test"},
+    {"cau_hoi": "Tỷ số trận chung kết Champions League mùa giải gần nhất là bao nhiêu?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "test"},
+    {"cau_hoi": "Giá iPhone 17 Pro Max chính hãng tại Việt Nam hiện nay là bao nhiêu?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "test"},
+    {"cau_hoi": "Lịch cúp điện khu vực quận Bình Thạnh tuần này thế nào?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "test"},
+    {"cau_hoi": "Cách đăng ký tài khoản định danh điện tử VNeID mức 2?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "dev"},
+    {"cau_hoi": "Mã giảm giá Shopee hôm nay là gì?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "dev"},
+    {"cau_hoi": "Có nên mua Bitcoin vào thời điểm này không?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "dev"},
+    {"cau_hoi": "Điểm chuẩn vào lớp 10 Trường THPT chuyên Lê Hồng Phong Thành phố Hồ Chí Minh năm 2026 là bao nhiêu?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "test"},
+    {"cau_hoi": "Chương trình Tú tài Quốc tế IB có những môn học bắt buộc nào?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "dev"},
+    {"cau_hoi": "Danh sách học sinh đạt giải nhất kỳ thi học sinh giỏi quốc gia năm 2026 gồm những ai?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "dev"},
+    {"cau_hoi": "Phần mềm quản lý trường học SMAS có giá bao nhiêu một năm?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "test"},
+    {"cau_hoi": "Trường mầm non tư thục nào ở quận 7 có học phí dưới 5 triệu đồng một tháng?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "test"},
+    {"cau_hoi": "Mức lương trung bình của giáo viên tại Nhật Bản là bao nhiêu một tháng?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "dev"},
+    {"cau_hoi": "Giáo viên mầm non phải dạy bao nhiêu giờ mỗi ngày theo quy định?", "mong_doi_tu_choi": true, "nhom": "ngoai_pham_vi", "tap": "dev"}
   ]
 }
