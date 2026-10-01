@@ -426,6 +426,7 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .filter-chip { padding: 5px 11px; color: var(--ink-soft); background: var(--surface-3); border: 1px solid var(--line); border-radius: 20px; font-size: 11px; font-weight: 650; cursor: pointer; }
 .filter-chip:hover { background: var(--blue-soft-2); }
 .filter-chip.active { color: white; background: var(--blue); border-color: var(--blue); }
+.filter-chip-count { margin-left: 2px; font-weight: 500; opacity: .62; }
 
 /* --- Đồng bộ Google Drive --- */
 .drive-card { margin-top: 10px; padding: 10px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
