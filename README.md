@@ -279,6 +279,23 @@ Chế độ `--ir` đo chất lượng **xếp hạng** của khối truy hồi 
 
 Hai chế độ còn lại: `--nhanh` đo truy hồi kèm cổng chặn lạc đề, `--bo` gọi đủ LLM để đo thêm trích dẫn và số liệu (chậm, khoảng 150 giây/câu trên CPU).
 
+### Benchmark hành vi xử lý văn bản quy phạm
+
+`bo_cau_hoi_van_ban_quy_pham.json` (49 câu) đo **hành vi** của tám lớp xử lý văn bản quy phạm - chuyển tiếp, hết hiệu lực dây chuyền, tham chiếu chéo, thứ bậc, so sánh phiên bản, đối tượng áp dụng, phân cấp, thủ tục - thay vì đo truy hồi. Mỗi câu có:
+
+- `loai`: `duong_tinh` (tính năng **phải** kích hoạt - tỉ lệ đạt là độ nhạy) hoặc `doi_chung` (tính năng **không được** kích hoạt - tỉ lệ đạt là độ đặc hiệu). Thiếu câu đối chứng thì một tính năng kích hoạt bừa vẫn đạt 100%.
+- `kiem_tra`: điều kiện máy chấm được - công cụ được gọi, chuỗi phải có/không có trong prompt, loại cảnh báo, nhãn hiệu lực của nguồn, câu gợi ý, chuỗi trong câu trả lời.
+- `do_tin_cay`: đáp án mong đợi dựa vào đâu - `tinh_toan` (logic, lịch; không phụ thuộc kho), `so_tay` (quan hệ đã đối chiếu tay trong `so_quan_he_van_ban.json`), `bo_cu` (tài liệu bộ benchmark cũ đã xác nhận có trong kho), `gia_dinh` (viết theo nội dung văn bản thường gặp, **chưa đối chiếu với kho**: `da_doi_chieu: false`).
+
+```powershell
+.\.venv\Scripts\python.exe benchmark_van_ban.py                                  # dev, không gọi LLM
+.\.venv\Scripts\python.exe benchmark_van_ban.py --use-case thu_tuc               # một use case
+.\.venv\Scripts\python.exe benchmark_van_ban.py --bo                             # gọi cả LLM
+.\.venv\Scripts\python.exe benchmark_van_ban.py --tap test --chi-da-doi-chieu    # số liệu báo cáo
+```
+
+Chế độ mặc định chạy trọn đường trả lời trên chỉ mục thật nhưng thay bước sinh chữ bằng hàm ghi lại prompt, nên vài giây mỗi câu; cache câu trả lời bị tắt. Kết quả ghi ra `ket_qua_benchmark_van_ban_<tập>.json`. Trước khi lấy số liệu báo cáo: đối chiếu từng câu `gia_dinh` với kho (văn bản có trong kho không, có đúng nội dung câu hỏi giả định không), sửa câu hoặc kiểm tra nếu cần, rồi đổi `da_doi_chieu` thành `true`. `tests/test_benchmark_van_ban.py` chạy mọi câu `tinh_toan` qua đường trả lời thật, nên đáp án mong đợi của các câu đó luôn khớp với code.
+
 Kiểm thử tự động nằm trong thư mục `tests`:
 
 ```powershell
