@@ -251,6 +251,13 @@ def suy_loai_van_ban_cua_tep(ten: str, phan_dau: str,
         # khác ("V/v triển khai Thông tư 27/2020/TT-BGDĐT").
         cac_so_hieu = trich_so_hieu(tieu_de[:DO_DAI_KHOI_TIEU_DE])
         so_hieu = cac_so_hieu[0] if cac_so_hieu else None
+        # Công văn chưa điền số ("Số: /BGDĐT-GDPT") thì số hiệu đầu tiên lại là
+        # văn bản nó nhắc trong trích yếu ("V/v ... Thông tư 02/2025/TT-BGDĐT"):
+        # NLS.pdf từng vào thư mục Thông tư. Số hiệu của chính văn bản luôn
+        # đứng TRƯỚC dòng "V/v".
+        trich_yeu = _MAU_TRICH_YEU_CONG_VAN.search(tieu_de)
+        if trich_yeu and not trich_so_hieu(tieu_de[:trich_yeu.start()]):
+            return "Công văn"
     return (
         _loai_theo_so_hieu(so_hieu)
         or _loai_theo_dong_tieu_de(tieu_de)
