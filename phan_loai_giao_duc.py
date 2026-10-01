@@ -195,9 +195,18 @@ _SACH_THEO_TEN = {
 # án nào cũng có dòng "Học sinh: SGK, SBT, đồ dùng học tập" ở mục đồ dùng dạy
 # học - nhận viết tắt là cả trăm giáo án trong kho thành sách giáo khoa.
 DO_DAI_TRANG_BIA = 300
+# "luat" đứng sau "phap" là tên môn Giáo dục kinh tế và pháp luật: SGK, SBT môn
+# này từng rơi hết vào "chưa phân loại" vì bị coi là văn bản nói về sách.
 MAU_TEN_VAN_BAN_HANH_CHINH = re.compile(
-    r"\b(?:nghi dinh|thong tu|quyet dinh|chi thi|nghi quyet|cong van|luat"
+    r"\b(?:nghi dinh|thong tu|quyet dinh|chi thi|nghi quyet|cong van|(?<!phap )luat"
     r"|quy dinh|ve viec)\b"
+)
+# Sách bài tập đặt tên trần "Bài tập Tin học 8.pdf", không có chữ "sách". Chỉ
+# nhận khi giữa "bài tập" và số lớp là đúng tên một môn: "Phiếu bài tập...",
+# "Bài tập chương 3 Toán 8" là học liệu lẻ, không phải cuốn sách.
+MAU_BAI_TAP_MON_LOP = re.compile(
+    r"^ bai tap (?P<mon>[a-z ]+?) (?:lop )?(?P<lop>\d{1,2})(?: tap (?:\d|mot|hai))?"
+    r"(?: (?:pdf|docx?))? $"
 )
 _SACH_THEO_BIA = {
     loai: re.compile(rf"\b(?:{day_du})\b")
@@ -323,6 +332,10 @@ def _suy_loai_noi_dung(ten_chuan: str, noi_dung_chuan: str, la_qppl: bool,
         for loai, mau in _SACH_THEO_TEN.items():
             if mau.search(ten_chuan):
                 return loai
+        khop = MAU_BAI_TAP_MON_LOP.match(ten_chuan)
+        # Ghép lại số lớp: mẫu môn "Toán", "Văn" chỉ nhận khi có số đứng sau.
+        if khop and _tim_nhan(f" {khop.group('mon')} {khop.group('lop')} ", _MON_DA_BIEN_DICH):
+            return "sach_bai_tap"
     # Trang bìa chỉ có ở PDF/Word. File bảng tính thì dòng đầu là tiêu đề cột:
     # PPCT Tin 10 có cột "Sách giáo khoa Tin học 10" ngay dòng đầu.
     if loai_tai_lieu in (None, "van_ban"):

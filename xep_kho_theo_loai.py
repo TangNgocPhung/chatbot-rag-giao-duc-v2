@@ -20,7 +20,9 @@ Nên script chuyển tệp VÀ viết lại cả ba (sao lưu bản cũ trước
 
 Chỉ đụng tới tệp nằm NGAY Ở GỐC kho. Tệp đã ở trong thư mục con - kể cả tệp
 quản trị viên tự kéo sang thư mục khác vì máy xếp sai - được giữ nguyên, nên
-chạy lại bao nhiêu lần cũng không xáo trộn phần đã xếp.
+chạy lại bao nhiêu lần cũng không xáo trộn phần đã xếp. Ngoại lệ duy nhất là
+--xep-lai-chua-phan-loai: xét lại tệp trong <định dạng>/chua_phan_loai/ sau
+khi quy tắc phân loại được sửa (SGK môn "pháp luật", "Bài tập Tin học 8").
 
 Phân loại dùng nhãn lập từ TOÀN VĂN lúc lập chỉ mục (phan_loai_tai_lieu.json,
 ho_so_van_ban.json - có cả chữ OCR của bản scan) nếu có, không thì đọc 2 trang
@@ -78,12 +80,27 @@ def _chuan(duong_dan: str) -> str:
 # ------------------------------------------------------------
 # LẬP KẾ HOẠCH
 # ------------------------------------------------------------
-def lap_ke_hoach(bao_tien_do=None) -> tuple[dict[str, str], list[str]]:
+def _cac_tep_trong(thu_muc: str, dinh_dang: set[str]) -> list[str]:
+    if not os.path.isdir(thu_muc):
+        return []
+    return sorted(
+        os.path.join(thu_muc, ten) for ten in os.listdir(thu_muc)
+        if os.path.isfile(os.path.join(thu_muc, ten))
+        and os.path.splitext(ten)[1].lower() in dinh_dang
+    )
+
+
+def lap_ke_hoach(bao_tien_do=None, xep_lai_chua_phan_loai: bool = False,
+                 ) -> tuple[dict[str, str], list[str]]:
     """Trả về ({đường dẫn cũ: đường dẫn mới}, [cảnh báo]).
 
     Tên tệp vốn đã duy nhất trong cả kho (resolve_source_file cần thế), chuyển
     tệp giữ nguyên tên nên không sinh trùng. Vẫn kiểm tra: nếu đích đã có tệp
     cùng tên thì bỏ qua tệp đó, không ghi đè.
+
+    xep_lai_chua_phan_loai: xét thêm tệp trong <định dạng>/chua_phan_loai/ -
+    sau khi sửa quy tắc phân loại, tệp từng bị đẩy vào đó có thể đã xếp được.
+    Thư mục khác vẫn không đụng tới: có thể là quản trị viên tự kéo vào.
     """
     import phan_loai_giao_duc
     import van_ban_meta
@@ -93,27 +110,31 @@ def lap_ke_hoach(bao_tien_do=None) -> tuple[dict[str, str], list[str]]:
     bang_phan_loai = phan_loai_giao_duc.tai()
     ho_so = van_ban_meta.tai_ho_so()
 
-    cac_ten = sorted(
-        ten for ten in os.listdir(DATA_PATH)
-        if os.path.isfile(os.path.join(DATA_PATH, ten))
-        and os.path.splitext(ten)[1].lower() in DINH_DANG_HO_TRO
-    )
+    cac_tep = _cac_tep_trong(DATA_PATH, DINH_DANG_HO_TRO)
+    if xep_lai_chua_phan_loai:
+        for goc in sorted(xep_thu_muc_kho.THU_MUC_CHIA_THEO_NOI_DUNG):
+            cac_tep += _cac_tep_trong(
+                os.path.join(DATA_PATH, goc, xep_thu_muc_kho.THU_MUC_CHUA_PHAN_LOAI),
+                DINH_DANG_HO_TRO,
+            )
     ke_hoach: dict[str, str] = {}
     canh_bao: list[str] = []
-    for thu_tu, ten in enumerate(cac_ten, 1):
+    for thu_tu, cu in enumerate(cac_tep, 1):
+        ten = os.path.basename(cu)
         if bao_tien_do:
-            bao_tien_do(thu_tu, len(cac_ten), ten)
-        cu = os.path.join(DATA_PATH, ten)
+            bao_tien_do(thu_tu, len(cac_tep), ten)
         try:
             thu_muc = xep_thu_muc_kho.chon_thu_muc(
                 ten, cu, phan_loai=bang_phan_loai.get(ten), ho_so=ho_so.get(ten),
             )
         except Exception as exc:  # một tệp hỏng không được làm dừng cả kho
-            canh_bao.append(f"{ten}: không phân loại được ({exc}), để nguyên ở gốc.")
+            canh_bao.append(f"{ten}: không phân loại được ({exc}), để nguyên chỗ cũ.")
             continue
         moi = os.path.join(DATA_PATH, xep_thu_muc_kho.thu_muc_he_dieu_hanh(thu_muc), ten)
+        if _chuan(moi) == _chuan(cu):
+            continue
         if os.path.exists(moi):
-            canh_bao.append(f"{ten}: {thu_muc}/ đã có tệp cùng tên, để nguyên ở gốc.")
+            canh_bao.append(f"{ten}: {thu_muc}/ đã có tệp cùng tên, để nguyên chỗ cũ.")
             continue
         ke_hoach[cu] = moi
     return ke_hoach, canh_bao
@@ -281,6 +302,10 @@ def main() -> int:
         "--bo-qua-kiem-tra-ung-dung", action="store_true",
         help=f"Không kiểm tra ứng dụng còn chạy ở cổng {CONG_UNG_DUNG} hay không.",
     )
+    bo_phan_tich.add_argument(
+        "--xep-lai-chua-phan-loai", action="store_true",
+        help="Xét lại cả tệp đang nằm trong <định dạng>/chua_phan_loai/.",
+    )
     tham_so = bo_phan_tich.parse_args()
 
     if not os.path.isdir(DATA_PATH):
@@ -303,7 +328,7 @@ def main() -> int:
         if thu_tu % 50 == 0 or thu_tu == tong:
             print(f"  {thu_tu}/{tong}")
 
-    ke_hoach, canh_bao = lap_ke_hoach(bao)
+    ke_hoach, canh_bao = lap_ke_hoach(bao, tham_so.xep_lai_chua_phan_loai)
     print(f"\nSố tệp sẽ chuyển: {len(ke_hoach)}")
     for thu_muc, so in thong_ke_thu_muc(ke_hoach):
         print(f"  {so:5d}  {thu_muc}/")

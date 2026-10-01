@@ -125,6 +125,28 @@ class GanNhanTests(unittest.TestCase):
         ten = ("Nghị định quy định về miễn phí sách giáo khoa giáo dục phổ "
                "thông và miễn học phí.pdf")
         self.assertNotIn(pl.suy_phan_loai(ten).loai_noi_dung, pl.LOAI_SACH)
+        luat = "Luật sửa đổi Luật Giáo dục về sách giáo khoa.pdf"
+        self.assertNotIn(pl.suy_phan_loai(luat).loai_noi_dung, pl.LOAI_SACH)
+
+    def test_sach_mon_kinh_te_va_phap_luat_van_la_sach(self):
+        """Chữ "luật" trong tên môn không biến SGK thành văn bản nói về sách."""
+        for ten, loai in [
+            ("10-sgk-chuyen-de-hoc-tap-giao-duc-kinh-te-va-phap-luat-10.pdf", "sach_giao_khoa"),
+            ("11-sgk-giao-duc-kinh-te-va-phap-luat-11.pdf", "sach_giao_khoa"),
+            ("sbt-giao-duc-kinh-te-va-phap-luat-10.pdf", "sach_bai_tap"),
+        ]:
+            with self.subTest(ten=ten):
+                self.assertEqual(pl.suy_phan_loai(ten).loai_noi_dung, loai)
+
+    def test_ten_tran_bai_tap_mon_lop_la_sach_bai_tap(self):
+        for ten in ["Bài tập Tin học 8.pdf", "Bài tập Tiếng Anh 12.pdf",
+                    "Bài tập Ngữ văn 8 - Tập một.pdf", "Bai tap Toan lop 5 tap 2.pdf"]:
+            with self.subTest(ten=ten):
+                self.assertEqual(pl.suy_phan_loai(ten).loai_noi_dung, "sach_bai_tap")
+        for ten in ["Phiếu bài tập Toán 8.pdf", "Bài tập chương 3 Toán 8.pdf",
+                    "Bài tập về nhà tuần 5.docx", "Bài tập 12.docx"]:
+            with self.subTest(ten=ten):
+                self.assertNotEqual(pl.suy_phan_loai(ten).loai_noi_dung, "sach_bai_tap")
 
     GIAO_AN_MAU = (
         "Bài 10: CẤU TRÚC TUẦN TỰ (tiết 1)\nYÊU CẦU CẦN ĐẠT\nKiến thức: ...\n"
