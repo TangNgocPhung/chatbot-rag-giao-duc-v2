@@ -61,6 +61,10 @@ Bước 3 ghi chỉ mục mới ra đĩa trong khi câu hỏi vẫn dùng chỉ 
 
 Bước 4 và 5 là phần "tổ chức, gán nhãn ngay từ đầu" mà thầy gợi ý. Quan hệ được rút từ **chính nội dung văn bản**, không cần ai khai báo. Sổ nhập tay chỉ dùng cho hai việc: bổ sung quan hệ máy đọc sót (ảnh quét hỏng), và gỡ quan hệ máy đọc sai (mục `loai_bo`).
 
+Không huấn luyện lại thì độ đúng của câu trả lời nằm ở dữ liệu: sổ sai thì câu trả lời sai mà không có lỗi nào hiện ra. Vì vậy `tests/test_so_quan_he_van_ban.py` kiểm sổ mỗi lần sửa:
+- cấu trúc: số hiệu chuẩn hoá; mỗi cặp một quan hệ, một chiều; không có chu trình thay thế; văn bản mới không ban hành trước văn bản cũ;
+- theo luật: ngày hiệu lực không sớm hơn 45 ngày sau ngày ký (Luật Ban hành VBQPPL 2008, 2015, 2025). Ngoại lệ phải ghi kèm lý do, vì có văn bản thật lệch quy tắc: Thông tư liên tịch 125/2014 có hiệu lực sau đúng 44 ngày theo nguyên văn.
+
 Nút của đồ thị là **số hiệu văn bản**, không phải tên tệp. Nhờ vậy văn bản cũ đã rời khỏi kho vẫn là một nút: hệ thống vẫn biết nó đã bị văn bản nào thay, và trả lời theo văn bản mới khi người dùng nhắc tới số hiệu cũ.
 
 ## 4. Quan hệ giữa văn bản cũ và mới
