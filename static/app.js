@@ -193,6 +193,10 @@ let documentsCache = [];
 let documentKindFilter = 'tat_ca';
 // Nhánh thư mục đang chọn bên dưới loại tài liệu, ví dụ ['van_ban_quy_pham', 'thong_tu'].
 let documentFolderFilter = [];
+// Lớp và môn đang chọn sau nhánh thư mục: null = tất cả, '' = chưa rõ, còn lại là
+// một giá trị (lớp là số). Máy chủ gửi kèm mỗi tài liệu (phan_loai_giao_duc).
+let documentLopFilter = null;
+let documentMonFilter = null;
 // Nhãn tiếng Việt của thư mục, máy chủ gửi kèm /api/documents (xep_thu_muc_kho.nhan_thu_muc).
 let nhanThuMucKho = { dinh_dang: {}, thu_muc: {} };
 let modelsCache = [];
@@ -2651,12 +2655,51 @@ const khopThuMuc = (taiLieu) => {
   return documentFolderFilter.every((khoa, i) => (tang[i] || '') === khoa);
 };
 
-function taoChipLoc(chu, dangChon, khiBam) {
+// Một tài liệu có thể thuộc nhiều lớp, nhiều môn (thông tư áp cho cả lớp 1-5) nên
+// mỗi trường là danh sách; danh sách rỗng là "chưa rõ" và gom vào khóa ''.
+const LOC_LOP_MON = {
+  lop: {
+    giaTri: (taiLieu) => taiLieu.lop || [],
+    nhan: (lop) => (lop === '' ? 'Chưa rõ lớp' : `Lớp ${lop}`),
+    tatCa: 'Mọi lớp',
+    aria: 'Lọc theo lớp',
+    // Lớp 1, 2, ..., 12 theo thứ tự số chứ không theo số tệp.
+    sapXep: (a, b) => a[0] - b[0],
+  },
+  mon: {
+    giaTri: (taiLieu) => taiLieu.mon_hoc || [],
+    nhan: (mon) => (mon === '' ? 'Chưa rõ môn' : mon),
+    tatCa: 'Mọi môn',
+    aria: 'Lọc theo môn học',
+    sapXep: (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'vi'),
+  },
+};
+
+const khopGiaTri = (cacGiaTri, daChon) => (
+  daChon === null || (daChon === '' ? !cacGiaTri.length : cacGiaTri.includes(daChon))
+);
+const khopLop = (taiLieu) => khopGiaTri(taiLieu.lop || [], documentLopFilter);
+const khopMon = (taiLieu) => khopGiaTri(taiLieu.mon_hoc || [], documentMonFilter);
+
+// "Lớp 3 · Tiếng Anh" cho dòng phụ dưới tên tệp và cho ô tìm kiếm.
+function nhanLopMon(taiLieu) {
+  const lop = taiLieu.lop || [];
+  return [
+    lop.length ? `Lớp ${lop.join(', ')}` : '',
+    (taiLieu.mon_hoc || []).join(', '),
+  ].filter(Boolean).join(' · ');
+}
+
+// Số tệp in nhạt, tách khỏi nhãn: "Lớp 3 3" dễ đọc nhầm thành một con số.
+function taoChipLoc(chu, soTep, dangChon, khiBam) {
   const button = window.document.createElement('button');
   button.type = 'button';
   button.className = `filter-chip${dangChon ? ' active' : ''}`;
   button.setAttribute('aria-pressed', String(dangChon));
-  button.textContent = chu;
+  const dem = window.document.createElement('span');
+  dem.className = 'filter-chip-count';
+  dem.textContent = soTep.toLocaleString('vi-VN');
+  button.append(`${chu} `, dem);
   button.addEventListener('click', () => {
     khiBam();
     renderDocumentFilters();
@@ -2678,9 +2721,11 @@ function renderDocumentFilters() {
   hangLoai.className = 'filter-row';
   for (const kind of kinds) {
     const total = kind === 'tat_ca' ? documentsCache.length : counts.get(kind);
-    hangLoai.append(taoChipLoc(`${kindLabels[kind] || kind} ${total}`, documentKindFilter === kind, () => {
+    hangLoai.append(taoChipLoc(kindLabels[kind] || kind, total, documentKindFilter === kind, () => {
       documentKindFilter = kind;
       documentFolderFilter = [];
+      documentLopFilter = null;
+      documentMonFilter = null;
     }));
   }
   elements.documentFilters.append(hangLoai);
@@ -2690,9 +2735,23 @@ function renderDocumentFilters() {
   // Nghị định... "Tất cả" không chia: trình chiếu, video không có thư mục con.
   if (documentKindFilter === 'tat_ca') {
     documentFolderFilter = [];
+    documentLopFilter = null;
+    documentMonFilter = null;
     return;
   }
-  let nguon = documentsCache.filter(khopLoaiTaiLieu);
+  const nguon = renderHangThuMuc(documentsCache.filter(khopLoaiTaiLieu));
+  // Rồi chia tiếp theo lớp, rồi môn: Sách giáo khoa › Lớp 3 › Tiếng Anh.
+  documentLopFilter = renderHangLopMon(LOC_LOP_MON.lop, nguon, documentLopFilter, (giaTri) => {
+    documentLopFilter = giaTri;
+  });
+  documentMonFilter = renderHangLopMon(LOC_LOP_MON.mon, nguon.filter(khopLop), documentMonFilter, (giaTri) => {
+    documentMonFilter = giaTri;
+  });
+}
+
+// Các hàng thư mục con; trả về những tài liệu nằm trong nhánh đang chọn.
+function renderHangThuMuc(nguonBanDau) {
+  let nguon = nguonBanDau;
   for (let tang = 0; ; tang += 1) {
     const dem = new Map();
     for (const taiLieu of nguon) {
@@ -2705,13 +2764,13 @@ function renderDocumentFilters() {
     // Chỉ một nhóm "không có thư mục con" thì không có gì để chia.
     if (!dem.size || (dem.size === 1 && dem.has(''))) {
       documentFolderFilter = documentFolderFilter.slice(0, tang);
-      return;
+      return nguon;
     }
     const hang = window.document.createElement('div');
     hang.className = 'filter-row filter-row-con';
     hang.setAttribute('role', 'group');
     hang.setAttribute('aria-label', tang === 0 ? 'Lọc theo thư mục' : 'Lọc theo thư mục con');
-    hang.append(taoChipLoc(`Tất cả ${nguon.length}`, documentFolderFilter[tang] === undefined, () => {
+    hang.append(taoChipLoc('Tất cả', nguon.length, documentFolderFilter[tang] === undefined, () => {
       documentFolderFilter = documentFolderFilter.slice(0, tang);
     }));
     // Nhiều tệp đứng trước; "Chưa chia thư mục" luôn ở cuối.
@@ -2719,14 +2778,44 @@ function renderDocumentFilters() {
       (a[0] === '') - (b[0] === '') || b[1] - a[1] || nhanThuMuc(a[0]).localeCompare(nhanThuMuc(b[0]), 'vi')
     ));
     for (const [khoa, soTep] of nhom) {
-      hang.append(taoChipLoc(`${nhanThuMuc(khoa)} ${soTep}`, documentFolderFilter[tang] === khoa, () => {
+      hang.append(taoChipLoc(nhanThuMuc(khoa), soTep, documentFolderFilter[tang] === khoa, () => {
         documentFolderFilter = [...documentFolderFilter.slice(0, tang), khoa];
       }));
     }
     elements.documentFilters.append(hang);
-    if (documentFolderFilter[tang] === undefined) return;
+    if (documentFolderFilter[tang] === undefined) return nguon;
     nguon = nguon.filter((taiLieu) => (tangThuMuc(taiLieu)[tang] || '') === documentFolderFilter[tang]);
   }
+}
+
+// Một hàng chip lớp hoặc môn trên tập `nguon`; trả về giá trị đang chọn sau khi
+// soát (giá trị không còn tài liệu nào thì bỏ chọn).
+function renderHangLopMon(loc, nguon, daChon, chon) {
+  const dem = new Map();
+  for (const taiLieu of nguon) {
+    const cacGiaTri = loc.giaTri(taiLieu);
+    for (const giaTri of cacGiaTri.length ? new Set(cacGiaTri) : ['']) {
+      dem.set(giaTri, (dem.get(giaTri) || 0) + 1);
+    }
+  }
+  if (daChon !== null && !dem.has(daChon)) daChon = null;
+  // Cả nhóm cùng một lớp (hay cùng "chưa rõ") thì không có gì để chia, trừ khi
+  // đang chọn sẵn - phải còn chip "Mọi lớp" để bỏ chọn.
+  if (dem.size < 2 && daChon === null) return null;
+  const hang = window.document.createElement('div');
+  hang.className = 'filter-row filter-row-con';
+  hang.setAttribute('role', 'group');
+  hang.setAttribute('aria-label', loc.aria);
+  hang.append(taoChipLoc(loc.tatCa, nguon.length, daChon === null, () => chon(null)));
+  // "Chưa rõ" luôn ở cuối.
+  const nhom = [...dem.entries()].sort((a, b) => (
+    (a[0] === '') - (b[0] === '') || (a[0] === '' || b[0] === '' ? 0 : loc.sapXep(a, b))
+  ));
+  for (const [giaTri, soTep] of nhom) {
+    hang.append(taoChipLoc(loc.nhan(giaTri), soTep, daChon === giaTri, () => chon(giaTri)));
+  }
+  elements.documentFilters.append(hang);
+  return daChon;
 }
 
 // ============================================================
@@ -3083,9 +3172,11 @@ function renderDocuments(query = '') {
   const normalizedQuery = query.trim().toLocaleLowerCase('vi-VN');
   const documents = documentsCache.filter((document) =>
     // Tìm được cả theo nhãn tiếng Việt ("thông tư") lẫn tên thư mục gốc ("thong_tu").
-    `${document.name} ${document.folder} ${tenThuMucHienThi(document)}`.toLocaleLowerCase('vi-VN').includes(normalizedQuery)
+    `${document.name} ${document.folder} ${tenThuMucHienThi(document)} ${nhanLopMon(document)}`.toLocaleLowerCase('vi-VN').includes(normalizedQuery)
     && khopLoaiTaiLieu(document)
     && khopThuMuc(document)
+    && khopLop(document)
+    && khopMon(document)
   );
   elements.documentList.replaceChildren();
   if (!documents.length) {
@@ -3137,6 +3228,7 @@ function renderDocuments(query = '') {
     const meta = window.document.createElement('small');
     meta.textContent = [
       tenThuMucHienThi(document),
+      nhanLopMon(document),
       formatFileSize(document.size_bytes),
       // Chỉ quản trị viên nhận được các trường này từ máy chủ.
       document.nguoi_gui ? `đưa vào bởi ${document.nguoi_gui} (${dinhDangNgay(document.gui_luc)})` : '',

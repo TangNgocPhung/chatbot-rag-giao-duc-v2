@@ -210,6 +210,36 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(nhan["thu_muc"]["sach_giao_vien"], "Sách giáo viên")
         self.assertEqual(nhan["thu_muc"]["thong_tu"], "Thông tư")
 
+    def test_document_inventory_gui_lop_va_mon_de_chia_tiep(self):
+        """Sách giáo khoa chia tiếp theo Lớp 3 › Tiếng Anh: tệp đã lập chỉ mục lấy
+        nhãn trong bảng phân loại, tệp chưa có thì suy từ tên tệp."""
+        with tempfile.TemporaryDirectory() as directory:
+            data_directory = os.path.join(directory, "data")
+            thu_muc = os.path.join(data_directory, "pdf", "sach_giao_khoa")
+            os.makedirs(thu_muc)
+            for ten in ("03-sgk-tieng-anh-3-tap-1.txt", "da-lap-chi-muc.txt", "ghi-chu.txt"):
+                with open(os.path.join(thu_muc, ten), "w", encoding="utf-8") as tep:
+                    tep.write("Nội dung")
+            ledger_path = os.path.join(directory, "ledger.json")
+            with open(ledger_path, "w", encoding="utf-8") as ledger:
+                json.dump({}, ledger)
+            bang = {"da-lap-chi-muc.txt": phan_loai_giao_duc.PhanLoai(
+                ten_file="da-lap-chi-muc.txt", mon_hoc=["Toán"], lop=[5],
+            )}
+            with (
+                patch("rag_service.DATA_PATH", data_directory),
+                patch("rag_service.DUONG_DAN_SO_GHI_CHEP", ledger_path),
+                patch("phan_loai_giao_duc.tai", return_value=bang),
+            ):
+                payload = self.client.get("/api/documents").json()
+        theo_ten = {tai_lieu["name"]: tai_lieu for tai_lieu in payload["documents"]}
+        self.assertEqual(theo_ten["03-sgk-tieng-anh-3-tap-1.txt"]["lop"], [3])
+        self.assertEqual(theo_ten["03-sgk-tieng-anh-3-tap-1.txt"]["mon_hoc"], ["Tiếng Anh"])
+        self.assertEqual(theo_ten["da-lap-chi-muc.txt"]["lop"], [5])
+        self.assertEqual(theo_ten["da-lap-chi-muc.txt"]["mon_hoc"], ["Toán"])
+        self.assertEqual(theo_ten["ghi-chu.txt"]["lop"], [])
+        self.assertEqual(theo_ten["ghi-chu.txt"]["mon_hoc"], [])
+
     def test_document_inventory_bo_qua_lech_mtime_do_chep_kho(self):
         """Kho chép sang máy khác bằng tar mất phần lẻ giây của mtime; chỉ mục
         vẫn còn nguyên nên tài liệu không được rơi về "Chờ cập nhật"."""
