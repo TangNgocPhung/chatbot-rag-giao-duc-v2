@@ -33,6 +33,7 @@ import danh_gia_hoc_sinh
 import dinh_muc_tiet_day
 import dinh_muc_tiet_day_pho_thong
 import tep_dinh_kem
+import tham_chieu
 import tinh_luong
 import tinh_toan
 import trinh_doc_tai_lieu
@@ -1410,6 +1411,125 @@ class RAGService:
             ))
         return ket_qua, ghi_chu
 
+    def _tep_cua_so_hieu(self, so_hieu: str) -> str | None:
+        """Tệp đã ban hành (không phải dự thảo) mang số hiệu này trong kho."""
+        so = self.so_quan_he
+        for tep in so.tep_cua_nut.get(quan_he_van_ban.chuan_so_hieu(so_hieu), []):
+            if not so._la_du_thao(tep):
+                return tep
+        return None
+
+    def _them_tham_chieu(self, documents: list, question: str, hom_nay=None) -> list:
+        """
+        Kéo thêm phần mà các đoạn truy hồi được viện dẫn tới (xem tham_chieu.py):
+        khoản của Điều khác ("trừ trường hợp quy định tại khoản 2 Điều 9") và
+        định nghĩa ở Điều "Giải thích từ ngữ". Truy hồi theo ngữ nghĩa không tự
+        tìm ra chúng: Điều 9 không giống câu hỏi, Điều 2 càng không.
+
+        Chỉ cắt đúng khoản/định nghĩa cần, chặn bởi RAG_SO_DOAN_THAM_CHIEU (mặc
+        định 2) - như văn bản đi kèm, mỗi khối là thêm vài giây chờ trên CPU.
+        Thứ tự: định nghĩa thuật ngữ câu hỏi nhắc tới, rồi điều khoản được
+        viện dẫn, rồi định nghĩa thuật ngữ chỉ đoạn trích nhắc tới.
+        """
+        gioi_han = int(os.getenv("RAG_SO_DOAN_THAM_CHIEU", "2"))
+        doan_theo_tep = getattr(self, "_doan_theo_tep", None) or {}
+        if gioi_han <= 0 or not doan_theo_tep:
+            return documents
+        so = self.so_quan_he
+        goc = [(i, d) for i, d in enumerate(documents, 1) if not d.metadata.get("_di_kem")]
+        da_co = {
+            (d.metadata.get("source_file"), tham_chieu.so_dieu(d.metadata.get("article")))
+            for d in documents
+        }
+
+        def doan_cua_dieu(tep: str, dieu: int) -> list:
+            return [
+                d for d in doan_theo_tep.get(tep, [])
+                if tham_chieu.so_dieu(d.metadata.get("article")) == dieu
+            ]
+
+        def khoi(doan_mau, cac_doan, noi_dung: str, vai_tro: str, so_evidence: int):
+            # Trang của đúng chunk chứa phần được cắt (Điều dài bị chia nhiều chunk).
+            dau = " ".join(noi_dung.split())[:40]
+            chua = next(
+                (d for d in cac_doan if dau and dau in " ".join(d.page_content.split())), doan_mau
+            )
+            nhan = so.nhan_hieu_luc(chua.metadata.get("source_file"), noi_dung, hom_nay)
+            return type(chua)(page_content=noi_dung, metadata={
+                **chua.metadata,
+                "_hieu_luc": f"{nhan['label']} - {nhan['note']}" if nhan else None,
+                "_di_kem": {
+                    "evidence": so_evidence,
+                    "vai_tro": vai_tro,
+                    "cua": so.nhan_nut(so.nut_cua_tep.get(chua.metadata.get("source_file"), "")),
+                },
+            })
+
+        # (ưu tiên, thứ tự gặp, hàm dựng khối) - dựng muộn để không cắt chữ thừa.
+        ung_vien: list[tuple[int, int, tuple, object]] = []
+        for so_evidence, doc in goc:
+            ten_file = doc.metadata.get("source_file")
+            muc = so.ho_so.get(ten_file)
+            # Văn bản sửa đổi: "khoản 2 Điều 5 được sửa đổi như sau" là Điều 5
+            # của văn bản BỊ sửa, không phải của chính nó.
+            la_van_ban_sua = bool(muc and (muc.sua_doi or getattr(muc, "bai_bo_mot_phan", None)))
+            for tc in tham_chieu.trich_tham_chieu(
+                doc.page_content, tham_chieu.so_dieu(doc.metadata.get("article"))
+            ):
+                if tc.tran and la_van_ban_sua:
+                    continue
+                tep = ten_file if tc.so_hieu is None else self._tep_cua_so_hieu(tc.so_hieu)
+                cac_doan = doan_cua_dieu(tep, tc.dieu) if tep else []
+                if not cac_doan:
+                    continue
+                ung_vien.append((1, len(ung_vien), (tep, tc.dieu), (
+                    cac_doan, tc, so_evidence,
+                )))
+
+        tep_da_xet = set()
+        for so_evidence, doc in goc:
+            ten_file = doc.metadata.get("source_file")
+            if ten_file in tep_da_xet:
+                continue
+            tep_da_xet.add(ten_file)
+            cac_doan = [
+                d for d in doan_theo_tep.get(ten_file, [])
+                if tham_chieu.la_dieu_giai_thich(d.metadata.get("article"))
+            ]
+            if not cac_doan:
+                continue
+            dieu = tham_chieu.so_dieu(cac_doan[0].metadata.get("article"))
+            lien_quan = tham_chieu.dinh_nghia_lien_quan(
+                tham_chieu.trich_dinh_nghia("\n".join(d.page_content for d in cac_doan)),
+                question,
+                [d.page_content for _, d in goc if d.metadata.get("source_file") == ten_file],
+            )
+            if lien_quan:
+                uu_tien = 0 if any(trong_cau_hoi for *_, trong_cau_hoi in lien_quan) else 2
+                ung_vien.append((uu_tien, len(ung_vien), (ten_file, dieu), (
+                    cac_doan, lien_quan, so_evidence,
+                )))
+
+        ket_qua = list(documents)
+        so_da_them = 0
+        for uu_tien, _, khoa, (cac_doan, chi_tiet, so_evidence) in sorted(ung_vien, key=lambda u: u[:2]):
+            if so_da_them >= gioi_han:
+                break
+            if khoa in da_co:
+                continue
+            da_co.add(khoa)
+            so_da_them += 1
+            if uu_tien == 1:
+                noi_dung = tham_chieu.trich_khoan(
+                    "\n".join(d.page_content for d in cac_doan), chi_tiet.khoan
+                )
+                vai_tro = f"Điều khoản được viện dẫn ({chi_tiet.cum})"
+            else:
+                noi_dung = tham_chieu._cat_gon("\n".join(k for _, k, _ in chi_tiet))
+                vai_tro = "Định nghĩa thuật ngữ (" + ", ".join(t for t, _, _ in chi_tiet) + ")"
+            ket_qua.append(khoi(cac_doan[0], cac_doan, noi_dung, vai_tro, so_evidence))
+        return ket_qua
+
     @staticmethod
     def _sources(
         documents, ho_so: dict | None = None, tinh_trang: dict | None = None,
@@ -2184,6 +2304,7 @@ class RAGService:
             documents, ghi_chu_hieu_luc = self._them_van_ban_di_kem(
                 documents, retrieval_question, thoi_diem
             )
+            documents = self._them_tham_chieu(documents, retrieval_question, thoi_diem)
             cac_nguon = self._sources(
                 documents, self.ho_so_van_ban, self.tinh_trang_hieu_luc, retrieval_question,
                 so_quan_he=self.so_quan_he, hom_nay=thoi_diem,

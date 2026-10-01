@@ -24,6 +24,7 @@ Giảng viên hướng dẫn: TS. Nguyễn Minh Hải
 - Hậu kiểm trích dẫn và số liệu; cảnh báo văn bản bị thay thế, sửa đổi, còn là dự thảo hoặc chưa tới ngày áp dụng
 - Đọc điều khoản chuyển tiếp (`chuyen_tiep.py`): văn bản đã bị thay vẫn được dùng làm căn cứ khi câu hỏi nêu khóa tuyển sinh/năm nhập học thuộc diện chuyển tiếp; câu hỏi không nêu khóa thì câu trả lời nhắc điều kiện chuyển tiếp
 - Cảnh báo hết hiệu lực dây chuyền: văn bản hướng dẫn một Luật/Nghị định đã bị thay (trực tiếp hay qua chuỗi Luật → Nghị định → Thông tư) được gắn nhãn "Cần kiểm tra hiệu lực", trừ khi văn bản mới cho giữ lại văn bản hướng dẫn cũ hoặc văn bản đó còn được sửa đổi sau ngày ấy
+- Tham chiếu chéo và định nghĩa (`tham_chieu.py`): đoạn trích viện dẫn "khoản 2 Điều 9 Quy chế này" hay "Điều 10 Nghị định số ..." thì kéo thêm đúng khoản được viện dẫn; thuật ngữ có ở Điều "Giải thích từ ngữ" thì kéo thêm định nghĩa. Tối đa `RAG_SO_DOAN_THAM_CHIEU` khối (mặc định 2)
 - Công cụ tính bằng Python cho lương nhà giáo, định mức tiết dạy (GDTX, phổ thông) và số học: trả kết quả kèm công thức và văn bản căn cứ, không để mô hình làm toán
 - Câu trả lời dễ đọc lướt: tô sẵn số liệu, số hiệu văn bản, tách câu kết luận; màn hình chào có 17 câu gợi ý theo 4 chủ đề
 - Cập nhật chỉ mục tăng dần (chỉ xử lý tệp thêm, sửa hoặc xóa)
