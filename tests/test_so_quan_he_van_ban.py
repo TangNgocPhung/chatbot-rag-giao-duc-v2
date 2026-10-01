@@ -21,6 +21,25 @@ DUONG_DAN = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
                          "so_quan_he_van_ban.json")
 LOAI_HOP_LE = {"thay_the", "bai_bo_mot_phan", "sua_doi", "huong_dan", "kem_theo"}
 
+# Luật Ban hành VBQPPL 2008 (Điều 78), 2015 (Điều 151) và 2025 (Điều 53): văn bản
+# của cơ quan trung ương có hiệu lực không sớm hơn 45 ngày kể từ ngày thông qua
+# hoặc ký, trừ trường hợp khẩn cấp / trình tự rút gọn / trường hợp đặc biệt.
+# Văn bản ký trước 2009 theo luật cũ, không xét.
+SO_NGAY_TOI_THIEU = 45
+AP_DUNG_TU = date(2009, 1, 1)
+# Văn bản đã biết là có hiệu lực sớm hơn, kèm lý do. Thêm vào đây chỉ khi đã
+# kiểm nguyên văn; nếu không thì nhiều khả năng là gõ nhầm ngày.
+HIEU_LUC_SOM = {
+    "15/2020/TT-BGDĐT": "có hiệu lực kể từ ngày ký (ghi chú trong sổ)",
+    "21/2025/TT-BGDĐT": "có hiệu lực kể từ ngày ký (ghi chú trong sổ)",
+    "3/2026/TT-BGDĐT": "có hiệu lực kể từ ngày ký (ghi chú trong sổ)",
+    "23/2026/TT-BGDĐT": "có hiệu lực kể từ ngày ký (ghi chú trong sổ)",
+    "27/2026/TT-BGDĐT": "có hiệu lực kể từ ngày ký (ghi chú trong sổ)",
+    "30/2026/TT-BGDĐT": "có hiệu lực kể từ ngày ký (ghi chú trong sổ)",
+    "125/2014/TTLT-BTC": "44 ngày, đúng như văn bản ghi (ký 27/8/2014, hiệu lực 10/10/2014)",
+    "123/2025/QH15": "Luật tự quy định hiệu lực 1/1/2026, 22 ngày sau khi thông qua",
+}
+
 
 def _nam_so_hieu(so_hieu: str) -> int | None:
     khop = re.search(r"/(\d{4})/", so_hieu)
@@ -66,6 +85,23 @@ class SoQuanHeNhapTayTests(unittest.TestCase):
                 self.assertGreaterEqual(hieu_luc.year, nam, so_hieu)
             if nam and "nam" in tt:
                 self.assertEqual(tt["nam"], nam, so_hieu)
+
+    def test_hieu_luc_khong_som_hon_luat_cho_phep(self):
+        # Gõ nhầm ngày hiệu lực sớm hơn thật là lỗi nguy hiểm nhất: hệ thống coi
+        # văn bản mới đã áp dụng trong khi văn bản cũ vẫn còn hiệu lực.
+        for so_hieu in self.van_ban:
+            ban_hanh = self._ngay(so_hieu, "ngay_ban_hanh")
+            hieu_luc = self._ngay(so_hieu, "ngay_hieu_luc")
+            if not (ban_hanh and hieu_luc) or ban_hanh < AP_DUNG_TU or so_hieu in HIEU_LUC_SOM:
+                continue
+            self.assertGreaterEqual((hieu_luc - ban_hanh).days, SO_NGAY_TOI_THIEU, (
+                f"{so_hieu}: ký {ban_hanh}, hiệu lực {hieu_luc}. Kiểm lại ngày; nếu văn bản "
+                "đúng là có hiệu lực sớm thì thêm vào HIEU_LUC_SOM kèm lý do."))
+
+    def test_ngoai_le_hieu_luc_som_van_con_trong_so(self):
+        # Ngoại lệ thừa che mất lỗi gõ sau này của chính văn bản đó.
+        for so_hieu in HIEU_LUC_SOM:
+            self.assertIn(so_hieu, self.van_ban, so_hieu)
 
     def test_moi_cap_mot_quan_he_mot_chieu(self):
         cap = defaultdict(list)
