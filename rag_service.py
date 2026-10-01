@@ -28,6 +28,7 @@ import hieu_luc_bo_sung
 import phan_loai_giao_duc
 import quan_he_van_ban
 import quan_ly_kho
+import so_sanh_phien_ban
 import tai_khoan
 import danh_gia_hoc_sinh
 import dinh_muc_tiet_day
@@ -1420,6 +1421,91 @@ class RAGService:
             ))
         return ket_qua, ghi_chu
 
+    def _so_sanh_phien_ban(self, question: str) -> tuple[str, list[dict]] | None:
+        """
+        (câu trả lời, nguồn) cho câu hỏi so sánh hai phiên bản văn bản; None
+        để câu hỏi đi đường RAG thường.
+
+        Hai phiên bản lấy từ số hiệu trong câu hỏi; không có số hiệu mà câu hỏi
+        nói rõ "mới/cũ" thì từ văn bản truy hồi được đứng đầu có quan hệ thay
+        thế. Văn bản không chia được thành Điều (dưới 2 Điều) thì không so.
+
+        Câu so sánh chung ("khác gì", "so sánh") mà chỉ nêu MỘT văn bản thì phải
+        nói rõ mới/cũ mới được coi là hỏi hai phiên bản (xem so_sanh_phien_ban).
+        """
+        y_dinh = so_sanh_phien_ban.muc_y_dinh(question)
+        if y_dinh is None:
+            return None
+        so = self.so_quan_he
+        doan_theo_tep = getattr(self, "_doan_theo_tep", None) or {}
+        noi_ro = so_sanh_phien_ban.noi_hai_phien_ban(question)
+        so_van_ban = len(so.van_ban_trong_cau_hoi(question))
+        if so_van_ban == 1 and y_dinh == "so_sanh" and not noi_ro:
+            return None
+        cap = so.cap_phien_ban(question)
+        if cap is None and so_van_ban == 0 and noi_ro and doan_theo_tep:
+            try:
+                documents = self._retrieve(question)
+            except Exception:
+                documents = []
+            for doc in documents:
+                cap = so.cap_phien_ban_cua_nut(so._nut_chinh(doc.metadata.get("source_file")))
+                if cap:
+                    break
+        if cap is None:
+            return None
+        moi, cu = cap
+        tep_moi, tep_cu = so.tep_cua_van_ban(moi), so.tep_cua_van_ban(cu)
+        ten_moi, ten_cu = so.nhan_nut(moi), so.nhan_nut(cu)
+        thay = any(q.tu == moi and q.loai == "thay_the" for q in so.vao.get(cu, []))
+        ngay = so.ngay_hieu_luc(moi) if thay else None
+        mo_dau = (
+            f"{ten_moi} thay thế {ten_cu}" + (f" từ ngày {quan_he_van_ban._viet_ngay(ngay)}" if ngay else "") + "."
+            if thay else ""
+        )
+
+        def nguon(cac_tep: list[str], so_evidence: int, ten: str) -> list[dict]:
+            if not cac_tep:
+                return []
+            return [{
+                "evidence": so_evidence,
+                "name": cac_tep[0],
+                "van_ban": None,
+                "validity": so.nhan_hieu_luc(cac_tep[0]),
+                "page": None,
+                "chapter": None,
+                "article": None,
+                "context": ten,
+                "excerpt": "",
+                "url": f"/api/source?name={quote(cac_tep[0])}",
+                "external": False,
+                "kind": "van_ban",
+                "time_start": None,
+            }]
+
+        if not tep_moi or not tep_cu:
+            # Biết quan hệ nhưng kho thiếu một bên: nói thẳng thay vì để mô
+            # hình đoán khác biệt từ một văn bản.
+            thieu = ten_cu if tep_moi else ten_moi
+            co = nguon(tep_moi, 1, ten_moi) or nguon(tep_cu, 1, ten_cu)
+            if not co:
+                return None
+            return (
+                (mo_dau + " " if mo_dau else "")
+                + f"Kho tài liệu không có {thieu} nên chưa so sánh được từng Điều giữa hai văn bản. "
+                f"Bạn có thể hỏi trực tiếp nội dung của {ten_moi if tep_moi else ten_cu} [1].",
+                co,
+            )
+        cac_dieu_moi = [d for t in tep_moi for d in so_sanh_phien_ban.tach_dieu(doan_theo_tep.get(t, []))]
+        cac_dieu_cu = [d for t in tep_cu for d in so_sanh_phien_ban.tach_dieu(doan_theo_tep.get(t, []))]
+        if len(cac_dieu_moi) < 2 or len(cac_dieu_cu) < 2:
+            return None
+        ket_qua = so_sanh_phien_ban.so_sanh(cac_dieu_cu, cac_dieu_moi)
+        return (
+            so_sanh_phien_ban.dinh_dang(ten_moi, ten_cu, ket_qua, mo_dau),
+            nguon(tep_moi, 1, ten_moi) + nguon(tep_cu, 2, ten_cu),
+        )
+
     def _ghi_chu_thu_bac(self, documents: list) -> str | None:
         """Quy tắc thứ bậc cho prompt, chỉ khi các khối thuộc nhiều cấp hiệu lực
         - mô hình chỉ so ngữ nghĩa thì coi công văn 2026 ngang (hay hơn) Thông
@@ -2219,6 +2305,12 @@ class RAGService:
         # phụ thuộc thời điểm.
         che_do_hoi, thoi_diem_hoi = quan_he_van_ban.che_do_thoi_gian(question)
         hoi_moc_da_qua = che_do_hoi == "lich_su" and thoi_diem_hoi is not None
+        # "Thông tư mới khác gì Thông tư cũ" cũng là việc dò được bằng Python
+        # (so_sanh_phien_ban.py): mô hình chỉ thấy 4 đoạn thì đoán khác biệt.
+        ket_qua_so_sanh = None if hoi_doan_khoanh else self._so_sanh_phien_ban(question)
+        if ket_qua_so_sanh is not None:
+            yield from self._tra_loi_cong_cu(question, *ket_qua_so_sanh, "so_sanh_phien_ban")
+            return
         for ten_cong_cu, cong_cu in () if hoi_doan_khoanh else (
             *(() if hoi_moc_da_qua else (
                 ("tinh_luong", tinh_luong),

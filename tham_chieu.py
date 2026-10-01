@@ -131,7 +131,7 @@ def trich_tham_chieu(noi_dung: str, dieu_hien_tai: int | None = None) -> list[Th
 MAU_DAU_KHOAN = re.compile(r"(?:^|\n)[ \t]*(\d{1,2})[ \t]*\.(?!\d)")
 
 
-def _cac_khoan(noi_dung: str) -> list[tuple[int, int, int]]:
+def cac_khoan(noi_dung: str) -> list[tuple[int, int, int]]:
     """[(số khoản, đầu, cuối)] theo thứ tự tăng dần liên tiếp 1, 2, 3...
 
     Chỉ nhận dãy tăng đúng một đơn vị: "2." của một danh sách lồng bên trong
@@ -159,7 +159,7 @@ def trich_khoan(noi_dung_dieu: str, khoan: int | None, do_dai: int = DO_DAI_TOI_
     """Khoản `khoan` của Điều (giữ nguyên chữ để còn tô sáng được trên trang
     gốc); không có số khoản hoặc không tìm ra thì phần đầu của Điều."""
     if khoan:
-        for so, dau, cuoi in _cac_khoan(noi_dung_dieu):
+        for so, dau, cuoi in cac_khoan(noi_dung_dieu):
             if so == khoan:
                 return _cat_gon(noi_dung_dieu[dau:cuoi], do_dai)
     return _cat_gon(noi_dung_dieu, do_dai)
@@ -184,7 +184,7 @@ def la_dieu_giai_thich(tieu_de: str | None) -> bool:
 def trich_dinh_nghia(noi_dung_dieu: str) -> list[tuple[str, str]]:
     """[(thuật ngữ, nguyên văn khoản định nghĩa)] của một Điều "Giải thích từ ngữ"."""
     ket_qua = []
-    for _, dau, cuoi in _cac_khoan(noi_dung_dieu):
+    for _, dau, cuoi in cac_khoan(noi_dung_dieu):
         khoan = noi_dung_dieu[dau:cuoi].strip()
         khop = MAU_THUAT_NGU.match(khoan)
         if khop:

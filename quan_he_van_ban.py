@@ -1034,6 +1034,39 @@ class SoQuanHe:
         return f"{dau}; {self.nhan_nut(ket_qua['goc'])} {dong_tu} bởi {thay}{ngay}"
 
     # ------------------------------------------------------------------
+    # 6. HAI PHIÊN BẢN ĐỂ SO SÁNH
+    # ------------------------------------------------------------------
+    def cap_phien_ban_cua_nut(self, nut: str | None) -> tuple[str, str] | None:
+        """(văn bản mới, văn bản cũ) theo quan hệ thay thế quanh `nut`: nó thay
+        văn bản nào, hoặc văn bản nào thay nó. Ưu tiên đầu kia có tệp trong kho."""
+        if not nut:
+            return None
+        cu = [q.den for q in self.ra.get(nut, []) if q.loai == "thay_the"]
+        if cu:
+            return nut, next((c for c in cu if self.tep_cua_van_ban(c)), cu[0])
+        moi = [q.tu for q in self.vao.get(nut, []) if q.loai == "thay_the"]
+        if moi:
+            return next((m for m in moi if self.tep_cua_van_ban(m)), moi[0]), nut
+        return None
+
+    def cap_phien_ban(self, cau_hoi: str) -> tuple[str, str] | None:
+        """Hai phiên bản câu hỏi muốn so: nêu hai số hiệu thì chính chúng (mới
+        hơn là "mới"), nêu một thì văn bản nó thay hoặc văn bản thay nó."""
+        cac_nut = self.van_ban_trong_cau_hoi(cau_hoi)
+        if len(cac_nut) >= 2:
+            a, b = cac_nut[:2]
+            return (a, b) if (self._ngay_bat_dau(a) or "") >= (self._ngay_bat_dau(b) or "") else (b, a)
+        return self.cap_phien_ban_cua_nut(cac_nut[0]) if cac_nut else None
+
+    def tep_cua_van_ban(self, nut: str) -> list[str]:
+        """Tệp của văn bản cùng các phụ lục/quy chế tách tệp kèm theo nó."""
+        cac_tep = [t for t in self.tep_cua_nut.get(nut, []) if not self._la_du_thao(t)]
+        for q in self.vao.get(nut, []):
+            if q.loai == "kem_theo":
+                cac_tep += [t for t in self.tep_cua_nut.get(q.tu, []) if not self._la_du_thao(t)]
+        return cac_tep
+
+    # ------------------------------------------------------------------
     def ngay_cua_tep(self, ten_file: str) -> str | None:
         """Ngày áp dụng của văn bản chứa tệp này - cho trọng số thời gian."""
         nut = self.nut_cua_tep.get(ten_file)
