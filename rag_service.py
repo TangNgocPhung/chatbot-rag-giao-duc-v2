@@ -25,6 +25,7 @@ import drive_sync
 import goi_y_cau_hoi
 import kiem_tra_tra_loi
 import hieu_luc_bo_sung
+import phan_cap
 import phan_loai_giao_duc
 import quan_he_van_ban
 import quan_ly_kho
@@ -1507,6 +1508,17 @@ class RAGService:
             nguon(tep_moi, 1, ten_moi) + nguon(tep_cu, 2, ten_cu),
         )
 
+    @staticmethod
+    def _phan_cap_lien_quan(documents: list, question: str, so_toi_da: int = 3) -> list:
+        """[(số EVIDENCE, phan_cap.PhanCap)] - câu giao quyền trong các khối bằng
+        chứng mà nói về đúng thứ câu hỏi hỏi (xem phan_cap.lien_quan)."""
+        ket_qua = []
+        for so_evidence, doc in enumerate(documents, 1):
+            for muc in phan_cap.trich_phan_cap(doc.page_content):
+                if phan_cap.lien_quan(question, muc) and all(muc.trich != m.trich for _, m in ket_qua):
+                    ket_qua.append((so_evidence, muc))
+        return ket_qua[:so_toi_da]
+
     def _ghi_chu_thu_bac(self, documents: list) -> str | None:
         """Quy tắc thứ bậc cho prompt, chỉ khi các khối thuộc nhiều cấp hiệu lực
         - mô hình chỉ so ngữ nghĩa thì coi công văn 2026 ngang (hay hơn) Thông
@@ -2431,6 +2443,9 @@ class RAGService:
             pham_vi_mo_ho = doi_tuong_ap_dung.phan_tich(retrieval_question, [
                 (so, d.page_content, d.metadata.get("cap_hoc")) for so, d in enumerate(documents, 1)
             ])
+            # Việc văn bản trung ương giao cho HĐND/UBND tỉnh, Sở, hiệu trưởng
+            # quyết định: không có một con số chung cho mọi nơi.
+            cac_phan_cap = self._phan_cap_lien_quan(documents, retrieval_question)
             cac_nguon = self._sources(
                 documents, self.ho_so_van_ban, self.tinh_trang_hieu_luc, retrieval_question,
                 so_quan_he=self.so_quan_he, hom_nay=thoi_diem,
@@ -2458,6 +2473,7 @@ class RAGService:
                     + self.so_quan_he.canh_bao_chuyen_tiep(
                         cac_nguon, retrieval_question, thoi_diem
                     )
+                    + phan_cap.canh_bao(cac_phan_cap)
                     + hieu_luc_bo_sung.canh_bao(self.tinh_trang_hieu_luc, cac_nguon, thoi_diem)
                     + hieu_luc_bo_sung.canh_bao_doan(cac_nguon, documents)
                 )
@@ -2476,6 +2492,9 @@ class RAGService:
                 context = (
                     "TÌNH TRẠNG VĂN BẢN ĐƯỢC HỎI: " + " ".join(ghi_chu_hieu_luc) + "\n\n" + context
                 )
+            ghi_chu_phan_cap = phan_cap.ghi_chu_prompt(cac_phan_cap)
+            if ghi_chu_phan_cap:
+                context = ghi_chu_phan_cap + "\n\n" + context
             ghi_chu_pham_vi = doi_tuong_ap_dung.ghi_chu_prompt(pham_vi_mo_ho)
             if ghi_chu_pham_vi:
                 context = ghi_chu_pham_vi + "\n\n" + context

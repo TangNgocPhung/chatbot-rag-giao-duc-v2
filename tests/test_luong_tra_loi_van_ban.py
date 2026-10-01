@@ -129,6 +129,16 @@ class LuongTraLoiTests(unittest.TestCase):
         self.assertIn("Đi kèm: Văn bản cũ còn áp dụng chuyển tiếp", ngu_canh)
         self.assertIn("Hết hiệu lực · còn áp dụng chuyển tiếp", ngu_canh)
 
+    def test_phan_cap_toi_prompt_va_canh_bao(self):
+        service = dich_vu()
+        doan = Document(page_content=(
+            "Điều 9. Học phí\nCăn cứ khung học phí, mức thu học phí cụ thể do Hội đồng nhân dân "
+            "cấp tỉnh quyết định."
+        ), metadata={"source_file": "nd81.pdf", "article": "Điều 9. Học phí"})
+        su_kien, ngu_canh = chay(service, "Học phí trường công lập bao nhiêu một tháng?", [doan])
+        self.assertIn("PHÂN CẤP: Khối [1]", ngu_canh)
+        self.assertIn("phan_cap", {e["kind"] for e in su_kien if e["type"] == "hieu_luc"})
+
     def test_so_sanh_phien_ban_khong_goi_mo_hinh(self):
         service = dich_vu()
         su_kien, ngu_canh = chay(service, "Thông tư 08/2021 có gì mới so với bản cũ?", [])
