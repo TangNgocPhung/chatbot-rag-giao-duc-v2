@@ -282,8 +282,19 @@ Mẹo và lưu ý:
 
 **Lịch sử được lưu ở đâu?**
 
-- **Chưa đăng nhập:** lịch sử chỉ nằm trên **trình duyệt của máy đang dùng**. Đổi máy, đổi trình duyệt hoặc xóa dữ liệu duyệt web thì sẽ không còn.
+Dù đăng nhập hay không, **máy chủ của trang web đều lưu lại mỗi lượt hỏi đáp**. Khác nhau ở chỗ bạn xem lại được từ đâu:
+
+- **Chưa đăng nhập:** danh sách *Gần đây* chỉ hiện trên **trình duyệt của máy đang dùng**. Máy chủ vẫn giữ một bản, gắn với một mã ngẫu nhiên của trình duyệt đó chứ không gắn với tên hay email của bạn. Đổi máy hoặc đổi trình duyệt thì không xem lại được.
 - **Đã đăng nhập:** lịch sử gắn với tài khoản, **mở ở máy nào cũng thấy**.
+
+**Máy chủ lưu những gì, ai xem được?**
+
+- **Lưu:** câu hỏi, câu trả lời, các nguồn được trích, thời gian trả lời và vai trò bạn đã chọn ở mục *Gợi ý dành cho* (nếu có).
+- **Ai xem được:** trên giao diện, chỉ bạn thấy lịch sử của mình. Quản trị viên của trang xem được **số liệu thống kê**, gồm cả nội dung các câu hay được hỏi hoặc hay bị từ chối, nhưng thống kê không ghi câu nào của ai. Người quản lý máy chủ có quyền truy cập trực tiếp vào cơ sở dữ liệu thì đọc được toàn bộ.
+- **Dùng để làm gì:** để bạn mở lại cuộc trò chuyện, và để nhóm thực hiện biết người dùng hay hỏi gì, câu nào trả lời chưa tốt, từ đó bổ sung tài liệu. Dữ liệu không được gửi sang dịch vụ trí tuệ nhân tạo bên ngoài.
+- **Xóa:** bấm thùng rác (một cuộc hoặc toàn bộ) là xóa **cả trên trình duyệt lẫn trên máy chủ**. Nếu chưa đăng nhập, hãy xóa lịch sử **trước** khi xóa dữ liệu duyệt web. Mất mã của trình duyệt rồi thì trang không còn biết bản nào trên máy chủ là của bạn để xóa giúp.
+
+> Vì vậy, **đừng gõ thông tin cá nhân nhạy cảm** (số căn cước, số điện thoại, điểm số kèm họ tên học sinh…) vào câu hỏi. Trợ lý trả lời theo văn bản, không cần những thông tin đó.
 
 ---
 
