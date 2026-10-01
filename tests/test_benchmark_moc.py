@@ -190,7 +190,7 @@ class ChayMotCauTests(unittest.TestCase):
             bm.in_bao_cao([kq], [])
         da_in = "\n".join(" ".join(map(str, c.args)) for c in in_ra.call_args_list)
         self.assertIn("Hit@1 0 → 1", da_in)
-        self.assertIn("git diff bang_chi_so_ir.md", da_in)
+        self.assertIn("git diff bang_chi_so_ir_dev.md", da_in)
 
     def test_luot_loi_khong_lam_lech_cap(self):
         dung = bm.KetQuaMoc("a", "c", "l", "lich_su", nhan_moc_dung=True,

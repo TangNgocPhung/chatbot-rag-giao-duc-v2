@@ -119,15 +119,21 @@ class MainTests(unittest.TestCase):
 
 
 class BaoCaoTests(unittest.TestCase):
+    def test_do_ir_tren_tap_dev_va_doc_dung_bang_cua_tap_do(self):
+        # Quyết định bật tuỳ chọn là chọn tham số: phải đo trên dev, không nhìn test.
+        lenh_ir = dict(cd.cac_buoc_mac_dinh(False, True))["Đo IR (tập dev)"]
+        self.assertEqual(lenh_ir[-2:], ["--tap", "dev"])
+        self.assertTrue(cd.DUONG_DAN_BANG_IR.endswith("bang_chi_so_ir_dev.md"))
+
     def test_bang_ir_chi_kem_khi_buoc_ir_vua_chay_xong(self):
         ir = cd.KetQuaBuoc("Đo IR", ["python", "benchmark_chatbot.py", "--ir"], 0, 60.0, "...")
         moc = cd.KetQuaBuoc("Đo mốc", ["python", "benchmark_moc_thoi_gian.py"], 0, 60.0, "...")
         luc = datetime(2026, 10, 1, 9, 0)
-        self.assertIn("## Bảng chỉ số IR", cd.viet_bao_cao([], [ir, moc], luc, "| MRR |"))
+        self.assertIn("## Bảng chỉ số IR (tập dev)", cd.viet_bao_cao([], [ir, moc], luc, "| MRR |"))
         # Bỏ qua bước IR thì bảng trên đĩa là của lần chạy cũ, không được trộn vào.
-        self.assertNotIn("## Bảng chỉ số IR", cd.viet_bao_cao([], [moc], luc, "| MRR |"))
+        self.assertNotIn("## Bảng chỉ số IR (tập dev)", cd.viet_bao_cao([], [moc], luc, "| MRR |"))
         ir_loi = cd.KetQuaBuoc("Đo IR", ir.lenh, 1, 5.0, "lỗi")
-        self.assertNotIn("## Bảng chỉ số IR", cd.viet_bao_cao([], [ir_loi], luc, "| MRR |"))
+        self.assertNotIn("## Bảng chỉ số IR (tập dev)", cd.viet_bao_cao([], [ir_loi], luc, "| MRR |"))
 
 
 if __name__ == "__main__":

@@ -58,6 +58,13 @@ LƯU Ý PHƯƠNG PHÁP
   Nhãn được viết tay từ văn bản gốc, không suy ra từ hồ sơ mà hệ thống tự
   trích. Nếu suy nhãn từ chính hồ sơ đó thì phép đo thành vòng tròn: hệ thống
   trích sai ngày thì nhãn cũng sai theo, và điểm vẫn đẹp.
+
+  Bộ này chưa chia dev / test như bo_cau_hoi_benchmark.json: 45 câu quá ít để
+  chia. Dùng nó để quyết định bật RAG_HA_BAC_NGOAI_MOC hay
+  RAG_NOI_RO_KHI_LOC_HIEU_LUC là chọn tham số trên chính bộ đo, nên điểm của
+  nhánh được chọn là ước lượng lạc quan. Quy tắc quyết định đã đặt trước khi có
+  số (in ở cuối báo cáo) nên không chọn tiêu chí theo kết quả; muốn số sạch cho
+  báo cáo thì viết thêm câu mới SAU khi đã quyết định.
 """
 
 from __future__ import annotations
@@ -376,8 +383,8 @@ def in_bao_cao(cac_kq: list[KetQuaMoc], chan_doan: list[dict]) -> dict:
     print(f"Đúng phiên bản: tốt lên {ss['tot_len']} câu, tệ đi {ss['te_di']} câu"
           f" · McNemar chính xác p = {ss['p_mcnemar']:.3f}")
     print("Nới rổ đổi thứ hạng của MỌI câu hiện hành, không riêng bộ này: trước khi bật "
-          "RAG_NOI_RO_KHI_LOC_HIEU_LUC mặc định, chạy lại benchmark_chatbot.py --ir với biến "
-          "này bằng 1 rồi git diff bang_chi_so_ir.md.")
+          "RAG_NOI_RO_KHI_LOC_HIEU_LUC mặc định, git add bang_chi_so_ir_dev.md, chạy lại "
+          "benchmark_chatbot.py --ir với biến này bằng 1, rồi git diff bang_chi_so_ir_dev.md.")
     if toan_bo["so_cau"] < 30:
         print(f"Chỉ {toan_bo['so_cau']} câu đo được: đọc bảng như bộ ca kiểm thử, "
               "chưa phải ước lượng độ chính xác.")

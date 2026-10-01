@@ -245,7 +245,7 @@ Kết quả OCR, phiên âm và sổ ghi chép giúp lần chạy tiếp theo ti
 
 ## Đo chất lượng hệ thống
 
-Cách nhanh nhất là chạy cả phần đo bằng một lệnh. Script kiểm tra trước chỉ mục và Ollama (thiếu thì dừng ngay, không tự lập chỉ mục mới), chạy lần lượt hai bước đo bên dưới rồi gom toàn bộ kết quả vào `ket_qua_do_luong.md`:
+Cách nhanh nhất là chạy cả phần đo bằng một lệnh. Script kiểm tra trước chỉ mục và Ollama (thiếu thì dừng ngay, không tự lập chỉ mục mới), chạy lần lượt hai bước đo bên dưới (IR trên tập dev, vì đây là đo để chọn tham số) rồi gom toàn bộ kết quả vào `ket_qua_do_luong.md`:
 
 ```powershell
 .\.venv\Scripts\python.exe chay_do_luong.py                 # thêm --chi-kiem-tra để chỉ kiểm tra điều kiện

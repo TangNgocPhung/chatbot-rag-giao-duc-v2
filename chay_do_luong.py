@@ -1,7 +1,7 @@
 """
 Chạy toàn bộ phần đo trên kho thật bằng một lệnh và gom kết quả vào một tệp.
 
-    python chay_do_luong.py                 # kiểm tra điều kiện, đo IR, đo hỏi theo mốc
+    python chay_do_luong.py                 # kiểm tra điều kiện, đo IR (tập dev), đo hỏi theo mốc
     python chay_do_luong.py --chi-kiem-tra  # chỉ kiểm tra điều kiện, không đo
     python chay_do_luong.py --bo-ir         # bỏ phần đo IR (đã có số rồi)
 
@@ -31,9 +31,17 @@ from datetime import datetime
 
 import requests
 
+import chia_tap_benchmark
+
 THU_MUC_DU_AN = os.path.dirname(os.path.abspath(__file__))
 DUONG_DAN_BAO_CAO = os.path.join(THU_MUC_DU_AN, "ket_qua_do_luong.md")
-DUONG_DAN_BANG_IR = os.path.join(THU_MUC_DU_AN, "bang_chi_so_ir.md")
+# Đo IR trên tập DEV: chạy script này là để quyết định có bật các tuỳ chọn đang
+# tắt hay không, tức là chọn tham số, nên không được nhìn tập test. Tập test chỉ
+# chạy sau khi đã đóng băng tham số (benchmark_chatbot.py --ir --tap test).
+TAP_DO_IR = chia_tap_benchmark.TAP_DEV
+# Cùng quy tắc đặt tên với benchmark_chatbot._duong_dan_ir; không import thẳng vì
+# module đó nạp RAGService, chậm và có thể hỏng đúng lúc cần báo lỗi điều kiện.
+DUONG_DAN_BANG_IR = os.path.join(THU_MUC_DU_AN, f"bang_chi_so_ir_{TAP_DO_IR}.md")
 CAC_BO_CAU_HOI = ("bo_cau_hoi_benchmark.json", "bo_cau_hoi_moc_thoi_gian.json")
 
 
@@ -159,7 +167,7 @@ def chay_buoc(ten: str, lenh: list[str], ghi=print) -> KetQuaBuoc:
 def cac_buoc_mac_dinh(bo_ir: bool, bo_moc: bool) -> list[tuple[str, list[str]]]:
     buoc = []
     if not bo_ir:
-        buoc.append(("Đo IR", [sys.executable, "benchmark_chatbot.py", "--ir"]))
+        buoc.append(("Đo IR (tập dev)", [sys.executable, "benchmark_chatbot.py", "--ir", "--tap", TAP_DO_IR]))
     if not bo_moc:
         buoc.append(("Đo hỏi theo mốc thời gian", [sys.executable, "benchmark_moc_thoi_gian.py"]))
     return buoc
@@ -192,7 +200,7 @@ def viet_bao_cao(kiem_tra: list[KetQuaKiemTra], cac_ket_qua: list[KetQuaBuoc],
                  f"`{' '.join(os.path.basename(p) if i == 0 else p for i, p in enumerate(kq.lenh))}`",
                  "", "```", kq.dau_ra, "```"]
     if bang_ir and any(kq.ma_thoat == 0 and "--ir" in kq.lenh for kq in cac_ket_qua):
-        dong += ["", "## Bảng chỉ số IR", "", bang_ir.strip()]
+        dong += ["", f"## Bảng chỉ số IR (tập {TAP_DO_IR})", "", bang_ir.strip()]
     return "\n".join(dong) + "\n"
 
 
