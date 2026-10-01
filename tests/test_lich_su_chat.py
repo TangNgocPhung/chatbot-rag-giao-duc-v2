@@ -4,6 +4,7 @@ KHÔNG được làm hỏng câu trả lời - người dùng vẫn phải nhậ
 import os
 import sqlite3
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -170,7 +171,130 @@ class ThongKeTests(unittest.TestCase):
         tk = lich_su_chat.thong_ke()
         self.assertEqual(tk["so_luot"], 0)
         self.assertEqual(tk["ty_le_tu_choi"], 0.0)
+        self.assertEqual(tk["theo_vai_tro"], [])
+
+    def test_thong_ke_theo_vai_tro(self):
+        lich_su_chat.ghi_luot("a", "Con được miễn học phí không?", "x", vai_tro="phu_huynh")
+        lich_su_chat.ghi_luot("a", "Con được miễn học phí không?", "x", vai_tro="phu_huynh")
+        lich_su_chat.ghi_luot("b", "Điểm chuẩn năm ngoái?", "x", vai_tro="phu_huynh", tu_choi=True)
+        lich_su_chat.ghi_luot("c", "Giáo viên THCS dạy mấy tiết?", "y", vai_tro="giao_vien")
+        lich_su_chat.ghi_luot("d", "Câu của người chưa chọn?", "z")
+        theo = {nhom["vai_tro"]: nhom for nhom in lich_su_chat.thong_ke()["theo_vai_tro"]}
+        self.assertEqual(set(theo), {"phu_huynh", "giao_vien", ""})
+        self.assertEqual(theo["phu_huynh"]["so_luot"], 3)
+        self.assertEqual(theo["phu_huynh"]["so_tu_choi"], 1)
+        self.assertAlmostEqual(theo["phu_huynh"]["ty_le_tu_choi"], 0.333, places=2)
+        self.assertEqual(
+            theo["phu_huynh"]["cau_hay_hoi"][0],
+            {"cau_hoi": "Con được miễn học phí không?", "so_lan": 2},
+        )
+        self.assertEqual(theo[""]["so_luot"], 1)
+
+
+class VaiTroLichSuTests(unittest.TestCase):
+    def setUp(self):
+        self.thu_muc = tempfile.TemporaryDirectory()
+        self.duong_dan = os.path.join(self.thu_muc.name, "vai_tro.db")
+        self.patcher = patch.object(lich_su_chat, "DUONG_DAN_DB", self.duong_dan)
+        self.patcher.start()
+        lich_su_chat.dong_ket_noi()
+
+    def tearDown(self):
+        lich_su_chat.dong_ket_noi()
+        self.patcher.stop()
+        self.thu_muc.cleanup()
+
+    def test_moi_luot_ghi_vai_tro_rieng(self):
+        # Đổi vai trò giữa cuộc trò chuyện thì mỗi lượt giữ vai trò lúc hỏi.
+        ma = lich_su_chat.ghi_luot("c", "Câu một?", "x", vai_tro="hoc_sinh")
+        lich_su_chat.ghi_luot("c", "Câu hai?", "y", hoi_thoai_id=ma)
+        luot = lich_su_chat.chi_tiet_hoi_thoai(ma)["luot"]
+        self.assertEqual([l["vai_tro"] for l in luot], ["hoc_sinh", ""])
+
+    def test_db_cu_chua_co_cot_vai_tro_duoc_them_cot(self):
+        conn = sqlite3.connect(self.duong_dan)
+        conn.executescript(
+            "CREATE TABLE hoi_thoai (id TEXT PRIMARY KEY, client_id TEXT NOT NULL,"
+            " tieu_de TEXT NOT NULL, tao_luc REAL NOT NULL, cap_nhat_luc REAL NOT NULL);"
+            "CREATE TABLE luot (id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            " hoi_thoai_id TEXT NOT NULL, cau_hoi TEXT NOT NULL, tra_loi TEXT NOT NULL,"
+            " nguon TEXT NOT NULL DEFAULT '[]', model TEXT NOT NULL DEFAULT '',"
+            " giay REAL NOT NULL DEFAULT 0, trich_dan_ok INTEGER NOT NULL DEFAULT 1,"
+            " so_lieu_ok INTEGER NOT NULL DEFAULT 1, tu_choi INTEGER NOT NULL DEFAULT 0,"
+            " tu_cache INTEGER NOT NULL DEFAULT 0, tao_luc REAL NOT NULL);"
+            "INSERT INTO hoi_thoai VALUES ('hoi-thoai-cu-1', 'c', 'Cũ', 1, 1);"
+            "INSERT INTO luot (hoi_thoai_id, cau_hoi, tra_loi, tao_luc)"
+            " VALUES ('hoi-thoai-cu-1', 'Câu cũ?', 'Đáp cũ.', 1);"
+        )
+        conn.close()
+        luot = lich_su_chat.chi_tiet_hoi_thoai("hoi-thoai-cu-1")["luot"]
+        self.assertEqual(luot[0]["vai_tro"], "")
+        ma = lich_su_chat.ghi_luot("c", "Câu mới?", "x", vai_tro="sinh_vien")
+        self.assertEqual(lich_su_chat.chi_tiet_hoi_thoai(ma)["luot"][0]["vai_tro"], "sinh_vien")
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class XoaQuaHanTests(unittest.TestCase):
+    NGAY = 86400
+
+    def setUp(self):
+        self.thu_muc = tempfile.TemporaryDirectory()
+        self.patcher = patch.object(
+            lich_su_chat, "DUONG_DAN_DB", os.path.join(self.thu_muc.name, "han.db")
+        )
+        self.patcher.start()
+        lich_su_chat.dong_ket_noi()
+
+    def tearDown(self):
+        lich_su_chat.dong_ket_noi()
+        self.patcher.stop()
+        self.thu_muc.cleanup()
+
+    def _ghi_luc(self, ngay_truoc, cau_hoi, hoi_thoai_id=None):
+        with patch.object(lich_su_chat.time, "time",
+                          return_value=time.time() - ngay_truoc * self.NGAY):
+            return lich_su_chat.ghi_luot("c", cau_hoi, "Đáp.", hoi_thoai_id=hoi_thoai_id)
+
+    def test_xoa_hoi_thoai_cu_giu_hoi_thoai_moi(self):
+        cu = self._ghi_luc(400, "Câu năm ngoái?")
+        moi = self._ghi_luc(10, "Câu tuần trước?")
+        self.assertEqual(
+            lich_su_chat.xoa_qua_han(365), {"so_luot": 1, "so_hoi_thoai": 1}
+        )
+        self.assertIsNone(lich_su_chat.chi_tiet_hoi_thoai(cu))
+        self.assertIsNotNone(lich_su_chat.chi_tiet_hoi_thoai(moi))
+
+    def test_hoi_thoai_vat_qua_moc_chi_mat_phan_cu_va_doi_tieu_de(self):
+        # Tiêu đề là câu hỏi đầu; giữ nguyên là giữ đúng câu đã quá hạn.
+        ma = self._ghi_luc(400, "Câu đầu đã quá hạn?")
+        self._ghi_luc(5, "Câu sau còn hạn?", hoi_thoai_id=ma)
+        lich_su_chat.xoa_qua_han(365)
+        chi_tiet = lich_su_chat.chi_tiet_hoi_thoai(ma)
+        self.assertEqual([l["cau_hoi"] for l in chi_tiet["luot"]], ["Câu sau còn hạn?"])
+        self.assertEqual(chi_tiet["tieu_de"], "Câu sau còn hạn?")
+        self.assertGreater(chi_tiet["tao_luc"], time.time() - 365 * self.NGAY)
+
+    def test_khong_con_cau_qua_han_trong_tep_co_so_du_lieu(self):
+        self._ghi_luc(400, "CAUHOIBIMATQUAHAN?")
+        self._ghi_luc(1, "Câu còn hạn?")
+        lich_su_chat.xoa_qua_han(365)
+        lich_su_chat.dong_ket_noi()
+        with open(lich_su_chat.DUONG_DAN_DB, "rb") as tep:
+            self.assertNotIn("CAUHOIBIMATQUAHAN".encode(), tep.read())
+
+    def test_so_ngay_0_la_giu_mai(self):
+        self._ghi_luc(4000, "Câu rất cũ?")
+        self.assertEqual(lich_su_chat.xoa_qua_han(0), {"so_luot": 0, "so_hoi_thoai": 0})
+        self.assertEqual(lich_su_chat.thong_ke(5000)["so_luot"], 1)
+
+    def test_doc_han_giu_tu_bien_moi_truong(self):
+        for gia_tri, mong_doi in (("", 365), ("180", 180), ("0", 0), ("-5", 0), ("abc", 365)):
+            with self.subTest(gia_tri):
+                moi_truong = {"RAG_NGAY_GIU_LICH_SU": gia_tri} if gia_tri else {}
+                with patch.dict(os.environ, moi_truong, clear=False):
+                    if not gia_tri:
+                        os.environ.pop("RAG_NGAY_GIU_LICH_SU", None)
+                    self.assertEqual(lich_su_chat.so_ngay_giu(), mong_doi)

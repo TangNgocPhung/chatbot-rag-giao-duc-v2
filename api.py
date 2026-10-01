@@ -62,6 +62,10 @@ class ChatRequest(BaseModel):
     # Mô hình người hỏi tự chọn. Bỏ trống = mô hình mặc định của máy chủ;
     # tên lạ hay bị chặn thì máy chủ tự quay về mặc định chứ không báo lỗi.
     model: str | None = Field(default=None, max_length=120)
+    # Vai trò người hỏi tự chọn (static/vai-tro.js). Chỉ ghi vào lịch sử để
+    # thống kê nhóm nào hỏi gì; không đổi cách tìm tài liệu hay trả lời. Mã lạ
+    # thì ghi như chưa chọn chứ không làm hỏng câu hỏi.
+    vai_tro: str | None = Field(default=None, max_length=32)
 
     @field_validator("question")
     @classmethod
@@ -101,6 +105,32 @@ class ChatMessage(BaseModel):
 ChatRequest.model_rebuild()
 
 
+# Dọn lịch sử hỏi đáp quá hạn mỗi ngày một lần (lần đầu ngay khi khởi động):
+# máy chủ chạy liền nhiều tháng không khởi động lại thì vẫn phải xóa đúng hạn.
+GIAY_GIUA_HAI_LAN_DON = 24 * 3600
+
+
+def _don_du_lieu_qua_han() -> None:
+    so_ngay = lich_su_chat.so_ngay_giu()
+    da_xoa = lich_su_chat.xoa_qua_han(so_ngay)
+    so_muc_cache = cache_ngu_nghia.cache.xoa_qua_han(so_ngay)
+    if da_xoa["so_luot"] or so_muc_cache:
+        print(
+            f"🧹 Đã xóa {da_xoa['so_luot']} lượt hỏi, {da_xoa['so_hoi_thoai']} hội thoại"
+            f" và {so_muc_cache} mục cache quá hạn."
+        )
+
+
+def _don_dinh_ky(dung: threading.Event) -> None:
+    while True:
+        try:
+            _don_du_lieu_qua_han()
+        except Exception as exc:  # luồng nền chết thì không còn ai dọn nữa
+            print(f"⚠️  Dọn dữ liệu quá hạn lỗi: {exc}")
+        if dung.wait(GIAY_GIUA_HAI_LAN_DON):
+            return
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     # Kiểm ngay lúc khởi động: bật chế độ công khai mà thiếu mật khẩu thì dừng
@@ -114,7 +144,12 @@ async def lifespan(_: FastAPI):
     threading.Thread(
         target=service.initialize, daemon=True, name="rag-initialize"
     ).start()
+    dung_don = threading.Event()
+    threading.Thread(
+        target=_don_dinh_ky, args=(dung_don,), daemon=True, name="don-qua-han"
+    ).start()
     yield
+    dung_don.set()
 
 
 app = FastAPI(
@@ -240,19 +275,23 @@ def bo_loc_pham_vi():
 
 
 @app.get("/api/goi-y")
-def goi_y_mo_dau(so_luong: int = 6, che_do: str | None = None):
+def goi_y_mo_dau(so_luong: int = 6, che_do: str | None = None, vai_tro: str | None = None):
     """Câu hỏi gợi ý cho màn hình chào.
 
     Mặc định là bộ câu tĩnh, kèm "nhom" để giao diện vẽ đủ các câu theo từng
     chủ đề. Chế độ "metadata" (RAG_GOI_Y_MO_DAU hoặc tham số che_do) dựng câu
     từ hồ sơ văn bản qua cây quyết định, mỗi lần gọi một mẻ khác, không có nhóm.
+    vai_tro (người dùng tự chọn) chỉ đưa câu của vai trò đó lên đầu; mã lạ bị
+    bỏ qua như chưa chọn.
     """
     che_do = goi_y_cau_hoi.che_do_goi_y_mo_dau(che_do)
+    vai_tro = goi_y_cau_hoi.chuan_hoa_vai_tro(vai_tro)
     return {
         "che_do": che_do,
-        "goi_y": service.goi_y_mo_dau(so_luong, che_do),
+        "vai_tro": vai_tro,
+        "goi_y": service.goi_y_mo_dau(so_luong, che_do, vai_tro),
         "nhom": (
-            goi_y_cau_hoi.nhom_goi_y_tinh()
+            goi_y_cau_hoi.nhom_goi_y_tinh(vai_tro)
             if che_do == goi_y_cau_hoi.CHE_DO_TINH else []
         ),
     }
@@ -454,6 +493,7 @@ def chat_stream(
                     tu_choi=thong_tin["tu_choi"],
                     tu_cache=thong_tin["tu_cache"],
                     chi_tiet={**chi_tiet, "sources": cac_nguon, "elapsed": thong_tin["giay"]},
+                    vai_tro=goi_y_cau_hoi.chuan_hoa_vai_tro(request.vai_tro) or "",
                 )
             # Báo hết dòng sau khi đã ghi lịch sử: giao diện đọc xong dòng là
             # gọi ngay danh sách hội thoại, báo sớm thì lượt vừa rồi chưa kịp

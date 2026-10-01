@@ -13,7 +13,7 @@ Giảng viên hướng dẫn: TS. Nguyễn Minh Hải
 
 **Bản chạy trực tuyến:** <https://chatbot.148-113-237-209.sslip.io/>
 
-**Hướng dẫn sử dụng cho người mới:** [HUONG_DAN_SU_DUNG.md](HUONG_DAN_SU_DUNG.md) - cũng mở được ngay trên giao diện bằng nút **Hướng dẫn** ở thanh trên cùng. Nút này đọc thẳng tệp đó qua `GET /api/huong-dan`, nên sửa tệp là giao diện cập nhật theo; mỗi mục `## n. …` hiện thành một trang riêng, có danh sách mục ở cột trái và nút Trước / Tiếp. Người vào trang lần đầu còn thấy một hộp **giới thiệu nhanh** bốn bước (nội dung trong `static/index.html`, điều khiển ở `static/gioi-thieu.js`); đã mở một lần là trình duyệt ghi nhớ, lần sau không hiện nữa.
+**Hướng dẫn sử dụng cho người mới:** [HUONG_DAN_SU_DUNG.md](HUONG_DAN_SU_DUNG.md) - cũng mở được ngay trên giao diện bằng nút **Hướng dẫn** ở thanh trên cùng. Nút này đọc thẳng tệp đó qua `GET /api/huong-dan`, nên sửa tệp là giao diện cập nhật theo; mỗi mục `## n. …` hiện thành một trang riêng, có danh sách mục ở cột trái và nút Trước / Tiếp. Người vào trang lần đầu còn thấy một hộp **giới thiệu nhanh** năm bước (nội dung trong `static/index.html`, điều khiển ở `static/gioi-thieu.js`); đã mở một lần là trình duyệt ghi nhớ, lần sau không hiện nữa. Bước đầu hỏi người dùng là ai (học sinh, sinh viên, giáo viên, cán bộ quản lý, phụ huynh; `static/vai-tro.js`), đổi lại được ở ô **Gợi ý dành cho** trên màn hình chào. Vai trò chỉ đưa nhóm câu gợi ý của vai trò đó lên đầu (`GET /api/goi-y?vai_tro=...`, bộ câu trong `goi_y_cau_hoi.GOI_Y_THEO_VAI_TRO`), không lọc tài liệu khi truy hồi và không cấp quyền gì. Vai trò cũng được gửi kèm mỗi câu hỏi và ghi vào lịch sử (cột `luot.vai_tro`), để `GET /api/thong-ke` chia số liệu theo nhóm người dùng (`theo_vai_tro`).
 
 ---
 

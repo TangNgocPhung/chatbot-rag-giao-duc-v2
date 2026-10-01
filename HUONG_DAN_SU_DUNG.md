@@ -46,11 +46,21 @@ Kho tài liệu bao quát:
 
 Số lượng tài liệu hiện có luôn hiển thị ngay trên nút **Kho tài liệu** ở thanh bên trái.
 
-### Ai nên dùng?
+### Ai nên dùng, và dùng để làm gì?
 
-- **Giáo viên, cán bộ quản lý**: tra quy định, chương trình, định mức tiết dạy, cách tính lương.
-- **Sinh viên sư phạm, học viên**: tìm hiểu chương trình giáo dục phổ thông và văn bản pháp quy.
-- **Phụ huynh và người quan tâm**: tìm hiểu các quy định như dạy thêm, học thêm…
+Trợ lý chỉ trả lời được những gì **có trong kho**: văn bản quy định, chương trình giáo dục và học liệu. Bảng dưới đây nói rõ mỗi nhóm người dùng hỏi được gì, và những việc nên tìm ở chỗ khác, để bạn khỏi mất công hỏi.
+
+| Bạn là | Hỏi được, ví dụ | Chưa làm được, nên tìm ở đâu |
+|---|---|---|
+| **Giáo viên, giảng viên** | Mỗi tuần phải dạy bao nhiêu tiết; lương theo hạng và bậc; cách tính điểm trung bình môn và xếp loại học sinh; khung kế hoạch bài dạy theo Công văn 5512; cách lập ma trận, bản đặc tả đề kiểm tra; phụ cấp, chuẩn nghề nghiệp | Không soạn thay bạn cả giáo án hay đề thi. Trợ lý chỉ ra quy định và mẫu có trong kho để bạn tự soạn. |
+| **Cán bộ quản lý** | Chức năng, nhiệm vụ của các cơ quan quản lý; trường học an toàn; tự chủ của cơ sở giáo dục; tiêu chuẩn thiết bị; văn bản nào đã bị thay thế, văn bản nào đang có hiệu lực | Số liệu riêng của trường hay của địa phương (sĩ số, ngân sách…) không có trong kho. |
+| **Sinh viên, học viên** | Sinh viên sư phạm (nhất là khi đi thực tập): chương trình giáo dục phổ thông 2018, khung kế hoạch bài dạy, ma trận đề. Sinh viên mọi ngành: học bổng, liên thông, điều kiện dự tuyển sau đại học | Không giải bài tập hay giảng lại môn học ở đại học: kho không có giáo trình đại học. |
+| **Học sinh** | Cách tính điểm trung bình môn học kì; học sinh được xếp loại theo những mức nào; miễn học phí; các bậc học sau trung học phổ thông và đường liên thông; nội dung sách giáo khoa nếu kho có (lọc theo môn, lớp ở [mục 6](#6-thu-hẹp-phạm-vi-tìm-kiếm)) | Không phải công cụ giải bài từng bước: trợ lý chạy mô hình AI nhỏ trên máy chủ riêng nên dễ sai với bài toán nhiều bước. Hãy dùng trợ lý để tra cứu, còn giải bài thì hỏi thầy cô. |
+| **Phụ huynh** | Trường có được dạy thêm và thu tiền dạy thêm không; con có được miễn học phí, hỗ trợ tiền ăn trưa không; điểm trung bình môn và xếp loại của con được tính thế nào; học bạ số | **Điểm chuẩn** các năm, danh sách trường, **chỗ học thêm**: đây không phải văn bản quy định nên không có trong kho. Hãy xem trên trang của sở giáo dục và đào tạo hoặc của trường. |
+
+Hỏi ngoài những gì kho có, trợ lý sẽ nói là **không tìm thấy** thay vì tự đoán.
+
+**Cho trợ lý biết bạn là ai.** Lần đầu vào trang, hộp giới thiệu hỏi *"Bạn là…"*. Chọn một mục thì màn hình chào đưa nhóm câu gợi ý hợp với bạn lên đầu. Muốn đổi, dùng ô **Gợi ý dành cho** ngay trên các câu gợi ý. Lựa chọn này **chỉ đổi câu gợi ý**: bạn vẫn hỏi được mọi thứ trong kho, và trợ lý vẫn tìm trên toàn bộ kho như nhau với mọi người. Vai trò bạn chọn được ghi kèm câu hỏi trên máy chủ để nhóm thực hiện thống kê mỗi nhóm người dùng hay hỏi gì, từ đó bổ sung đúng tài liệu còn thiếu.
 
 ### Khác gì so với các chatbot trò chuyện thông thường?
 
@@ -107,7 +117,7 @@ Màn hình chia thành bốn vùng: **thanh bên trái**, **thanh trên cùng**,
 
 ### Vùng giữa
 
-Khi mới mở trang, vùng giữa hiện lời chào, thông tin nhóm thực hiện và **4 thẻ gợi ý theo chủ đề**: *Mầm non & phổ thông*, *Giáo dục nghề nghiệp*, *Giáo dục đại học*, *Chính sách giáo dục*. Bên dưới còn có mục **Gợi ý khác từ kho tài liệu**; bấm **Đổi gợi ý** để xem các câu khác. Sau khi bạn hỏi, cuộc hội thoại hiện ở đây.
+Khi mới mở trang, vùng giữa hiện lời chào, thông tin nhóm thực hiện và **4 thẻ gợi ý theo chủ đề**: *Mầm non & phổ thông*, *Giáo dục nghề nghiệp*, *Giáo dục đại học*, *Chính sách giáo dục*. Bên dưới là mục **Câu hỏi gợi ý theo chủ đề**; bấm một câu là gửi luôn. Ô **Gợi ý dành cho** ở đầu mục này cho bạn chọn mình là học sinh, sinh viên, giáo viên, cán bộ quản lý hay phụ huynh, để nhóm câu hợp với bạn hiện lên đầu (xem [mục 1](#1-trang-web-này-là-gì)). Sau khi bạn hỏi, cuộc hội thoại hiện ở đây.
 
 ### Khung hỏi ở dưới cùng
 
@@ -272,8 +282,20 @@ Mẹo và lưu ý:
 
 **Lịch sử được lưu ở đâu?**
 
-- **Chưa đăng nhập:** lịch sử chỉ nằm trên **trình duyệt của máy đang dùng**. Đổi máy, đổi trình duyệt hoặc xóa dữ liệu duyệt web thì sẽ không còn.
+Dù đăng nhập hay không, **máy chủ của trang web đều lưu lại mỗi lượt hỏi đáp**. Khác nhau ở chỗ bạn xem lại được từ đâu:
+
+- **Chưa đăng nhập:** danh sách *Gần đây* chỉ hiện trên **trình duyệt của máy đang dùng**. Máy chủ vẫn giữ một bản, gắn với một mã ngẫu nhiên của trình duyệt đó chứ không gắn với tên hay email của bạn. Đổi máy hoặc đổi trình duyệt thì không xem lại được.
 - **Đã đăng nhập:** lịch sử gắn với tài khoản, **mở ở máy nào cũng thấy**.
+
+**Máy chủ lưu những gì, ai xem được?**
+
+- **Lưu:** câu hỏi, câu trả lời, các nguồn được trích, thời gian trả lời và vai trò bạn đã chọn ở mục *Gợi ý dành cho* (nếu có).
+- **Ai xem được:** trên giao diện, chỉ bạn thấy lịch sử của mình. Quản trị viên của trang xem được **số liệu thống kê**, gồm cả nội dung các câu hay được hỏi hoặc hay bị từ chối, nhưng thống kê không ghi câu nào của ai. Người quản lý máy chủ có quyền truy cập trực tiếp vào cơ sở dữ liệu thì đọc được toàn bộ.
+- **Dùng để làm gì:** để bạn mở lại cuộc trò chuyện, và để nhóm thực hiện biết người dùng hay hỏi gì, câu nào trả lời chưa tốt, từ đó bổ sung tài liệu. Dữ liệu không được gửi sang dịch vụ trí tuệ nhân tạo bên ngoài.
+- **Lưu bao lâu:** mỗi lượt hỏi đáp **tự xóa hẳn khỏi máy chủ sau 12 tháng** kể từ lúc hỏi. Một cuộc trò chuyện kéo dài qua mốc đó thì chỉ mất phần cũ hơn 12 tháng.
+- **Xóa:** bấm thùng rác (một cuộc hoặc toàn bộ) là xóa **cả trên trình duyệt lẫn trên máy chủ**. Nếu chưa đăng nhập, hãy xóa lịch sử **trước** khi xóa dữ liệu duyệt web. Mất mã của trình duyệt rồi thì trang không còn biết bản nào trên máy chủ là của bạn để xóa giúp.
+
+> Vì vậy, **đừng gõ thông tin cá nhân nhạy cảm** (số căn cước, số điện thoại, điểm số kèm họ tên học sinh…) vào câu hỏi. Trợ lý trả lời theo văn bản, không cần những thông tin đó.
 
 ---
 

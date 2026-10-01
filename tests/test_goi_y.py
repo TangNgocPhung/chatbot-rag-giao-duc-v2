@@ -111,6 +111,92 @@ class GoiYMoDauTinhTests(unittest.TestCase):
             self.assertEqual(goi_y_cau_hoi.che_do_goi_y_mo_dau(), "metadata")
 
 
+class GoiYTheoVaiTroTests(unittest.TestCase):
+    def setUp(self):
+        self.moi_truong = bo_bien_che_do()
+        self.moi_truong.start()
+        self.addCleanup(self.moi_truong.stop)
+
+    def test_moi_vai_tro_co_mot_nhom_sau_cau_khong_trung(self):
+        self.assertEqual(
+            [ma for ma, _ in goi_y_cau_hoi.VAI_TRO],
+            list(goi_y_cau_hoi.GOI_Y_THEO_VAI_TRO),
+        )
+        for ma, (chu_de, cac_cau) in goi_y_cau_hoi.GOI_Y_THEO_VAI_TRO.items():
+            with self.subTest(ma):
+                self.assertTrue(chu_de)
+                self.assertEqual(len(cac_cau), 6)
+                self.assertEqual(len(set(cac_cau)), 6)
+                for cau in cac_cau:
+                    self.assertLessEqual(len(cau), goi_y_cau_hoi._DO_DAI_CAU_HOI_TOI_DA)
+                    self.assertTrue(cau.endswith("?"), cau)
+
+    def test_cau_hoi_con_so_van_vao_dung_cong_cu_tinh(self):
+        # Mấy câu này được chọn vì công cụ tính trả lời chắc chắn đúng, kho có
+        # văn bản hay không cũng vậy. Công cụ đổi cách nhận câu thì gợi ý phải
+        # đổi theo, không thì bấm vào lại rơi sang RAG.
+        import danh_gia_hoc_sinh
+        import dinh_muc_tiet_day_pho_thong
+        import tinh_luong
+
+        cong_cu_cua = {
+            "Giáo viên THCS dạy bao nhiêu tiết một tuần?": dinh_muc_tiet_day_pho_thong,
+            "Lương giáo viên THPT hạng III bậc 1 hiện nay là bao nhiêu?": tinh_luong,
+        }
+        for cac_cau in (c for _, c in goi_y_cau_hoi.GOI_Y_THEO_VAI_TRO.values()):
+            for cau in cac_cau:
+                if "điểm thường xuyên" in cau.casefold():
+                    cong_cu_cua[cau] = danh_gia_hoc_sinh
+        self.assertEqual(len(cong_cu_cua), 4)
+        for cau, cong_cu in cong_cu_cua.items():
+            with self.subTest(cau):
+                self.assertIsNotNone(cong_cu.nhan_dien(cau))
+
+    def test_nhom_vai_tro_dung_dau_bon_nhom_chu_de_van_con(self):
+        cac_nhom = goi_y_cau_hoi.nhom_goi_y_tinh("phu_huynh")
+        self.assertEqual(cac_nhom[0]["vai_tro"], "phu_huynh")
+        self.assertEqual(cac_nhom[0]["chu_de"], "Dành cho phụ huynh")
+        self.assertTrue(all("vai_tro" not in nhom for nhom in cac_nhom[1:]))
+        self.assertEqual(len(cac_nhom), 5)
+        # Không câu nào hiện hai lần, và cả 17 câu tĩnh vẫn bấm được.
+        tat_ca = [cau for nhom in cac_nhom for cau in nhom["cau_hoi"]]
+        self.assertEqual(len(tat_ca), len(set(tat_ca)))
+        self.assertTrue(set(goi_y_cau_hoi.GOI_Y_CHU_DE) <= set(tat_ca))
+
+    def test_vai_tro_la_hay_trong_nhu_chua_chon(self):
+        khong_chon = goi_y_cau_hoi.nhom_goi_y_tinh()
+        for gia_tri in (None, "", "hieu_truong", "<script>"):
+            with self.subTest(gia_tri):
+                self.assertIsNone(goi_y_cau_hoi.chuan_hoa_vai_tro(gia_tri))
+                self.assertEqual(goi_y_cau_hoi.nhom_goi_y_tinh(gia_tri), khong_chon)
+        self.assertEqual(goi_y_cau_hoi.chuan_hoa_vai_tro(" Phu_Huynh "), "phu_huynh")
+
+    def test_it_cau_thi_lay_cau_cua_vai_tro_truoc(self):
+        self.assertEqual(
+            goi_y_cau_hoi.goi_y_mo_dau({}, 3, vai_tro="giao_vien"),
+            list(goi_y_cau_hoi.GOI_Y_THEO_VAI_TRO["giao_vien"][1][:3]),
+        )
+
+    def test_che_do_metadata_chi_nua_me_la_cau_cua_vai_tro(self):
+        goi_y = goi_y_cau_hoi.goi_y_mo_dau(
+            KHO_MUOI_VAN_BAN, 6, random.Random(1), che_do="metadata", vai_tro="hoc_sinh"
+        )
+        cua_vai_tro = set(goi_y_cau_hoi.GOI_Y_THEO_VAI_TRO["hoc_sinh"][1])
+        self.assertEqual(len(goi_y), 6)
+        self.assertEqual(sum(cau in cua_vai_tro for cau in goi_y), 3)
+        self.assertTrue(all(cau in cua_vai_tro for cau in goi_y[:3]))
+
+    def test_giao_dien_giu_cung_danh_sach_ma_vai_tro(self):
+        # static/vai-tro.js dựng hộp chọn vai trò; mã lệch với máy chủ thì
+        # người dùng chọn xong vẫn nhận bộ gợi ý chung mà không ai hay.
+        duong_dan = os.path.join(os.path.dirname(goi_y_cau_hoi.__file__), "static", "vai-tro.js")
+        with open(duong_dan, encoding="utf-8") as tep:
+            ma_nguon = tep.read()
+        for ma, nhan in goi_y_cau_hoi.VAI_TRO:
+            with self.subTest(ma):
+                self.assertIn(f"ma: '{ma}', nhan: '{nhan}'", ma_nguon)
+
+
 class GoiYMoDauMetadataTests(unittest.TestCase):
     def goi_y(self, ho_so, so_luong=6, tinh_trang=None, hat_giong=1):
         return goi_y_cau_hoi.goi_y_mo_dau(
@@ -686,6 +772,22 @@ class GoiYApiTests(unittest.TestCase):
             payload["goi_y"][0],
             "Thông tư quy định về dạy thêm, học thêm có những nội dung chính nào?",
         )
+
+    def test_vai_tro_dua_nhom_cua_vai_tro_len_dau(self):
+        with bo_bien_che_do():
+            payload = self.client.get("/api/goi-y?so_luong=2&vai_tro=sinh_vien").json()
+        self.assertEqual(payload["vai_tro"], "sinh_vien")
+        self.assertEqual(payload["nhom"][0]["vai_tro"], "sinh_vien")
+        self.assertEqual(
+            payload["goi_y"], list(goi_y_cau_hoi.GOI_Y_THEO_VAI_TRO["sinh_vien"][1][:2])
+        )
+
+    def test_vai_tro_la_khong_lam_hong_request(self):
+        with bo_bien_che_do():
+            response = self.client.get("/api/goi-y?vai_tro=khong-co")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.json()["vai_tro"])
+        self.assertEqual(len(response.json()["nhom"]), 4)
 
     def test_goi_y_co_san_khi_kho_tri_thuc_chua_nap(self):
         # Giao diện lấy gợi ý ngay lúc mở trang, trước cả khi Ollama trả lời
