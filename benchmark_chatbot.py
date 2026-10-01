@@ -8,6 +8,14 @@ Chạy nhanh, chỉ truy hồi: python benchmark_chatbot.py --nhanh
 Quét ngưỡng chặn:      python benchmark_chatbot.py --nhanh --do-nguong
 Chỉ một nhóm:          python benchmark_chatbot.py --nhanh --nhom video
 Lấy mẫu N câu:         python benchmark_chatbot.py --bo --so 20
+Số liệu cho báo cáo:   python benchmark_chatbot.py --ir --tap test
+
+TẬP DEV VÀ TẬP TEST (trường `tap` trong bộ câu hỏi, gán bằng chia_tap_benchmark.py)
+  Mặc định mọi chế độ chạy trên tập DEV. Tinh chỉnh trọng số, quét ngưỡng
+  (--do-nguong) đều làm ở đây. `--tap test` chỉ dùng SAU KHI đã đóng băng tham
+  số, để lấy con số đưa vào báo cáo; nhìn kết quả test rồi quay lại chỉnh tiếp
+  thì tập test đã thành tập dev thứ hai và con số đó không còn khách quan.
+  `--tap tat_ca` chạy cả 127 câu như trước khi chia, để so với các lần đo cũ.
 
 BA CHẾ ĐỘ, BA MỤC ĐÍCH KHÁC NHAU
   --bo    gọi đủ cả LLM. Đo được chất lượng câu chữ (trích dẫn, số liệu) nhưng
@@ -48,6 +56,7 @@ import time
 from dataclasses import asdict, dataclass, field
 
 import chi_so_ir
+import chia_tap_benchmark
 import hybrid_retrieval
 import kiem_tra_tra_loi
 import tu_vung_kho
@@ -68,6 +77,8 @@ CAU_HOI_MAC_DINH = (
     "không được tổ chức dạy thêm?"
 )
 CUM_TU_CHOI = "không tìm thấy thông tin"
+TAP_TAT_CA = "tat_ca"
+CAC_LUA_CHON_TAP = (*chia_tap_benchmark.CAC_TAP, TAP_TAT_CA)
 
 
 @dataclass
@@ -492,12 +503,24 @@ def in_bang_quet_nguong(cac_ket_qua: list[KetQuaMotCau]) -> None:
         print("Không cặp ngưỡng nào vừa không chặn oan vừa còn biên ≥ 0.05.")
 
 
-def _nap_danh_sach(nhom_loc: str | None, so_luong: int | None) -> list[dict]:
+def _nap_danh_sach(nhom_loc: str | None, so_luong: int | None,
+                   tap: str = TAP_TAT_CA) -> list[dict]:
     with open(DUONG_DAN_BO_CAU_HOI, encoding="utf-8") as f:
         bo = json.load(f)
+    if tap != TAP_TAT_CA:
+        # Câu mới thêm mà chưa gán tập thì báo lỗi chứ không lặng lẽ bỏ qua:
+        # bỏ qua thì bộ đo co lại mà không ai biết, hai lần chạy không còn so
+        # sánh được với nhau.
+        chua_gan = [muc["cau_hoi"] for muc in bo["cau_hoi"] if "tap" not in muc]
+        if chua_gan:
+            raise ValueError(
+                f"{len(chua_gan)} câu chưa có trường tap (vd: {chua_gan[0][:60]}). "
+                f"Chạy `python chia_tap_benchmark.py` hoặc gán tay rồi chạy lại."
+            )
     danh_sach = [
         muc for muc in bo["cau_hoi"]
-        if not nhom_loc or muc.get("nhom") == nhom_loc
+        if (not nhom_loc or muc.get("nhom") == nhom_loc)
+        and (tap == TAP_TAT_CA or muc.get("tap") == tap)
     ]
     if so_luong and so_luong < len(danh_sach):
         # Lấy mẫu cố định hạt giống: hai lần chạy khác nhau vẫn so sánh được.
@@ -505,18 +528,33 @@ def _nap_danh_sach(nhom_loc: str | None, so_luong: int | None) -> list[dict]:
     return danh_sach
 
 
-def _duong_dan_ket_qua(nhanh: bool) -> str:
+def _hau_to_tap(tap: str) -> str:
+    """Tệp kết quả của từng tập tách riêng: một lượt dev chạy để thử tham số
+    không được ghi đè lên số liệu test đang dùng cho báo cáo. `tat_ca` giữ tên
+    cũ để các tệp đo trước khi chia vẫn là cùng một chuỗi số liệu."""
+    return "" if tap == TAP_TAT_CA else f"_{tap}"
+
+
+def _duong_dan_ket_qua(nhanh: bool, tap: str = TAP_TAT_CA) -> str:
     """Tách tệp theo chế độ: bản --nhanh đo truy hồi, bản đầy đủ đo cả trích dẫn
     và số liệu. Ghi chung một tệp thì lần chạy sau xóa mất số liệu lần trước."""
     goc, duoi = os.path.splitext(DUONG_DAN_KET_QUA)
-    return f"{goc}_{'nhanh' if nhanh else 'day_du'}{duoi}"
+    return f"{goc}_{'nhanh' if nhanh else 'day_du'}{_hau_to_tap(tap)}{duoi}"
+
+
+def _canh_bao_tap_test(tap: str) -> None:
+    if tap == chia_tap_benchmark.TAP_TEST:
+        print("=" * 78)
+        print("ĐANG CHẠY TẬP TEST. Chỉ làm việc này khi tham số đã đóng băng. Đừng")
+        print("chỉnh tham số theo kết quả bên dưới rồi chạy lại - hãy chỉnh trên dev.")
+        print("=" * 78, flush=True)
 
 
 def _ghi_ket_qua(service: RAGService, cac_ket_qua: list, nhanh: bool,
-                 xong: bool = False) -> str:
+                 xong: bool = False, tap: str = TAP_TAT_CA) -> str:
     """Ghi nguyên trạng kết quả hiện có. Ghi ra tệp tạm rồi đổi tên để crash
     giữa chừng không để lại JSON cụt đầu."""
-    duong_dan = _duong_dan_ket_qua(nhanh)
+    duong_dan = _duong_dan_ket_qua(nhanh, tap)
     trang_thai = service.status_dict()
     tam = duong_dan + ".tmp"
     with open(tam, "w", encoding="utf-8") as f:
@@ -524,6 +562,7 @@ def _ghi_ket_qua(service: RAGService, cac_ket_qua: list, nhanh: bool,
             {
                 "chay_luc": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "che_do": "nhanh" if nhanh else "day_du",
+                "tap": tap,
                 "hoan_tat": xong,
                 "model": trang_thai["model"],
                 "so_vector": trang_thai["vector_count"],
@@ -546,11 +585,14 @@ def chay_bo_cau_hoi(
     nhanh: bool,
     so_luong: int | None,
     do_nguong: bool,
+    tap: str = TAP_TAT_CA,
 ) -> int:
-    danh_sach = _nap_danh_sach(nhom_loc, so_luong)
+    danh_sach = _nap_danh_sach(nhom_loc, so_luong, tap)
     if not danh_sach:
-        print(f"Không có câu hỏi nào thuộc nhóm '{nhom_loc}'.")
+        print(f"Không có câu hỏi nào thuộc nhóm '{nhom_loc}' trong tập '{tap}'.")
         return 1
+    _canh_bao_tap_test(tap)
+    print(f"Tập: {tap} · {len(danh_sach)} câu", flush=True)
 
     cac_ket_qua = []
     for thu_tu, muc in enumerate(danh_sach, 1):
@@ -559,7 +601,7 @@ def chay_bo_cau_hoi(
         cac_ket_qua.append(kq)
         # Ghi sau MỖI câu: bộ đầy đủ chạy ~3 tiếng, chỉ lưu ở cuối thì một lần
         # Ollama chết là mất trắng. Ghi nguyên tệp ~120KB, không đáng so với 100s/câu.
-        _ghi_ket_qua(service, cac_ket_qua, nhanh)
+        _ghi_ket_qua(service, cac_ket_qua, nhanh, tap=tap)
 
         dau_hieu = []
         if kq.truy_hoi_dung_nguon is not None:
@@ -593,11 +635,11 @@ def chay_bo_cau_hoi(
         in_bang_quet_nguong(cac_ket_qua)
 
     print(f"\nĐã ghi chi tiết vào "
-          f"{_ghi_ket_qua(service, cac_ket_qua, nhanh, xong=True)}")
+          f"{_ghi_ket_qua(service, cac_ket_qua, nhanh, xong=True, tap=tap)}")
     return 0
 
 
-def do_ir_tu_tep(duong_dan: str) -> int:
+def do_ir_tu_tep(duong_dan: str, tap: str = TAP_TAT_CA) -> int:
     """
     Tính lại MRR/Hit@K từ một tệp kết quả đã chạy trước, không đụng tới Ollama.
 
@@ -606,17 +648,21 @@ def do_ir_tu_tep(duong_dan: str) -> int:
     cấu hình mới mà không phải chạy lại cả bộ. Lưu ý các lần chạy cũ chỉ lưu
     SO_KET_QUA_CUOI chunk, nên Hit@10 ở đó bị chặn trên bởi cửa sổ đó chứ không
     phải bởi chất lượng truy hồi - đọc MRR@4 là chính.
+
+    Tệp cũ chạy trên cả bộ, nên vẫn lọc theo `tap` ở đây: tính lại trên tập dev
+    thì chỉ những câu dev được đếm, so được với các lần chạy mới.
     """
     with open(duong_dan, encoding="utf-8") as f:
         du_lieu = json.load(f)
     with open(DUONG_DAN_BO_CAU_HOI, encoding="utf-8") as f:
-        nhan_theo_cau = {
-            muc["cau_hoi"]: muc.get("nguon_mong_doi", [])
-            for muc in json.load(f)["cau_hoi"]
-        }
+        bo = json.load(f)["cau_hoi"]
+    nhan_theo_cau = {muc["cau_hoi"]: muc.get("nguon_mong_doi", []) for muc in bo}
+    tap_theo_cau = {muc["cau_hoi"]: muc.get("tap") for muc in bo}
 
     cac_ket_qua = []
     for muc in du_lieu.get("ket_qua", []):
+        if tap != TAP_TAT_CA and tap_theo_cau.get(muc["cau_hoi"]) != tap:
+            continue
         mong_doi = muc.get("nguon_mong_doi") or nhan_theo_cau.get(muc["cau_hoi"], [])
         if not mong_doi:
             continue
@@ -631,18 +677,21 @@ def do_ir_tu_tep(duong_dan: str) -> int:
         print(f"{duong_dan} không có lượt nào khớp nhãn trong bộ câu hỏi.")
         return 1
     print(f"Đọc {duong_dan} (chạy lúc {du_lieu.get('chay_luc', '?')}, "
-          f"chế độ {du_lieu.get('che_do', '?')}, model {du_lieu.get('model', '?')})")
+          f"chế độ {du_lieu.get('che_do', '?')}, model {du_lieu.get('model', '?')}), "
+          f"tính trên tập {tap}")
     in_bang_chi_so_ir(cac_ket_qua, so_chunk=max(len(k.nguon) for k in cac_ket_qua))
     return 0
 
 
-def _duong_dan_ir(nhom_loc: str | None, so_luong: int | None) -> tuple[str, str]:
+def _duong_dan_ir(nhom_loc: str | None, so_luong: int | None,
+                  tap: str = TAP_TAT_CA) -> tuple[str, str]:
     """
     Lần chạy một nhóm hoặc một mẫu N câu phải ghi ra tệp riêng. Ghi chung với
     bản đầy đủ thì một lệnh `--ir --nhom video` chạy để soi 5 câu sẽ xóa mất
-    bảng 97 câu đang dùng cho báo cáo, mà không báo gì cả.
+    bảng 97 câu đang dùng cho báo cáo, mà không báo gì cả. Cùng lý do, mỗi tập
+    một tệp: bảng cho báo cáo là bang_chi_so_ir_test.md.
     """
-    hau_to = ""
+    hau_to = _hau_to_tap(tap)
     if nhom_loc:
         hau_to += f"_{nhom_loc}"
     if so_luong:
@@ -655,15 +704,17 @@ def _duong_dan_ir(nhom_loc: str | None, so_luong: int | None) -> tuple[str, str]
 
 
 def chay_do_ir(service: RAGService, nhom_loc: str | None, so_luong: int | None,
-               so_chunk: int) -> int:
+               so_chunk: int, tap: str = TAP_TAT_CA) -> int:
     """Chạy cả bộ ở chế độ đo xếp hạng rồi ghi số liệu + bảng markdown."""
     danh_sach = [
-        muc for muc in _nap_danh_sach(nhom_loc, so_luong)
+        muc for muc in _nap_danh_sach(nhom_loc, so_luong, tap)
         if muc.get("nguon_mong_doi")
     ]
     if not danh_sach:
-        print("Không có câu hỏi nào kèm nhãn nguon_mong_doi để đo.")
+        print(f"Không có câu hỏi nào kèm nhãn nguon_mong_doi trong tập '{tap}' để đo.")
         return 1
+    _canh_bao_tap_test(tap)
+    print(f"Tập: {tap} · {len(danh_sach)} câu có nhãn", flush=True)
 
     cac_ket_qua = []
     for thu_tu, muc in enumerate(danh_sach, 1):
@@ -677,12 +728,13 @@ def chay_do_ir(service: RAGService, nhom_loc: str | None, so_luong: int | None,
     tom_tat = in_bang_chi_so_ir(cac_ket_qua, so_chunk)
 
     trang_thai = service.status_dict()
-    duong_dan_json, duong_dan_md = _duong_dan_ir(nhom_loc, so_luong)
+    duong_dan_json, duong_dan_md = _duong_dan_ir(nhom_loc, so_luong, tap)
     with open(duong_dan_json, "w", encoding="utf-8") as f:
         json.dump(
             {
                 "chay_luc": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "che_do": "chi_so_ir",
+                "tap": tap,
                 # Chỉ số truy hồi phụ thuộc model NHÚNG, không phụ thuộc model
                 # trả lời - ghi cả hai để lần sau biết con số này thuộc về đâu.
                 "model_embedding": os.getenv("RAG_EMBEDDING_MODEL", "bge-m3"),
@@ -699,9 +751,10 @@ def chay_do_ir(service: RAGService, nhom_loc: str | None, so_luong: int | None,
         with open(duong_dan_md, "w", encoding="utf-8") as f:
             toan_bo = tom_tat["toan_bo"]
             thap, cao = toan_bo["mrr_ktc95"]
-            f.write(f"# Chỉ số IR/QA của khối truy hồi\n\n"
+            ten_tap = {"dev": "tập dev", "test": "tập test"}.get(tap, "cả bộ")
+            f.write(f"# Chỉ số IR/QA của khối truy hồi ({ten_tap})\n\n"
                     f"Đo ngày {time.strftime('%d/%m/%Y')} trên "
-                    f"{toan_bo['so_cau']} câu hỏi có nhãn nguồn, "
+                    f"{toan_bo['so_cau']} câu hỏi có nhãn nguồn thuộc {ten_tap}, "
                     f"kho {trang_thai['vector_count']} vector, truy hồi sâu "
                     f"{so_chunk} chunk ({SO_KET_QUA_CUOI} chunk đi vào prompt).\n\n")
             f.write(chi_so_ir.bang_markdown(toan_bo, tom_tat["theo_nhom"]) + "\n\n")
@@ -757,12 +810,33 @@ def main() -> int:
                         help=f"số chunk truy hồi khi đo IR (mặc định {SO_CHUNK_DO_IR})")
     parser.add_argument("--tu-tep", default=None,
                         help="tính lại chỉ số IR từ một tệp kết quả cũ, không chạy lại")
+    # Mặc định `dev` đặt ở ĐÚNG MỘT CHỖ là đây; các hàm bên trên mặc định
+    # tat_ca để code cũ gọi chúng vẫn chạy như trước khi chia tập.
+    parser.add_argument("--tap", choices=CAC_LUA_CHON_TAP,
+                        default=chia_tap_benchmark.TAP_DEV,
+                        help="tập câu hỏi: dev (mặc định, để tinh chỉnh), test (chỉ "
+                             "chạy khi đã đóng băng tham số), tat_ca (cả bộ)")
     tham_so = parser.parse_args()
+
+    # Quét ngưỡng là CHỌN tham số theo kết quả - làm trên tập test thì nó không
+    # còn là tập test nữa. Chặn ngay ở đây thay vì tin vào trí nhớ người chạy.
+    if tham_so.do_nguong and tham_so.tap == chia_tap_benchmark.TAP_TEST:
+        parser.error("--do-nguong là bước chọn tham số, không chạy trên tập test. "
+                     "Quét trên dev (mặc định) rồi mới đo test.")
+
+    # Đọc thử bộ câu hỏi TRƯỚC khi khởi tạo service: câu chưa gán tập thì báo
+    # lỗi ngay, không bắt chờ nạp chỉ mục mấy chục giây rồi mới hỏng.
+    if tham_so.tu_tep or tham_so.ir or tham_so.bo or tham_so.nhanh or tham_so.nhom:
+        try:
+            _nap_danh_sach(None, None, tham_so.tap)
+        except ValueError as loi:
+            print(f"LỖI BỘ CÂU HỎI: {loi}")
+            return 1
 
     # Tính lại từ tệp thì không cần chỉ mục lẫn Ollama - khởi tạo service ở
     # đây chỉ tổ bắt chờ vài chục giây cho một phép cộng.
     if tham_so.tu_tep:
-        return do_ir_tu_tep(tham_so.tu_tep)
+        return do_ir_tu_tep(tham_so.tu_tep, tham_so.tap)
 
     service = RAGService()
     service.initialize()
@@ -771,10 +845,11 @@ def main() -> int:
         return 1
 
     if tham_so.ir:
-        return chay_do_ir(service, tham_so.nhom, tham_so.so, tham_so.sau)
+        return chay_do_ir(service, tham_so.nhom, tham_so.so, tham_so.sau, tham_so.tap)
     if tham_so.bo or tham_so.nhanh or tham_so.nhom:
         return chay_bo_cau_hoi(
-            service, tham_so.nhom, tham_so.nhanh, tham_so.so, tham_so.do_nguong
+            service, tham_so.nhom, tham_so.nhanh, tham_so.so, tham_so.do_nguong,
+            tham_so.tap,
         )
     return chay_mot_cau_hoi_le(service, tham_so.question)
 
