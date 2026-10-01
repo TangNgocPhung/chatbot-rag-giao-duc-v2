@@ -176,6 +176,7 @@ NHAN_LOAI_NOI_DUNG = {
     "giao_an": "Giáo án (kế hoạch bài dạy)",
     "bai_giang": "Bài giảng",
     "de_kiem_tra": "Đề và câu hỏi kiểm tra",
+    "ke_hoach_day_hoc": "Kế hoạch dạy học (phân phối chương trình)",
     "hoc_lieu_khac": "Học liệu khác",
 }
 
@@ -195,6 +196,11 @@ _SACH_THEO_TEN = {
 # án nào cũng có dòng "Học sinh: SGK, SBT, đồ dùng học tập" ở mục đồ dùng dạy
 # học - nhận viết tắt là cả trăm giáo án trong kho thành sách giáo khoa.
 DO_DAI_TRANG_BIA = 300
+# Bìa sách giáo khoa không in chữ "sách giáo khoa" mà in tên tác giả kèm
+# "(Tổng Chủ biên)" và nhà xuất bản: "06-tieng-duc-6.pdf" chỉ có đúng thế.
+# Chỉ dùng khi tên file và bìa không nói gì thêm (SGV, SBT đã xét trước).
+MAU_BIA_SACH_TONG_CHU_BIEN = re.compile(r"\btong chu bien\b")
+MAU_BIA_SACH_NHA_XUAT_BAN = re.compile(r"\bnha xuat ban\b")
 # "luat" đứng sau "phap" là tên môn Giáo dục kinh tế và pháp luật: SGK, SBT môn
 # này từng rơi hết vào "chưa phân loại" vì bị coi là văn bản nói về sách.
 MAU_TEN_VAN_BAN_HANH_CHINH = re.compile(
@@ -216,6 +222,20 @@ _SACH_THEO_BIA = {
 MAU_DE_KIEM_TRA = re.compile(
     r"ma tran|dac ta|de thi|de kiem tra|de minh hoa|cau hoi minh hoa|bo cau hoi"
     r"|ngan hang cau hoi|dap an|de on tap|de cuong on tap|phieu bai tap"
+    r"|kiem tra thuong xuyen|\bkttx"
+)
+# Kế hoạch dạy học cả năm / cả môn: phân phối chương trình, bảng tham chiếu
+# tích hợp AI, năng lực số. Khác giáo án (một bài dạy) ở chỗ liệt kê cả chương
+# trình theo tuần/tiết. Trước đây rơi vào "chưa phân loại", hoặc thành bài
+# giảng chỉ vì tên có "KNTT".
+MAU_KE_HOACH_DAY_HOC_TEN = re.compile(
+    r"\b(?:ppct|phan phoi chuong trinh|bang tham chieu|tich hop"
+    r"|ke hoach (?:thuc hien chuong trinh|day hoc|giao duc))\b"
+)
+DO_DAI_MO_DAU_KE_HOACH = 600
+MAU_KE_HOACH_DAY_HOC_NOI_DUNG = re.compile(
+    r"\b(?:phan phoi chuong trinh|ke hoach thuc hien chuong trinh"
+    r"|ke hoach day hoc mon|bang tham chieu tich hop)\b"
 )
 MAU_BAI_GIANG = re.compile(
     r"bai giang|slide|bai day|ppt|powerpoint"
@@ -248,6 +268,7 @@ MAU_SO_HIEU_TEN_FILE = re.compile(
     r"\b(?:tt|nd|qd|ct|nq|tb|cd|kh)\s*(?:bgddt|bgd|bnv|btc|bkhcn|ttg|cp|ndcp)\b"
     r"|\bbgddt\b|\bbgd\b|\bttg\b|\bndcp\b|\bqdttg\b|\bbnv\b|\bbkhcn\b"
     r"|\bqh\d{2}\b|\b\d{1,4} (?:cp|nq|ct|tb|cd)\b"
+    r"|\bvbhn\b|\bvpqh\b|\bvpcp\b"
 )
 
 
@@ -276,7 +297,11 @@ def _chuan_hoa(van_ban: str) -> str:
     đứng cuối chuỗi mà không phải viết thêm nhánh đặc biệt.
     """
     khong_dau = bo_dau(tach_camel_va_so(van_ban or "")).lower()
-    return " " + re.sub(r"[^a-z0-9]+", " ", khong_dau).strip() + " "
+    chuoi = re.sub(r"[^a-z0-9]+", " ", khong_dau).strip()
+    # "01-sgvtieng-viet-1" viết dính chữ viết tắt vào tên môn. Không từ tiếng
+    # Việt nào mở đầu bằng "sg", "sbt", "vbt" nên tách ra không đụng chữ khác.
+    chuoi = re.sub(r"\b(sgk|sgv|sbt|vbt)(?=[a-z]{2})", r"\1 ", chuoi)
+    return " " + chuoi + " "
 
 
 def _tim_nhan(chuoi: str, bang: dict[str, re.Pattern]) -> list[str]:
@@ -343,6 +368,10 @@ def _suy_loai_noi_dung(ten_chuan: str, noi_dung_chuan: str, la_qppl: bool,
         for loai, mau in _SACH_THEO_BIA.items():
             if mau.search(trang_bia):
                 return loai
+        if (MAU_BIA_SACH_TONG_CHU_BIEN.search(trang_bia)
+                and MAU_BIA_SACH_NHA_XUAT_BAN.search(trang_bia)
+                and not MAU_TEN_VAN_BAN_HANH_CHINH.search(ten_chuan)):
+            return "sach_giao_khoa"
     if MAU_DE_KIEM_TRA.search(ten_chuan):
         return "de_kiem_tra"
     # Giáo án xét trước từ khóa đề trong NỘI DUNG: giáo án nào cũng có "phiếu
@@ -352,6 +381,13 @@ def _suy_loai_noi_dung(ten_chuan: str, noi_dung_chuan: str, la_qppl: bool,
         loai_tai_lieu in (None, "van_ban") and _co_khung_giao_an(noi_dung_chuan)
     ):
         return "giao_an"
+    # Trước đề trong nội dung: phân phối chương trình liệt kê cả bài "Ôn tập",
+    # "Kiểm tra cuối kì" theo tuần.
+    if MAU_KE_HOACH_DAY_HOC_TEN.search(ten_chuan) or (
+        loai_tai_lieu in (None, "van_ban")
+        and MAU_KE_HOACH_DAY_HOC_NOI_DUNG.search(noi_dung_chuan[:DO_DAI_MO_DAU_KE_HOACH])
+    ):
+        return "ke_hoach_day_hoc"
     if MAU_DE_KIEM_TRA.search(noi_dung_chuan):
         return "de_kiem_tra"
     if MAU_BAI_GIANG.search(ten_chuan) or loai_tai_lieu == "trinh_chieu":

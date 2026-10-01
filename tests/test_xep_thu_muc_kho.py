@@ -110,6 +110,40 @@ def test_cong_van_nhan_theo_trich_yeu(tmp_path):
     assert chon_thu_muc("cv.docx", tep) == "word/van_ban_quy_pham/cong_van"
 
 
+def test_quoc_hieu_viet_hoa_kieu_cu_va_cong_dien(tmp_path):
+    """"CỘNG HOÀ" (dấu đặt kiểu cũ) và "Ð" của OCR từng làm công điện của Thủ
+    tướng rơi vào chưa phân loại."""
+    tep = _docx(
+        tmp_path / "Về việc thực hiện chế độ.docx",
+        "THỦ TƯỚNG CHÍNH PHỦ", "CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+        "Số: 62/CÐ-TTg", "CÔNG ĐIỆN", "Về việc thực hiện chế độ, chính sách",
+    )
+    assert chon_thu_muc(os.path.basename(tep), tep) == "word/van_ban_quy_pham/cong_dien"
+
+
+def test_phu_luc_ban_hanh_kem_theo_thong_tu(tmp_path):
+    tep = _docx(
+        tmp_path / "cttin_hoc.docx", "BỘ GIÁO DỤC VÀ ĐÀO TẠO",
+        "CHƯƠNG TRÌNH GIÁO DỤC PHỔ THÔNG MÔN TIN HỌC",
+        "(Ban hành kèm theo Thông tư số 32/2018/TT-BGDĐT ngày 26 tháng 12 năm 2018)",
+    )
+    assert chon_thu_muc("cttin_hoc.docx", str(tep)) == "word/van_ban_quy_pham/thong_tu"
+
+
+def test_ke_hoach_cua_truong_co_quoc_hieu_van_la_ke_hoach_day_hoc(tmp_path):
+    tep = _docx(
+        tmp_path / "PPCT TIN 3.docx", "TRƯỜNG TIỂU HỌC",
+        "CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+        "KẾ HOẠCH THỰC HIỆN CHƯƠNG TRÌNH MÔN TIN HỌC KHỐI 3",
+    )
+    assert chon_thu_muc("PPCT TIN 3.docx", str(tep)) == "word/ke_hoach_day_hoc"
+
+
+def test_van_ban_hop_nhat_chi_co_ten(tmp_path):
+    assert (chon_thu_muc("2026_172_40_VBHN-VPQH.docx")
+            == "word/van_ban_quy_pham/van_ban_hop_nhat")
+
+
 def test_trang_bia_sach_trong_noi_dung(tmp_path):
     tep = _docx(tmp_path / "toan5.docx", "SÁCH GIÁO VIÊN", "TOÁN 5")
     assert chon_thu_muc("toan5.docx", tep) == "word/sach_giao_vien"
