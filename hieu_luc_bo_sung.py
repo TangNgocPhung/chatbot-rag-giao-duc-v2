@@ -33,7 +33,7 @@ import json
 import os
 import re
 import unicodedata
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import date
 
 import van_ban_meta
@@ -54,14 +54,19 @@ def nen(van_ban: str) -> str:
 
 def nen_co_ban_do(van_ban: str) -> tuple[str, list[int]]:
     """Như nen() nhưng trả thêm vị trí gốc của từng ký tự, để sau khi dò mẫu
-    trên bản nén vẫn cắt được đúng khúc tương ứng trong văn bản gốc."""
+    trên bản nén vẫn cắt được đúng khúc tương ứng trong văn bản gốc.
+
+    Tách dấu TỪNG ký tự thay vì cả chuỗi: chữ trích từ PDF ở dạng NFC ("ị" là
+    một ký tự), tách dấu cả chuỗi thì "ị" thành hai ký tự và mọi vị trí phía
+    sau lệch dần - câu dài nhiều dấu bị cắt quá cả số hiệu cần lấy."""
     chuoi = []
     vi_tri = []
-    for i, ky_tu in enumerate(unicodedata.normalize("NFD", van_ban or "")):
-        if unicodedata.combining(ky_tu) or ky_tu.isspace():
-            continue
-        chuoi.append(ky_tu.replace("đ", "d").replace("Đ", "D").lower())
-        vi_tri.append(i)
+    for i, ky_tu_goc in enumerate(van_ban or ""):
+        for ky_tu in unicodedata.normalize("NFD", ky_tu_goc):
+            if unicodedata.combining(ky_tu) or ky_tu.isspace():
+                continue
+            chuoi.append(ky_tu.replace("đ", "d").replace("Đ", "D").lower())
+            vi_tri.append(i)
     return "".join(chuoi), vi_tri
 
 
@@ -94,6 +99,9 @@ class TinhTrangThoiGian:
     ten_file: str
     la_du_thao: bool = False
     ngay_hieu_luc: str | None = None  # ISO "2026-10-01", cùng dạng ngay_ban_hanh
+    # Câu chuyển tiếp của văn bản này (chuyen_tiep.trich_chuyen_tiep): nhóm
+    # đối tượng nào vẫn theo văn bản cũ dù văn bản này đã thay nó.
+    chuyen_tiep: list[dict] = field(default_factory=list)
 
     def chua_toi_ngay_hieu_luc(self, hom_nay: date | None = None) -> bool:
         if not self.ngay_hieu_luc:
@@ -181,6 +189,8 @@ def xay_dung(
 ) -> dict[str, TinhTrangThoiGian]:
     """van_ban_theo_file: {tên file: toàn bộ text đã lập chỉ mục} - giống
     van_ban_meta.xay_dung_ho_so để hai bên dùng chung một nguồn dữ liệu."""
+    import chuyen_tiep  # nhập muộn: chuyen_tiep dùng nen() của module này
+
     ho_so = ho_so or {}
     tinh_trang: dict[str, TinhTrangThoiGian] = {}
     for ten_file, van_ban in van_ban_theo_file.items():
@@ -192,6 +202,10 @@ def xay_dung(
             ngay_hieu_luc=trich_ngay_hieu_luc(
                 van_ban, muc.ngay_ban_hanh if muc else None
             ),
+            # Giáo án, bảng tính không có điều khoản chuyển tiếp nào để đọc.
+            chuyen_tiep=chuyen_tiep.trich_chuyen_tiep(
+                van_ban, muc.so_hieu if muc else None
+            ) if muc is None or muc.la_qppl else [],
         )
     return tinh_trang
 

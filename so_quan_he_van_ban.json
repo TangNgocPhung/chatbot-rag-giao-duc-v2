@@ -5,7 +5,8 @@
    "loai: thay_the (thay toàn bộ) | bai_bo_mot_phan | sua_doi | huong_dan (tu quy định chi tiết/hướng dẫn den) | kem_theo (tu là phụ lục/quy chế kèm theo den).",
    "van_ban.<số hiệu>.ten_goi: tên thường gọi, để nối câu 'quy định chi tiết Luật Giáo dục' (không kèm số) về đúng số hiệu; khi nhiều số hiệu cùng tên thì chọn bản mới nhất ban hành trước văn bản đang xét.",
    "van_ban.<số hiệu>.tep: tên tệp trong kho mang số hiệu này mà máy không tự nhận ra (ảnh quét hỏng dòng 'Số:').",
-   "loai_bo: quan hệ máy trích SAI, liệt kê để bỏ qua.",
+   "loai_bo: quan hệ máy trích SAI, liệt kê để bỏ qua. Câu chuyển tiếp trích sai thì ghi loai 'chuyen_tiep' (tu = văn bản mới, den = văn bản cũ).",
+   "chuyen_tiep (tùy chọn): câu chuyển tiếp máy không tự đọc ra, dạng {van_ban: văn bản mới, ap_dung_theo: [văn bản cũ], dieu_kien, moc: 'YYYY-MM-DD', doi_tuong: khoa|ho_so|khac, can_cu}. Chỉ ghi khi đã đối chiếu nguyên văn điều chuyển tiếp/hiệu lực thi hành.",
    "Ngày của các Thông tư ghi thêm ngày 30/9/2026 (sau 76/2018/TT-BTC) tra từ kết quả tìm kiếm web (luatvietnam, caselaw, thuvienphapluat...), CHƯA đối chiếu nguyên văn điều Hiệu lực thi hành; chỉ ghi ngày có nguồn nêu rõ và khớp quy tắc hiệu lực không sớm hơn 45 ngày sau ngày ký (trừ 15/2020, 21/2025, 3/2026, 23/2026, 27/2026, 30/2026: nhiều nguồn cùng ghi có hiệu lực kể từ ngày ký). Sửa ngay khi đối chiếu thấy khác."
  ],
  "van_ban": {

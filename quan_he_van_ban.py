@@ -17,6 +17,8 @@ câu hỏi cho tầng hỏi đáp:
   1. Văn bản này đang ở tình trạng hiệu lực nào?          -> nhan_hieu_luc()
   2. Khi trích văn bản này thì phải kéo thêm văn bản nào?  -> di_kem()
   3. Câu hỏi nhắc tới văn bản cũ thì văn bản nào thay nó?  -> van_ban_trong_cau_hoi()
+  4. Văn bản đã bị thay còn áp dụng cho ai theo điều khoản chuyển tiếp?
+                                                       -> mo_theo_chuyen_tiep()
 
 CẬP NHẬT KHI CÓ VĂN BẢN MỚI: không huấn luyện lại gì cả. Văn bản mới vào kho
 -> lượt nạp đêm lập chỉ mục -> dịch vụ khởi động lại dựng lại hồ sơ và đồ thị
@@ -35,6 +37,7 @@ import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+import chuyen_tiep
 import van_ban_meta
 
 THU_MUC_DU_AN = os.path.dirname(os.path.abspath(__file__))
@@ -187,6 +190,19 @@ def _viet_ngay(iso: str) -> str:
     return f"{int(ngay)}/{int(thang)}/{nam}"
 
 
+# "Thông tư này", "Nghị định này"... trong điều kiện chuyển tiếp, để thay bằng
+# tên văn bản mới khi câu được hiện cạnh văn bản cũ.
+MAU_LOAI_NAY = re.compile(
+    r"\b(?:Thông tư liên tịch|Thông tư|Nghị định|Luật|Quyết định|Nghị quyết|Quy chế)\s+này\b",
+    re.IGNORECASE,
+)
+
+
+def _chu_thuong_dau(chuoi: str) -> str:
+    """Viết thường chữ đầu để ghép vào giữa câu ("Riêng các khóa ...")."""
+    return chuoi[:1].lower() + chuoi[1:] if chuoi else chuoi
+
+
 class SoQuanHe:
     """Đồ thị quan hệ trên số hiệu, dựng từ hồ sơ văn bản + sổ nhập tay."""
 
@@ -252,7 +268,57 @@ class SoQuanHe:
             self.ra.setdefault(q.tu, []).append(q)
             self.vao.setdefault(q.den, []).append(q)
 
+        # Điều khoản chuyển tiếp: văn bản mới giữ văn bản cũ còn áp dụng cho
+        # một nhóm đối tượng. Không thành cạnh trong self.quan_he vì nó không
+        # đổi tình trạng chung của văn bản cũ (vẫn hết hiệu lực), chỉ mở một
+        # ngoại lệ - phải dựng SAU self.ra để hiểu được "quy định cũ" là gì.
+        self.chuyen_tiep: dict[str, list[dict]] = {}  # nút mới -> quy định của nó
+        self.giu_lai: dict[str, list[dict]] = {}      # nút cũ -> quy định giữ nó lại
+        loai_bo_chuyen_tiep = {(tu, den) for tu, loai, den in loai_bo if loai == "chuyen_tiep"}
+        for ten_file, thoi_gian in self.tinh_trang.items():
+            nut = self.nut_cua_tep.get(ten_file)
+            if not nut or nut.startswith("tep:") or self._la_du_thao(ten_file):
+                continue
+            for quy_dinh in getattr(thoi_gian, "chuyen_tiep", None) or []:
+                self._them_chuyen_tiep(nut, quy_dinh, "tu_dong", loai_bo_chuyen_tiep)
+        for quy_dinh in so_tay.get("chuyen_tiep") or []:
+            nut = chuan_so_hieu(quy_dinh.get("van_ban", ""))
+            if nut:
+                self._them_chuyen_tiep(nut, quy_dinh, "so_tay", set())
+
     # ------------------------------------------------------------------
+    def _them_chuyen_tiep(self, nut: str, quy_dinh: dict, nguon: str, loai_bo: set) -> None:
+        """Nối một câu chuyển tiếp của văn bản `nut` vào văn bản cũ nó giữ lại.
+
+        Câu nêu số hiệu thì theo đúng số hiệu đó. Câu chỉ nói "quy định cũ"
+        (hay không nói theo gì) thì là các văn bản mà `nut` đã thay hoặc bãi bỏ
+        một phần - biết được nhờ đồ thị, kể cả quan hệ ở sổ tay.
+        """
+        cu = [chuan_so_hieu(s) for s in quy_dinh.get("ap_dung_theo") or []]
+        if not cu and quy_dinh.get("theo_quy_dinh_cu"):
+            cu = [q.den for q in self.ra.get(nut, []) if q.loai in ("thay_the", "bai_bo_mot_phan")]
+        cu = [c for c in dict.fromkeys(cu) if c and c != nut and (nut, c) not in loai_bo]
+        moc = quy_dinh.get("moc")
+        if not moc and quy_dinh.get("moc_la_ngay_hieu_luc"):
+            # Ngày hiệu lực đọc được; không có thì ước theo ngày ban hành/năm
+            # trong số hiệu - mốc chỉ dùng để so theo năm.
+            moc = self._ngay_bat_dau(nut)
+        muc = {
+            "van_ban": nut,
+            "cu": cu,
+            "dieu_kien": quy_dinh.get("dieu_kien") or "",
+            "trich": quy_dinh.get("trich") or quy_dinh.get("dieu_kien") or "",
+            "doi_tuong": quy_dinh.get("doi_tuong") or "khac",
+            "moc": moc,
+            "nguon": nguon,
+            "can_cu": quy_dinh.get("can_cu", ""),
+        }
+        if any(m["cu"] == cu and m["trich"] == muc["trich"] for m in self.chuyen_tiep.get(nut, [])):
+            return
+        self.chuyen_tiep.setdefault(nut, []).append(muc)
+        for c in cu:
+            self.giu_lai.setdefault(c, []).append(muc)
+
     def _gan_tep(self, ten_file: str, nut: str) -> None:
         cu = self.nut_cua_tep.get(ten_file)
         if cu and ten_file in self.tep_cua_nut.get(cu, []):
@@ -348,7 +414,14 @@ class SoQuanHe:
         if thay_boi:
             da_hieu_luc = [t for t in thay_boi if not self._chua_hieu_luc(t, hom_nay)]
             if da_hieu_luc:
-                return {"code": "het_hieu_luc", "boi": da_hieu_luc}
+                tt = {"code": "het_hieu_luc", "boi": da_hieu_luc}
+                giu = [
+                    m for m in self.giu_lai.get(nut, [])
+                    if not self._chua_hieu_luc(m["van_ban"], hom_nay)
+                ]
+                if giu:
+                    tt["chuyen_tiep"] = giu
+                return tt
             ngay = min(self._ngay_bat_dau(t) for t in thay_boi)
             return {"code": "sap_het_hieu_luc", "boi": thay_boi, "tu_ngay": ngay}
         if self._chua_hieu_luc(nut, hom_nay):
@@ -390,6 +463,19 @@ class SoQuanHe:
             return None
         tt = self.tinh_trang_nut(nut, hom_nay)
         ten_boi = ", ".join(self.nhan_nut(t) for t in tt.get("boi", [])[:2])
+        if tt["code"] == "het_hieu_luc" and tt.get("chuyen_tiep"):
+            # Giữ mã bi_thay_the (gợi ý câu hỏi tiếp theo dựa vào nó); mức
+            # "vua" vì với đúng nhóm đối tượng này văn bản vẫn là căn cứ.
+            return {
+                "code": "bi_thay_the",
+                "chuyen_tiep": True,
+                "label": "Hết hiệu lực · còn áp dụng chuyển tiếp",
+                "note": (
+                    f"Đã bị thay thế bởi {ten_boi}; vẫn áp dụng cho: "
+                    f"{self.dieu_kien_viet(tt['chuyen_tiep'][0])}."
+                ),
+                "level": "vua",
+            }
         if tt["code"] == "het_hieu_luc":
             return {
                 "code": "bi_thay_the",
@@ -532,7 +618,14 @@ class SoQuanHe:
             tt = self.tinh_trang_nut(nut, hom_nay)
             ten_boi = ", ".join(self.nhan_nut(t) for t in tt.get("boi", []))
             if tt["code"] == "het_hieu_luc":
-                ghi_chu.append(f"{self.nhan_nut(nut)} đã hết hiệu lực, bị thay thế bởi {ten_boi}.")
+                ghi_chu.append(
+                    f"{self.nhan_nut(nut)} đã hết hiệu lực, bị thay thế bởi {ten_boi}."
+                    + (
+                        f" Riêng {_chu_thuong_dau(self.dieu_kien_viet(tt['chuyen_tiep'][0]))}"
+                        " vẫn áp dụng văn bản này (quy định chuyển tiếp)."
+                        if tt.get("chuyen_tiep") else ""
+                    )
+                )
             elif tt["code"] == "sap_het_hieu_luc":
                 ghi_chu.append(
                     f"{self.nhan_nut(nut)} còn áp dụng đến trước {_viet_ngay(tt['tu_ngay'])}, "
@@ -594,7 +687,15 @@ class SoQuanHe:
             tt = self.tinh_trang_nut(nut, hom_nay)
             so = nguon.get("evidence")
             ten = self.nhan_nut(nut)
-            if tt["code"] == "het_hieu_luc":
+            if tt["code"] == "het_hieu_luc" and tt.get("chuyen_tiep"):
+                loai = "chuyen_tiep"
+                quy_dinh = tt["chuyen_tiep"][0]
+                thong_bao = (
+                    f"Nguồn [{so}] {ten} đã bị thay thế bởi {ten_kem_evidence(tt['boi'])}, "
+                    f"nhưng vẫn áp dụng cho {_chu_thuong_dau(self.dieu_kien_viet(quy_dinh))} "
+                    f"theo quy định chuyển tiếp của {self.nhan_nut(quy_dinh['van_ban'])}."
+                )
+            elif tt["code"] == "het_hieu_luc":
                 loai = "thay_the"
                 thong_bao = f"Nguồn [{so}] {ten} đã hết hiệu lực: bị thay thế bởi {ten_kem_evidence(tt['boi'])}."
             elif tt["code"] == "sap_het_hieu_luc":
@@ -623,6 +724,163 @@ class SoQuanHe:
                 "boi": tt.get("boi", []), "thong_bao": thong_bao,
             })
         return ket_qua
+
+    # ------------------------------------------------------------------
+    # 4. ĐIỀU KHOẢN CHUYỂN TIẾP
+    # ------------------------------------------------------------------
+    def dieu_kien_viet(self, quy_dinh: dict) -> str:
+        """Điều kiện chuyển tiếp đọc được khi đứng cạnh văn bản CŨ: "trước
+        ngày Thông tư này có hiệu lực" -> "trước ngày Thông tư 8/2021/TT-BGDĐT
+        có hiệu lực" (đặt cạnh văn bản cũ thì "này" chỉ nhầm sang nó)."""
+        ten_moi = self.nhan_nut(quy_dinh["van_ban"])
+        # Kèm ngày khi mốc chính là ngày hiệu lực ĐỌC ĐƯỢC của văn bản mới -
+        # người hỏi cần ngày đó để tự đối chiếu khóa của mình. Mốc ước theo
+        # ngày ban hành thì không ghi: ghi sai ngày còn tệ hơn để trống.
+        moc = quy_dinh.get("moc")
+        if moc and moc == self.ngay_hieu_luc(quy_dinh["van_ban"]):
+            ten_moi += f" ({_viet_ngay(moc)})"
+        return MAU_LOAI_NAY.sub(lambda _: ten_moi, quy_dinh.get("dieu_kien") or "", count=1)
+
+    def _nut_chinh(self, ten_file: str) -> str | None:
+        """Nút của tệp; phụ lục tách tệp thì theo văn bản chính của nó."""
+        nut = self.nut_cua_tep.get(ten_file)
+        chinh = [q.den for q in self.ra.get(nut, []) if q.loai == "kem_theo"] if nut else []
+        return chinh[0] if chinh else nut
+
+    def _con_duoc_giu(self, nut_cu: str, hom_nay: date | None = None) -> bool:
+        """Văn bản cũ thật sự không còn nguyên hiệu lực - chỉ khi đó câu
+        "tiếp tục thực hiện theo X" mới là chuyển tiếp. X còn hiệu lực thì đó
+        là câu viện dẫn thường bị trích nhầm, báo "văn bản cũ" là sai."""
+        return self.tinh_trang_nut(nut_cu, hom_nay)["code"] in ("het_hieu_luc", "het_mot_phan")
+
+    def mo_theo_chuyen_tiep(self, cau_hoi: str) -> dict[str, dict]:
+        """
+        {nút văn bản cũ: quy định chuyển tiếp} mà câu hỏi thuộc đúng đối tượng.
+
+        Câu hỏi phải tự nói người hỏi thuộc khóa/đợt nào ("khóa tuyển sinh
+        2019", "đã nhập học", "khóa cũ"). Không nói gì thì coi là hỏi quy định
+        hiện hành - mở văn bản cũ cho mọi câu hỏi chỉ làm lẫn chữ cũ vào câu
+        trả lời của đa số người hỏi.
+        """
+        dau_hieu = chuyen_tiep.dau_hieu_trong_cau_hoi(cau_hoi)
+        if not dau_hieu.co:
+            return {}
+        mo: dict[str, dict] = {}
+        for cu, cac_quy_dinh in self.giu_lai.items():
+            if not self._con_duoc_giu(cu):
+                continue
+            for quy_dinh in cac_quy_dinh:
+                # Dấu hiệu trong câu hỏi là về khóa học/hồ sơ; câu chuyển tiếp
+                # về đối tượng khác (cơ sở được cấp phép...) không so được.
+                if quy_dinh["doi_tuong"] == "khac":
+                    continue
+                if chuyen_tiep.so_voi_moc(quy_dinh["moc"], dau_hieu.nam) != "khong":
+                    mo.setdefault(cu, quy_dinh)
+        return mo
+
+    def mo_cho_tep(self, ten_file: str, mo: dict[str, dict]) -> bool:
+        return bool(mo) and self._nut_chinh(ten_file) in mo
+
+    def di_kem_chuyen_tiep(self, ten_file: str, mo: dict[str, dict]) -> list[dict]:
+        """Tệp văn bản cũ phải đọc cùng `ten_file` (văn bản mới có điều khoản
+        chuyển tiếp) khi câu hỏi thuộc diện chuyển tiếp - cùng dạng di_kem()."""
+        nut = self.nut_cua_tep.get(ten_file)
+        ket_qua = []
+        for quy_dinh in self.chuyen_tiep.get(nut, []) if nut and mo else []:
+            for cu in quy_dinh["cu"]:
+                if mo.get(cu) is not quy_dinh:
+                    continue
+                for tep in self.tep_cua_nut.get(cu, []):
+                    if tep != ten_file and not self._la_du_thao(tep):
+                        ket_qua.append({
+                            "quan_he": "chuyen_tiep",
+                            "chieu": "ra",
+                            "mo_ta": "Còn áp dụng chuyển tiếp",
+                            "vai_tro": "Văn bản cũ còn áp dụng chuyển tiếp",
+                            "so_hieu": cu,
+                            "nhan": self.nhan_nut(cu),
+                            "tep": tep,
+                        })
+        return ket_qua
+
+    def _chuyen_tiep_cua_nguon(self, cac_nguon: list[dict], cau_hoi: str,
+                               hom_nay: date | None) -> list[tuple[dict, dict]]:
+        """(nguồn, quy định) cho mọi câu chuyển tiếp dính tới các nguồn đang trích.
+
+        Phía văn bản MỚI: chỉ báo khi câu chuyển tiếp còn có thể áp dụng cho
+        người hỏi - câu hỏi nêu khóa thì so với mốc; không nêu thì bỏ những
+        mốc đã quá RAG_CHUYEN_TIEP_SO_NAM năm (khóa tuyển sinh từ 2007 nay đã
+        ra trường cả; nhắc lại chỉ làm dài câu trả lời).
+        Phía văn bản CŨ: nó có mặt trong nguồn nghĩa là đã được mở (hỏi đúng
+        khóa, hoặc hỏi quy định trước đây), nên luôn báo.
+        """
+        dau_hieu = chuyen_tiep.dau_hieu_trong_cau_hoi(cau_hoi)
+        nam_nay = (hom_nay or date.today()).year
+        so_nam = int(os.getenv("RAG_CHUYEN_TIEP_SO_NAM", "6"))
+        ket_qua, da_co = [], set()
+        for nguon in cac_nguon:
+            nut = self._nut_chinh(nguon.get("name"))
+            if not nut:
+                continue
+            cac_quy_dinh = [(m, "moi") for m in self.chuyen_tiep.get(nut, [])]
+            if self.tinh_trang_nut(nut, hom_nay).get("chuyen_tiep"):
+                cac_quy_dinh += [(m, "cu") for m in self.giu_lai.get(nut, [])]
+            for quy_dinh, phia in cac_quy_dinh:
+                if id(quy_dinh) in da_co or not any(
+                    self._con_duoc_giu(c, hom_nay) for c in quy_dinh["cu"]
+                ):
+                    continue
+                if phia == "moi":
+                    if dau_hieu.co and quy_dinh["doi_tuong"] != "khac":
+                        if chuyen_tiep.so_voi_moc(quy_dinh["moc"], dau_hieu.nam) == "khong":
+                            continue
+                    elif quy_dinh["moc"] and int(quy_dinh["moc"][:4]) < nam_nay - so_nam:
+                        continue
+                da_co.add(id(quy_dinh))
+                ket_qua.append((nguon, quy_dinh))
+        return ket_qua
+
+    def canh_bao_chuyen_tiep(self, cac_nguon: list[dict], cau_hoi: str = "",
+                             hom_nay: date | None = None) -> list[dict]:
+        """Cảnh báo cho giao diện, cùng dạng canh_bao(): nguồn là văn bản mới
+        có điều khoản chuyển tiếp. Phía văn bản cũ đã có canh_bao() báo."""
+        noi_cau_hoi = chuyen_tiep.dau_hieu_trong_cau_hoi(cau_hoi).co
+        nut_nguon = {self._nut_chinh(n.get("name")) for n in cac_nguon}
+        ket_qua = []
+        for nguon, quy_dinh in self._chuyen_tiep_cua_nguon(cac_nguon, cau_hoi, hom_nay):
+            # Văn bản cũ cũng đang là nguồn thì canh_bao() đã báo kèm nó.
+            if self._nut_chinh(nguon.get("name")) != quy_dinh["van_ban"] or any(
+                c in nut_nguon for c in quy_dinh["cu"]
+            ):
+                continue
+            ten_cu = ", ".join(self.nhan_nut(c) for c in quy_dinh["cu"][:2])
+            thong_bao = (
+                f"Nguồn [{nguon.get('evidence')}] {self.nhan_nut(quy_dinh['van_ban'])} có quy định "
+                f"chuyển tiếp: {_chu_thuong_dau(self.dieu_kien_viet(quy_dinh))} vẫn áp dụng {ten_cu}."
+            )
+            if not any(self.tep_cua_nut.get(c) for c in quy_dinh["cu"]):
+                # Nói thẳng để người đọc không tưởng câu trả lời đã đối chiếu văn bản cũ.
+                thong_bao += " Văn bản cũ này không có trong kho."
+            elif not noi_cau_hoi:
+                thong_bao += " Nếu bạn thuộc diện này, hãy hỏi kèm khóa/năm nhập học để được trả lời theo văn bản cũ."
+            ket_qua.append({
+                "evidence": nguon.get("evidence"),
+                "nguon": nguon.get("name"),
+                "loai": "chuyen_tiep",
+                "boi": [quy_dinh["van_ban"]],
+                "thong_bao": thong_bao,
+            })
+        return ket_qua
+
+    def ghi_chu_chuyen_tiep(self, cac_nguon: list[dict], cau_hoi: str = "",
+                            hom_nay: date | None = None) -> list[str]:
+        """Nguyên văn các câu chuyển tiếp liên quan, để đưa vào prompt: mô hình
+        cần đúng chữ của điều khoản để trả lời có điều kiện, không phải tóm tắt."""
+        return [
+            f"{self.nhan_nut(quy_dinh['van_ban'])} quy định: \"{quy_dinh['trich']}\" "
+            f"(văn bản cũ: {', '.join(self.nhan_nut(c) for c in quy_dinh['cu'][:3])})."
+            for _, quy_dinh in self._chuyen_tiep_cua_nguon(cac_nguon, cau_hoi, hom_nay)
+        ]
 
     # ------------------------------------------------------------------
     def ngay_cua_tep(self, ten_file: str) -> str | None:
@@ -661,6 +919,9 @@ class SoQuanHe:
                 {"tu": q.tu, "loai": q.loai, "den": q.den, "nguon": q.nguon, "can_cu": q.can_cu}
                 for q in sorted(self.quan_he, key=lambda q: (q.den, q.loai, q.tu))
             ],
+            "chuyen_tiep": [
+                quy_dinh for nut in sorted(self.chuyen_tiep) for quy_dinh in self.chuyen_tiep[nut]
+            ],
         }
 
     def luu(self, duong_dan: str = DUONG_DAN_XUAT) -> None:
@@ -679,6 +940,8 @@ class SoQuanHe:
             "quan_he": dem,
             "quan_he_ca_hai_trong_kho": len(hai_dau_trong_kho),
             "tu_so_tay": sum(1 for q in self.quan_he if q.nguon == "so_tay"),
+            "chuyen_tiep": sum(len(v) for v in self.chuyen_tiep.values()),
+            "van_ban_con_ap_dung_chuyen_tiep": len(self.giu_lai),
         }
 
 
@@ -729,6 +992,12 @@ def main() -> int:
         tt = so.tinh_trang_nut(nut)
         if tt["code"] != "con_hieu_luc":
             print(f"  {so.nhan_nut(nut)} [{tt['code']}] <- {', '.join(tt.get('boi', []))}  ({cac_tep[0][:50]})")
+    print("\nĐiều khoản chuyển tiếp (văn bản mới -> văn bản cũ còn áp dụng):")
+    for nut in sorted(so.chuyen_tiep):
+        for quy_dinh in so.chuyen_tiep[nut]:
+            cu = ", ".join(quy_dinh["cu"]) or "(chưa xác định văn bản cũ)"
+            print(f"  {so.nhan_nut(nut)} -> {cu} [{quy_dinh['doi_tuong']}, mốc {quy_dinh['moc'] or '?'}]")
+            print(f"      \"{quy_dinh['trich'][:160]}\"")
     return 0
 
 

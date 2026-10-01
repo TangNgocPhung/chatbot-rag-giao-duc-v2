@@ -20,6 +20,7 @@ from urllib.parse import quote
 import requests
 
 import cache_ngu_nghia
+import chuyen_tiep
 import drive_sync
 import goi_y_cau_hoi
 import kiem_tra_tra_loi
@@ -1301,16 +1302,27 @@ class RAGService:
         # văn bản cũ - chính vì thế văn bản cũ được giữ chứ không xoá. Hiệu lực
         # tính theo đồ thị ngay lúc hỏi, nên văn bản thay thế vừa tới ngày hiệu
         # lực là có tác dụng luôn, không đợi khởi động lại.
-        che_do, _ = quan_he_van_ban.che_do_thoi_gian(question)
-        lich_su = che_do == "lich_su"
-        loc_hieu_luc = None
-        if not lich_su and os.getenv("RAG_LOC_HIEU_LUC", "1") == "1":
-            so = self.so_quan_he
-            loc_hieu_luc = lambda doc: not so.het_hieu_luc(doc.metadata.get("source_file"))
+        lich_su = quan_he_van_ban.che_do_thoi_gian(question)[0] == "lich_su"
         return truy_hoi(
             question, self.vector_store, self.bm25_retriever,
             so_ket_qua or SO_KET_QUA_CUOI, bo_loc, self.tu_vung,
-            loc_hieu_luc, lich_su,
+            None if lich_su else self._loc_hieu_luc(question), lich_su,
+        )
+
+    def _loc_hieu_luc(self, question: str):
+        """Bộ lọc (Document -> bool) cho câu hỏi về quy định hiện hành: bỏ văn
+        bản đã hết hiệu lực, None nếu tắt bằng RAG_LOC_HIEU_LUC=0.
+
+        Ngoại lệ: văn bản đã bị thay mà điều khoản chuyển tiếp còn giữ cho đúng
+        khóa người hỏi nêu ("khóa tuyển sinh 2019") - với họ văn bản cũ mới là
+        căn cứ (xem chuyen_tiep.py)."""
+        if os.getenv("RAG_LOC_HIEU_LUC", "1") != "1":
+            return None
+        so = self.so_quan_he
+        mo = so.mo_theo_chuyen_tiep(question)
+        return lambda doc: (
+            not so.het_hieu_luc(doc.metadata.get("source_file"))
+            or so.mo_cho_tep(doc.metadata.get("source_file"), mo)
         )
 
     def _them_van_ban_di_kem(self, documents: list, question: str,
@@ -1353,6 +1365,17 @@ class RAGService:
 
         # (số EVIDENCE của nguồn gốc - None nếu kéo theo câu hỏi, mục đi kèm)
         ung_vien = [(None, muc) for muc in keo_theo_cau_hoi]
+        # Người hỏi thuộc diện chuyển tiếp: văn bản cũ được giữ lại đứng trước
+        # mọi văn bản đi kèm khác - thiếu nó thì câu trả lời sai đối tượng.
+        mo = so.mo_theo_chuyen_tiep(question)
+        for so_evidence, doc in enumerate(documents, 1) if mo else ():
+            ten_file = doc.metadata.get("source_file")
+            for muc in so.di_kem_chuyen_tiep(ten_file, mo):
+                ung_vien.append((so_evidence, {
+                    **muc,
+                    "cua": so.nhan_nut(so.nut_cua_tep.get(ten_file, "")) or ten_file,
+                    "so_hieu_goc": so.nut_cua_tep.get(ten_file),
+                }))
         for so_evidence, doc in enumerate(documents, 1):
             ten_file = doc.metadata.get("source_file")
             for muc in so.di_kem(ten_file, hom_nay):
@@ -1838,6 +1861,10 @@ class RAGService:
         # gần như trùng về ngữ nghĩa mà câu trả lời dựa trên văn bản khác nhau.
         if quan_he_van_ban.che_do_thoi_gian(question)[0] == "lich_su":
             return False
+        # "Khóa 2019" và "khóa 2023" cũng vậy: điều khoản chuyển tiếp có thể
+        # bắt hai khóa theo hai văn bản khác nhau.
+        if chuyen_tiep.dau_hieu_trong_cau_hoi(question).co:
+            return False
         return not tim_url_trong_cau_hoi(question)
 
     def _vector_cau_hoi(self, question: str) -> list[float] | None:
@@ -2181,6 +2208,9 @@ class RAGService:
                         for ghi_chu in ghi_chu_hieu_luc
                     ]
                     + self.so_quan_he.canh_bao(cac_nguon, thoi_diem)
+                    + self.so_quan_he.canh_bao_chuyen_tiep(
+                        cac_nguon, retrieval_question, thoi_diem
+                    )
                     + hieu_luc_bo_sung.canh_bao(self.tinh_trang_hieu_luc, cac_nguon, thoi_diem)
                     + hieu_luc_bo_sung.canh_bao_doan(cac_nguon, documents)
                 )
@@ -2198,6 +2228,20 @@ class RAGService:
                 # văn bản cũ đã bị thay, thay vì im lặng dùng số hiệu cũ.
                 context = (
                     "TÌNH TRẠNG VĂN BẢN ĐƯỢC HỎI: " + " ".join(ghi_chu_hieu_luc) + "\n\n" + context
+                )
+            ghi_chu_chuyen_tiep = self.so_quan_he.ghi_chu_chuyen_tiep(
+                cac_nguon, retrieval_question, thoi_diem
+            )
+            if ghi_chu_chuyen_tiep:
+                # Văn bản mới không áp dụng cho mọi người: đưa NGUYÊN VĂN câu
+                # chuyển tiếp để mô hình trả lời đúng đối tượng, và gỡ luật 7)
+                # cho khối văn bản cũ còn áp dụng chuyển tiếp.
+                context = (
+                    "QUY ĐỊNH CHUYỂN TIẾP: " + " ".join(ghi_chu_chuyen_tiep)
+                    + " Người hỏi thuộc đối tượng chuyển tiếp thì trả lời theo văn bản cũ "
+                    "(khối ghi \"còn áp dụng chuyển tiếp\" được dùng làm căn cứ) và nói rõ vì sao; "
+                    "chưa rõ người hỏi thuộc trường hợp nào thì nêu cả hai trường hợp.\n\n"
+                    + context
                 )
             if che_do_thoi_gian == "lich_su":
                 # Luật 7) của prompt cấm dựa vào khối hết hiệu lực - đúng với
