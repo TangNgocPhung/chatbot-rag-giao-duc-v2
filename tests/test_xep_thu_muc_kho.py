@@ -289,6 +289,31 @@ def test_chay_lai_khong_xao_tron(kho_cu):
     assert ke_hoach == {}
 
 
+def test_xep_lai_chua_phan_loai_chi_khi_duoc_yeu_cau(kho_cu):
+    """Tệp trong chua_phan_loai/ nay đã xếp được thì chuyển; tệp vẫn không rõ
+    và tệp quản trị viên đã xếp tay thì giữ nguyên."""
+    kho, so_ghi_chep, _, _ = kho_cu
+    chua = kho / "pdf" / "chua_phan_loai"
+    chua.mkdir(parents=True)
+    sgk = chua / "11-sgk-giao-duc-kinh-te-va-phap-luat-11.pdf"
+    sgk.write_bytes(b"%PDF-1.4 sgk")
+    (chua / "van-khong-ro.pdf").write_bytes(b"%PDF-1.4 x")
+    so_ghi_chep.write_text(json.dumps({str(sgk): {"hash": "c"}}), encoding="utf-8")
+
+    ke_hoach, _ = xep_kho_theo_loai.lap_ke_hoach()
+    assert str(sgk) not in ke_hoach
+
+    ke_hoach, _ = xep_kho_theo_loai.lap_ke_hoach(xep_lai_chua_phan_loai=True)
+    dich = kho / "pdf" / "sach_giao_khoa" / sgk.name
+    assert ke_hoach[str(sgk)] == str(dich)
+    assert str(chua / "van-khong-ro.pdf") not in ke_hoach
+    assert not any("da-xep-tay" in cu for cu in ke_hoach)
+
+    xep_kho_theo_loai.thuc_hien(ke_hoach)
+    assert dich.is_file() and (chua / "van-khong-ro.pdf").is_file()
+    assert json.loads(so_ghi_chep.read_text(encoding="utf-8")) == {str(dich): {"hash": "c"}}
+
+
 def test_thu_xem_khong_dung_vao_tep(kho_cu, monkeypatch, capsys):
     kho, so_ghi_chep, _, _ = kho_cu
     truoc = so_ghi_chep.read_text(encoding="utf-8")
