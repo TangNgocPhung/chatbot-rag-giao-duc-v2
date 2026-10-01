@@ -102,6 +102,10 @@ class TinhTrangThoiGian:
     # Câu chuyển tiếp của văn bản này (chuyen_tiep.trich_chuyen_tiep): nhóm
     # đối tượng nào vẫn theo văn bản cũ dù văn bản này đã thay nó.
     chuyen_tiep: list[dict] = field(default_factory=list)
+    # Câu cho văn bản quy định chi tiết của văn bản cũ tiếp tục áp dụng
+    # (chuyen_tiep.trich_giu_van_ban_huong_dan) - có thì không cảnh báo hết
+    # hiệu lực dây chuyền cho các văn bản đó.
+    giu_van_ban_huong_dan: str | None = None
 
     def chua_toi_ngay_hieu_luc(self, hom_nay: date | None = None) -> bool:
         if not self.ngay_hieu_luc:
@@ -206,6 +210,8 @@ def xay_dung(
             chuyen_tiep=chuyen_tiep.trich_chuyen_tiep(
                 van_ban, muc.so_hieu if muc else None
             ) if muc is None or muc.la_qppl else [],
+            giu_van_ban_huong_dan=chuyen_tiep.trich_giu_van_ban_huong_dan(van_ban)
+            if muc is None or muc.la_qppl else None,
         )
     return tinh_trang
 

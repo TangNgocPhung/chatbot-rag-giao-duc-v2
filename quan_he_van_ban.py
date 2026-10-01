@@ -19,6 +19,8 @@ câu hỏi cho tầng hỏi đáp:
   3. Câu hỏi nhắc tới văn bản cũ thì văn bản nào thay nó?  -> van_ban_trong_cau_hoi()
   4. Văn bản đã bị thay còn áp dụng cho ai theo điều khoản chuyển tiếp?
                                                        -> mo_theo_chuyen_tiep()
+  5. Văn bản hướng dẫn có thể đã hết hiệu lực theo văn bản nó hướng dẫn?
+                                                       -> het_theo_goc()
 
 CẬP NHẬT KHI CÓ VĂN BẢN MỚI: không huấn luyện lại gì cả. Văn bản mới vào kho
 -> lượt nạp đêm lập chỉ mục -> dịch vụ khởi động lại dựng lại hồ sơ và đồ thị
@@ -286,6 +288,19 @@ class SoQuanHe:
             if nut:
                 self._them_chuyen_tiep(nut, quy_dinh, "so_tay", set())
 
+        # Văn bản mới cho văn bản quy định chi tiết của văn bản cũ tiếp tục áp
+        # dụng: {nút văn bản mới: câu nguyên văn}. Sổ tay ghi được bằng
+        # van_ban.<số hiệu>.giu_van_ban_huong_dan khi máy không đọc ra.
+        self.giu_huong_dan: dict[str, str] = {}
+        for ten_file, thoi_gian in self.tinh_trang.items():
+            nut = self.nut_cua_tep.get(ten_file)
+            cau = getattr(thoi_gian, "giu_van_ban_huong_dan", None)
+            if nut and cau and not self._la_du_thao(ten_file):
+                self.giu_huong_dan.setdefault(nut, cau)
+        for nut, muc in self.thong_tin.items():
+            if muc.get("giu_van_ban_huong_dan"):
+                self.giu_huong_dan[nut] = muc["giu_van_ban_huong_dan"]
+
     # ------------------------------------------------------------------
     def _them_chuyen_tiep(self, nut: str, quy_dinh: dict, nguon: str, loai_bo: set) -> None:
         """Nối một câu chuyển tiếp của văn bản `nut` vào văn bản cũ nó giữ lại.
@@ -504,6 +519,19 @@ class SoQuanHe:
                 "note": "Chính đoạn được trích đã bị một văn bản khác sửa đổi hoặc bãi bỏ.",
                 "level": "vua",
             }
+        het_goc = self.het_theo_goc(nut, hom_nay) if tt["code"] in (
+            "con_hieu_luc", "da_sua_doi", "het_mot_phan"
+        ) else None
+        if het_goc:
+            return {
+                "code": "het_theo_goc",
+                "label": "Sắp cần kiểm tra hiệu lực" if het_goc["sap"] else "Cần kiểm tra hiệu lực",
+                "note": (
+                    f"Văn bản này {self.mo_ta_het_theo_goc(het_goc)}. Văn bản quy định chi tiết "
+                    "thường hết hiệu lực cùng văn bản được hướng dẫn, trừ khi văn bản mới cho giữ lại."
+                ),
+                "level": "vua",
+            }
         if tt["code"] == "het_mot_phan":
             return {
                 "code": "het_mot_phan",
@@ -631,6 +659,13 @@ class SoQuanHe:
                     f"{self.nhan_nut(nut)} còn áp dụng đến trước {_viet_ngay(tt['tu_ngay'])}, "
                     f"sau đó thay bằng {ten_boi}."
                 )
+            elif tt["code"] != "chua_hieu_luc" and (het_goc := self.het_theo_goc(nut, hom_nay)):
+                # Không kéo văn bản nào vào: chưa có văn bản thay chính nó.
+                ghi_chu.append(
+                    f"{self.nhan_nut(nut)} {self.mo_ta_het_theo_goc(het_goc)} - cần kiểm tra "
+                    "văn bản này còn được áp dụng không."
+                )
+                continue
             elif tt["code"] == "het_mot_phan":
                 ghi_chu.append(f"{self.nhan_nut(nut)} đã bị bãi bỏ một phần bởi {ten_boi}.")
             elif tt["code"] == "da_sua_doi":
@@ -703,6 +738,13 @@ class SoQuanHe:
                 thong_bao = (
                     f"Nguồn [{so}] {ten} chỉ còn áp dụng đến trước {_viet_ngay(tt['tu_ngay'])}, "
                     f"sau đó thay bằng {ten_kem_evidence(tt['boi'])}."
+                )
+            elif tt["code"] != "chua_hieu_luc" and (het_goc := self.het_theo_goc(nut, hom_nay)):
+                loai = "het_theo_goc"
+                thong_bao = (
+                    f"Nguồn [{so}] {ten} {self.mo_ta_het_theo_goc(het_goc)}. Văn bản quy định "
+                    "chi tiết thường hết hiệu lực cùng văn bản được hướng dẫn - cần kiểm tra "
+                    "văn bản này còn được áp dụng không."
                 )
             elif tt["code"] == "het_mot_phan":
                 loai = "bai_bo_mot_phan"
@@ -883,6 +925,92 @@ class SoQuanHe:
         ]
 
     # ------------------------------------------------------------------
+    # 5. HẾT HIỆU LỰC DÂY CHUYỀN THEO VĂN BẢN ĐƯỢC HƯỚNG DẪN
+    # ------------------------------------------------------------------
+    def het_theo_goc(self, nut: str, hom_nay: date | None = None,
+                     _dang_xet: frozenset = frozenset()) -> dict | None:
+        """
+        Văn bản `nut` quy định chi tiết/hướng dẫn một văn bản đã (hoặc sắp) hết
+        hiệu lực - trực tiếp, hay qua chuỗi Luật -> Nghị định -> Thông tư.
+
+        Luật Ban hành VBQPPL 2015 (Điều 154 khoản 3) quy định văn bản quy định
+        chi tiết hết hiệu lực đồng thời với văn bản (hoặc điều, khoản) được quy
+        định chi tiết. Nhưng quy tắc có ngoại lệ, luật mới hay cho giữ lại văn
+        bản hướng dẫn cũ, và cạnh "hướng dẫn" trích bằng máy có thể chỉ đúng
+        một phần - nên kết quả chỉ dùng để CẢNH BÁO "cần kiểm tra", không
+        bao giờ để lọc văn bản khỏi truy hồi như het_hieu_luc().
+
+        Không cảnh báo khi:
+          - văn bản thay thế văn bản gốc có câu giữ lại văn bản quy định chi
+            tiết (self.giu_huong_dan);
+          - chính `nut` còn được sửa đổi/bãi bỏ một phần SAU ngày văn bản gốc
+            hết hiệu lực - không ai sửa một văn bản đã chết;
+          - `nut` ban hành sau ngày đó (cạnh hướng dẫn gần như chắc là trích nhầm);
+          - sổ tay ghi van_ban.<số hiệu>.giu_hieu_luc.
+
+        Trả về {"goc", "thay_goc", "tu_ngay", "sap", "chuoi"} hoặc None.
+        "chuoi": các văn bản từ cấp trên trực tiếp tới văn bản đã hết hiệu lực.
+        """
+        if not nut or nut in _dang_xet or len(_dang_xet) > 4:
+            return None
+        chinh = [q.den for q in self.ra.get(nut, []) if q.loai == "kem_theo"]
+        if chinh:
+            return self.het_theo_goc(chinh[0], hom_nay, _dang_xet | {nut})
+        if (self.thong_tin.get(nut) or {}).get("giu_hieu_luc"):
+            return None
+        dang_xet = _dang_xet | {nut}
+        for q in self.ra.get(nut, []):
+            if q.loai != "huong_dan":
+                continue
+            tt = self.tinh_trang_nut(q.den, hom_nay)
+            if tt["code"] in ("het_hieu_luc", "sap_het_hieu_luc"):
+                if any(t in self.giu_huong_dan for t in tt["boi"]):
+                    continue
+                ngay = [n for n in (self._ngay_bat_dau(t) for t in tt["boi"]) if n]
+                ket_qua = {
+                    "goc": q.den,
+                    "thay_goc": tt["boi"],
+                    "tu_ngay": min(ngay) if ngay else None,
+                    "sap": tt["code"] == "sap_het_hieu_luc",
+                    "chuoi": [q.den],
+                }
+            else:
+                tren = self.het_theo_goc(q.den, hom_nay, dang_xet)
+                if not tren:
+                    continue
+                ket_qua = {**tren, "chuoi": [q.den] + tren["chuoi"]}
+            if self._con_song_sau(nut, ket_qua["tu_ngay"]):
+                continue
+            return ket_qua
+        return None
+
+    def _con_song_sau(self, nut: str, tu_ngay: str | None) -> bool:
+        """Dấu hiệu `nut` vẫn được áp dụng sau ngày `tu_ngay`: ban hành sau
+        ngày đó, hoặc bị sửa đổi/bãi bỏ một phần bởi văn bản có hiệu lực từ
+        ngày đó trở đi."""
+        if not tu_ngay:
+            return False
+        ngay_nut = self._ngay_ban_hanh(nut) or self.ngay_hieu_luc(nut)
+        if ngay_nut and ngay_nut >= tu_ngay:
+            return True
+        return any(
+            q.loai in ("sua_doi", "bai_bo_mot_phan") and (self._ngay_bat_dau(q.tu) or "") >= tu_ngay
+            for q in self.vao.get(nut, [])
+        )
+
+    def mo_ta_het_theo_goc(self, ket_qua: dict) -> str:
+        """"hướng dẫn Luật 8/2012/QH13, đã bị thay bởi Luật 125/2025/QH15 từ
+        1/1/2026" - kèm cả chuỗi khi đi qua văn bản trung gian."""
+        chuoi = ket_qua["chuoi"]
+        dau = f"hướng dẫn {self.nhan_nut(chuoi[0])}"
+        if len(chuoi) > 1:
+            dau += f" (văn bản này lại hướng dẫn {' → '.join(self.nhan_nut(n) for n in chuoi[1:])})"
+        thay = ", ".join(self.nhan_nut(t) for t in ket_qua["thay_goc"][:2])
+        ngay = f" từ {_viet_ngay(ket_qua['tu_ngay'])}" if ket_qua.get("tu_ngay") else ""
+        dong_tu = "sẽ bị thay" if ket_qua.get("sap") else "đã bị thay"
+        return f"{dau}; {self.nhan_nut(ket_qua['goc'])} {dong_tu} bởi {thay}{ngay}"
+
+    # ------------------------------------------------------------------
     def ngay_cua_tep(self, ten_file: str) -> str | None:
         """Ngày áp dụng của văn bản chứa tệp này - cho trọng số thời gian."""
         nut = self.nut_cua_tep.get(ten_file)
@@ -910,6 +1038,9 @@ class SoQuanHe:
                 "tu_ngay": tt.get("tu_ngay"),
                 "ngay_hieu_luc": self.ngay_hieu_luc(nut),
                 "tep": self.tep_cua_nut.get(nut, []),
+                # Chỉ là nghi vấn cần đối chiếu, không đổi "tinh_trang".
+                "het_theo_goc": self.het_theo_goc(nut, hom_nay)
+                if tt["code"] in ("con_hieu_luc", "da_sua_doi", "het_mot_phan") else None,
             }
         return {
             "ngay_tinh": (hom_nay or date.today()).isoformat(),
@@ -998,6 +1129,11 @@ def main() -> int:
             cu = ", ".join(quy_dinh["cu"]) or "(chưa xác định văn bản cũ)"
             print(f"  {so.nhan_nut(nut)} -> {cu} [{quy_dinh['doi_tuong']}, mốc {quy_dinh['moc'] or '?'}]")
             print(f"      \"{quy_dinh['trich'][:160]}\"")
+    print("\nCó thể hết hiệu lực theo văn bản được hướng dẫn (cần đối chiếu):")
+    for nut in sorted(n for n in so.tep_cua_nut if not n.startswith("tep:")):
+        if so.tinh_trang_nut(nut)["code"] in ("con_hieu_luc", "da_sua_doi", "het_mot_phan"):
+            if het_goc := so.het_theo_goc(nut):
+                print(f"  {so.nhan_nut(nut)}: {so.mo_ta_het_theo_goc(het_goc)}")
     return 0
 
 

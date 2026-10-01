@@ -330,3 +330,32 @@ def so_voi_moc(moc: str | None, nam: int | None) -> str:
     if nam > nam_moc or moc[5:] == "01-01":
         return "khong"
     return "co_the"
+
+
+# ============================================================
+# 4. GIỮ LẠI VĂN BẢN QUY ĐỊNH CHI TIẾT CỦA VĂN BẢN CŨ
+# ============================================================
+# Luật mới thay Luật cũ thì văn bản quy định chi tiết Luật cũ thường hết hiệu
+# lực theo (quan_he_van_ban.SoQuanHe.het_theo_goc) - TRỪ khi chính Luật mới
+# cho giữ lại: "Các văn bản quy định chi tiết thi hành Luật ... tiếp tục có
+# hiệu lực/được áp dụng nếu không trái với Luật này". Câu này nằm ở văn bản
+# MỚI, nên phải đọc nó thì mới biết không được cảnh báo.
+MAU_VAN_BAN_HUONG_DAN = re.compile(r"vanban(?:quydinhchitiet|huongdan)")
+MAU_GIU_HIEU_LUC = re.compile(r"tieptuc(?:duoc)?(?:co)?(?:hieuluc|apdung|thuchien)")
+
+
+def trich_giu_van_ban_huong_dan(van_ban: str) -> str | None:
+    """Câu (gọn khoảng trắng) mà văn bản này cho văn bản quy định chi tiết
+    của văn bản cũ tiếp tục áp dụng; None nếu không có."""
+    van_ban = van_ban or ""
+    da_xet: set[tuple[int, int]] = set()
+    for khop in MAU_UNG_VIEN.finditer(van_ban):
+        dau, cuoi = _cat_cau(van_ban, khop.start())
+        if (dau, cuoi) in da_xet:
+            continue
+        da_xet.add((dau, cuoi))
+        cau_nen = nen(van_ban[dau:cuoi])
+        if MAU_VAN_BAN_HUONG_DAN.search(cau_nen) and MAU_GIU_HIEU_LUC.search(cau_nen):
+            trich = MAU_SO_THU_TU.sub("", _gon(van_ban[dau:cuoi]), count=1)
+            return trich[:DO_DAI_TRICH].rsplit(" ", 1)[0] + "…" if len(trich) > DO_DAI_TRICH else trich
+    return None
