@@ -328,7 +328,7 @@ class RAGService:
         # mô hình mặc định được dựng khi có người dùng tới lần đầu rồi giữ lại.
         self._chuoi_theo_mo_hinh: dict[str, tuple] = {}
         self._khoa_chuoi = threading.Lock()
-        self._mo_hinh_co_san: tuple[float, set[str]] = (0.0, set())
+        self._mo_hinh_co_san: tuple[float, set[str]] = (float("-inf"), set())
         self.format_docs = None
         self._no_text_sources: list[str] = []
         self._initialization_lock = threading.Lock()
