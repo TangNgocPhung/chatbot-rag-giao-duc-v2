@@ -148,6 +148,44 @@ class GanNhanTests(unittest.TestCase):
             with self.subTest(ten=ten):
                 self.assertNotEqual(pl.suy_phan_loai(ten).loai_noi_dung, "sach_bai_tap")
 
+    def test_viet_tat_dinh_vao_ten_mon_van_tach_duoc(self):
+        p = pl.suy_phan_loai("01-sgvtieng-viet-1-tap-hai.pdf")
+        self.assertEqual(p.loai_noi_dung, "sach_giao_vien")
+        self.assertEqual((p.mon_hoc, p.lop), (["Ngữ văn"], [1]))
+
+    def test_bia_co_tong_chu_bien_va_nha_xuat_ban_la_sgk(self):
+        bia = ("BỘ GIÁO DỤC VÀ ĐÀO TẠO\nLÊ TUYẾT NGA (Tổng Chủ biên)\n"
+               "NHÀ XUẤT BẢN GIÁO DỤC VIỆT NAM")
+        self.assertEqual(pl.suy_phan_loai("06-tieng-duc-6.pdf", bia).loai_noi_dung,
+                         "sach_giao_khoa")
+        self.assertNotEqual(pl.suy_phan_loai("06-tieng-duc-6.pdf", "Bài 1").loai_noi_dung,
+                            "sach_giao_khoa")
+
+    def test_ke_hoach_day_hoc(self):
+        for ten, noi_dung in [
+            ("PPCT-5.docx", ""),
+            ("PhanPhoi-ChuongTrinh-Lop3.docx", ""),
+            ("BẢNG THAM CHIẾU TÍCH HỢP AI VÀO MÔN TIN HỌC 3.docx", ""),
+            ("DayHocTichHop-Tin4.docx", ""),
+            ("PPCT-Tin10-KNTT.xlsx", ""),
+            ("ke-hoach.docx", "GỢI Ý PHÂN PHỐI CHƯƠNG TRÌNH TIN HỌC 3\nTiết 1. Bài 1"),
+        ]:
+            with self.subTest(ten=ten):
+                self.assertEqual(pl.suy_phan_loai(ten, noi_dung).loai_noi_dung,
+                                 "ke_hoach_day_hoc")
+        # Giáo án tích hợp vẫn là giáo án.
+        self.assertEqual(pl.suy_phan_loai("Giao an tich hop Tin 4.docx").loai_noi_dung,
+                         "giao_an")
+
+    def test_kiem_tra_thuong_xuyen_la_de(self):
+        self.assertEqual(pl.suy_phan_loai("phieu-kttx1-thu-thach-xanh.docx").loai_noi_dung,
+                         "de_kiem_tra")
+
+    def test_ma_van_phong_trong_ten_la_van_ban(self):
+        for ten in ("2026_172_40_VBHN-VPQH.docx", "9416-vpcp.signed.pdf"):
+            with self.subTest(ten=ten):
+                self.assertEqual(pl.suy_phan_loai(ten).loai_noi_dung, "van_ban_quy_pham")
+
     GIAO_AN_MAU = (
         "Bài 10: CẤU TRÚC TUẦN TỰ (tiết 1)\nYÊU CẦU CẦN ĐẠT\nKiến thức: ...\n"
         "II. ĐỒ DÙNG DẠY HỌC\n1. Giáo viên: máy chiếu. 2. Học sinh: SGK, SBT.\n"

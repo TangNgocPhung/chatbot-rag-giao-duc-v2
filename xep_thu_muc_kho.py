@@ -46,8 +46,10 @@ from hybrid_retrieval import bo_dau
 from media_transcribe import DINH_DANG_MEDIA
 from phan_loai_giao_duc import (
     LOAI_NOI_DUNG_MAC_DINH,
+    MAU_KE_HOACH_DAY_HOC_TEN,
     NHAN_LOAI_NOI_DUNG,
     PhanLoai,
+    _chuan_hoa,
     suy_phan_loai,
 )
 from van_ban_meta import (
@@ -113,6 +115,8 @@ THU_MUC_LOAI_VAN_BAN = {
     "Nghị quyết": "nghi_quyet",
     "Chỉ thị": "chi_thi",
     "Công văn": "cong_van",
+    "Công điện": "cong_dien",
+    "Văn bản hợp nhất": "van_ban_hop_nhat",
     "Hướng dẫn": "huong_dan",
     "Kế hoạch": "ke_hoach",
     "Thông báo": "thong_bao",
@@ -121,7 +125,8 @@ THU_MUC_VAN_BAN_KHAC = "khac"
 
 # suy_loai_van_ban chỉ biết các mã quy phạm (TT, NĐ, QĐ...). Văn bản hành
 # chính của Bộ, Sở cũng có mã loại trong số hiệu: "123/KH-SGDĐT".
-_LOAI_THEO_MA_PHU = {"HD": "Hướng dẫn", "KH": "Kế hoạch", "TB": "Thông báo", "CV": "Công văn"}
+_LOAI_THEO_MA_PHU = {"HD": "Hướng dẫn", "KH": "Kế hoạch", "TB": "Thông báo", "CV": "Công văn",
+                     "CĐ": "Công điện", "VBHN": "Văn bản hợp nhất"}
 
 # Tên loại viết bỏ dấu, chữ thường -> nhãn. Xếp tên dài trước để "thong tu
 # lien tich" không bị "thong tu" ăn mất.
@@ -135,7 +140,7 @@ _LOAI_THEO_CHU = sorted(
 # giáo án, học liệu - ba loại đó chỉ nhận khi có số hiệu hoặc quốc hiệu.
 LOAI_CHAC_CHAN = {
     "Luật", "Nghị định", "Thông tư", "Thông tư liên tịch", "Quyết định",
-    "Nghị quyết", "Chỉ thị", "Công văn",
+    "Nghị quyết", "Chỉ thị", "Công văn", "Công điện", "Văn bản hợp nhất",
 }
 _MAU_LOAI_DAU_TEN = re.compile(
     r"^(?:" + "|".join(re.escape(chu) for chu, nhan in _LOAI_THEO_CHU
@@ -150,6 +155,16 @@ _MAU_VIET_TAT_DAU_TEN = re.compile(r"^(ttlt|tt|nd|qd|nq|ct|cv) ?\d")
 _MAU_SO_HIEU_TRONG_TEN = re.compile(r"\b\d{1,4} (?:19|20)\d\d (ttlt|tt|nd|qd|nq|ct)\b")
 # Công văn không có dòng tên loại mà có trích yếu "V/v ..." ngay dưới số hiệu.
 _MAU_TRICH_YEU_CONG_VAN = re.compile(r"\bV/v\b", re.IGNORECASE)
+# "2026_172_40_VBHN-VPQH.docx": văn bản hợp nhất, đọc không ra chữ nên chỉ còn tên.
+_MAU_HOP_NHAT_TRONG_TEN = re.compile(r"\bvbhn\b")
+# MAU_DAU_HIEU_QPPL (van_ban_meta) chỉ khớp "HÒA", hụt "CỘNG HOÀ" và bản OCR
+# mất dấu - công văn VPCP, công điện TTg từng rơi vào "chưa phân loại". Ở đây
+# chỉ quyết định thư mục nên so trên chữ đã bỏ dấu, không sửa mẫu dùng chung.
+_MAU_QUOC_HIEU_BO_DAU = re.compile(r"\bcong hoa xa hoi chu nghia\b")
+# Phụ lục "Ban hành kèm theo Thông tư số 32/2018/TT-BGDĐT" (chương trình môn
+# học) thuộc về văn bản ban hành nó.
+_MAU_KEM_THEO = re.compile(r"\bban hanh kem theo (thong tu|nghi dinh|quyet dinh)\b")
+_LOAI_KEM_THEO = {"thong tu": "Thông tư", "nghi dinh": "Nghị định", "quyet dinh": "Quyết định"}
 
 
 def _chu_thuong_bo_dau(van_ban: str) -> str:
@@ -161,7 +176,8 @@ def _loai_theo_so_hieu(so_hieu: str | None) -> str | None:
     loai = suy_loai_van_ban(so_hieu)
     if loai or not so_hieu:
         return loai
-    ma = so_hieu.split("/")[-1].split("-")[0].upper()
+    # OCR hay đọc "Đ" thành "Ð" (eth, U+00D0): "62/CÐ-TTg".
+    ma = so_hieu.split("/")[-1].split("-")[0].upper().replace("Ð", "Đ")
     return _LOAI_THEO_MA_PHU.get(ma)
 
 
@@ -191,7 +207,31 @@ def _loai_theo_ten_file(ten: str) -> str | None:
     if khop:
         return dict(_LOAI_THEO_CHU)[khop.group(0)]
     khop = _MAU_VIET_TAT_DAU_TEN.match(goc) or _MAU_SO_HIEU_TRONG_TEN.search(goc)
-    return _VIET_TAT_DAU_TEN[khop.group(1)] if khop else None
+    if khop:
+        return _VIET_TAT_DAU_TEN[khop.group(1)]
+    return "Văn bản hợp nhất" if _MAU_HOP_NHAT_TRONG_TEN.search(goc) else None
+
+
+def _loai_kem_theo(phan_dau: str) -> str | None:
+    khop = _MAU_KEM_THEO.search(_chu_thuong_bo_dau(phan_dau[:DO_DAI_KHOI_TIEU_DE]))
+    return _LOAI_KEM_THEO[khop.group(1)] if khop else None
+
+
+def co_dau_hieu_van_ban(ten: str, phan_dau: str, ho_so: HoSoVanBan | None = None) -> bool:
+    """Dấu hiệu "đây là văn bản hành chính" bổ sung cho MAU_DAU_HIEU_QPPL, chỉ
+    dùng để chọn thư mục: quốc hiệu đã bỏ dấu, trích yếu "V/v", số hiệu trong
+    hồ sơ, "ban hành kèm theo Thông tư". Kế hoạch dạy học của trường cũng mở
+    đầu bằng quốc hiệu nhưng thuộc nhóm riêng nên được loại ra trước."""
+    if MAU_KE_HOACH_DAY_HOC_TEN.search(_chuan_hoa(ten)):
+        return False
+    if ho_so is not None and ho_so.so_hieu:
+        return True
+    dau = phan_dau[:DO_DAI_KHOI_TIEU_DE]
+    return bool(
+        _MAU_QUOC_HIEU_BO_DAU.search(_chu_thuong_bo_dau(dau))
+        or _MAU_TRICH_YEU_CONG_VAN.search(dau)
+        or _loai_kem_theo(dau)
+    )
 
 
 def suy_loai_van_ban_cua_tep(ten: str, phan_dau: str,
@@ -215,6 +255,7 @@ def suy_loai_van_ban_cua_tep(ten: str, phan_dau: str,
         _loai_theo_so_hieu(so_hieu)
         or _loai_theo_dong_tieu_de(tieu_de)
         or _loai_theo_ten_file(ten)
+        or _loai_kem_theo(phan_dau)
         or ("Công văn" if _MAU_TRICH_YEU_CONG_VAN.search(tieu_de) else None)
     )
 
@@ -328,6 +369,7 @@ def chon_thu_muc(
             or bool(MAU_DAU_HIEU_QPPL.search(phan_dau[:DO_DAI_KHOI_TIEU_DE]))
             or _loai_theo_ten_file(ten) is not None
             or _loai_theo_dong_tieu_de(cat_khoi_tieu_de(phan_dau)) in LOAI_CHAC_CHAN
+            or co_dau_hieu_van_ban(ten, phan_dau, ho_so)
         )
         loai_noi_dung = suy_phan_loai(
             ten, phan_dau, la_qppl=la_qppl, loai_tai_lieu="van_ban"
