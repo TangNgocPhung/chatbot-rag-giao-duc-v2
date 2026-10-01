@@ -518,6 +518,11 @@ class RAGService:
             ngay = self.so_quan_he.ngay_cua_tep(ten_file)
             if ngay:
                 doc.metadata["_ngay_van_ban"] = ngay
+            # Cấp hiệu lực (thu_bac.py): văn bản hành chính mới hơn không được
+            # ưu tiên hơn văn bản quy phạm cùng nội dung.
+            cap = self.so_quan_he.cap_cua_tep(ten_file)
+            if cap:
+                doc.metadata["_thu_bac"] = cap
         self._doan_theo_tep = doan_theo_tep
 
     def _lap_phan_loai(self) -> None:
@@ -1351,7 +1356,11 @@ class RAGService:
         def ban_sao(doc, **them):
             # Đoạn trong docstore dùng chung cho mọi câu hỏi: chép ra rồi mới
             # gắn thông tin của riêng lượt này.
-            return type(doc)(page_content=doc.page_content, metadata={**doc.metadata, **them})
+            return type(doc)(page_content=doc.page_content, metadata={
+                **doc.metadata,
+                "_loai_van_ban": so.mo_ta_thu_bac(doc.metadata.get("source_file")),
+                **them,
+            })
 
         def hieu_luc_cho_prompt(doc) -> str | None:
             nhan = so.nhan_hieu_luc(doc.metadata.get("source_file"), doc.page_content, hom_nay)
@@ -1411,6 +1420,23 @@ class RAGService:
             ))
         return ket_qua, ghi_chu
 
+    def _ghi_chu_thu_bac(self, documents: list) -> str | None:
+        """Quy tắc thứ bậc cho prompt, chỉ khi các khối thuộc nhiều cấp hiệu lực
+        - mô hình chỉ so ngữ nghĩa thì coi công văn 2026 ngang (hay hơn) Thông
+        tư 2020 nói khác nó. Cùng một cấp thì không cần, đỡ dài prompt."""
+        cac_cap = {
+            self.so_quan_he.cap_cua_tep(d.metadata.get("source_file")) for d in documents
+        } - {None}
+        if len(cac_cap) < 2:
+            return None
+        return (
+            "THỨ BẬC VĂN BẢN: các khối thuộc nhiều cấp hiệu lực (xem dòng \"Loại\"). "
+            "Nếu các khối quy định khác nhau về cùng một điểm thì theo văn bản có hiệu "
+            "lực pháp lý cao hơn (Luật > Nghị định > Quyết định của Thủ tướng > Thông tư); "
+            "văn bản hành chính (công văn, kế hoạch...) chỉ hướng dẫn thực hiện, không "
+            "làm thay đổi quy định của văn bản quy phạm - có khác biệt thì nêu rõ."
+        )
+
     def _tep_cua_so_hieu(self, so_hieu: str) -> str | None:
         """Tệp đã ban hành (không phải dự thảo) mang số hiệu này trong kho."""
         so = self.so_quan_he
@@ -1457,6 +1483,7 @@ class RAGService:
             nhan = so.nhan_hieu_luc(chua.metadata.get("source_file"), noi_dung, hom_nay)
             return type(chua)(page_content=noi_dung, metadata={
                 **chua.metadata,
+                "_loai_van_ban": so.mo_ta_thu_bac(chua.metadata.get("source_file")),
                 "_hieu_luc": f"{nhan['label']} - {nhan['note']}" if nhan else None,
                 "_di_kem": {
                     "evidence": so_evidence,
@@ -1565,6 +1592,7 @@ class RAGService:
                     "co_quan": muc_ho_so.co_quan,
                     "ngay": muc_ho_so.ngay_ban_hanh,
                     "nhan": muc_ho_so.nhan(),
+                    "thu_bac": doc.metadata.get("_thu_bac"),
                     "con_hieu_luc": muc_ho_so.con_hieu_luc,
                     "thay_the": muc_ho_so.thay_the,
                     "sua_doi": muc_ho_so.sua_doi,
@@ -2350,6 +2378,9 @@ class RAGService:
                 context = (
                     "TÌNH TRẠNG VĂN BẢN ĐƯỢC HỎI: " + " ".join(ghi_chu_hieu_luc) + "\n\n" + context
                 )
+            ghi_chu_thu_bac = self._ghi_chu_thu_bac(documents)
+            if ghi_chu_thu_bac:
+                context = ghi_chu_thu_bac + "\n\n" + context
             ghi_chu_chuyen_tiep = self.so_quan_he.ghi_chu_chuyen_tiep(
                 cac_nguon, retrieval_question, thoi_diem
             )

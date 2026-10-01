@@ -287,7 +287,9 @@ def tao_rag_chain(vector_store, llm):
                 dong.append(f"Điều: {doc.metadata['article']}")
             if doc.metadata.get("context_label"):
                 dong.append(f"Ngữ cảnh: {doc.metadata['context_label']}")
-            # Hai dòng do rag_service._them_van_ban_di_kem gắn vào bản sao đoạn.
+            # Ba dòng do rag_service._them_van_ban_di_kem gắn vào bản sao đoạn.
+            if doc.metadata.get("_loai_van_ban"):
+                dong.append(f"Loại: {doc.metadata['_loai_van_ban']}")
             if doc.metadata.get("_hieu_luc"):
                 dong.append(f"Hiệu lực: {doc.metadata['_hieu_luc']}")
             di_kem = doc.metadata.get("_di_kem")

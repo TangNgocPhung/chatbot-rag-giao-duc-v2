@@ -23,6 +23,8 @@ import unicodedata
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 
+from thu_bac import CAP_HANH_CHINH
+
 SO_UNG_VIEN_MOI_RETRIEVER = 15  # top-k lấy từ mỗi retriever trước khi fuse
 SO_KET_QUA_CUOI = int(os.getenv("RAG_SO_BANG_CHUNG", "4"))  # chunk đưa vào prompt
 # 4 thay vì 5: chunk thứ 5 hiếm khi đổi được câu trả lời nhưng luôn cộng thêm
@@ -350,6 +352,10 @@ def _uu_tien_van_ban_moi(documents, tu_theo_doc) -> None:
     Không cộng cho mọi văn bản mới một cách vô điều kiện: Thông tư 2026 về học
     bạ số không vì mới mà trả lời hay hơn Thông tư 2020 về điều lệ trường.
     `_ngay_van_ban` do rag_service gắn cho đoạn của văn bản quy phạm.
+
+    "Mới hơn thắng" chỉ đúng giữa các văn bản quy phạm. Công văn (`_thu_bac`
+    là thu_bac.CAP_HANH_CHINH) không sửa được Thông tư, nên công văn mới hơn
+    trùng nội dung với một văn bản quy phạm không được cộng điểm.
     """
     co_ngay = [d for d in documents if d.metadata.get("_ngay_van_ban")]
     duoc_cong = set()
@@ -361,7 +367,11 @@ def _uu_tien_van_ban_moi(documents, tu_theo_doc) -> None:
             tu_a, tu_b = tu_theo_doc[id(a)], tu_theo_doc[id(b)]
             if len(tu_a & tu_b) / max(1, len(tu_a | tu_b)) < NGUONG_GIAO_THOA:
                 continue
-            duoc_cong.add(id(a) if ngay_a > ngay_b else id(b))
+            moi, cu = (a, b) if ngay_a > ngay_b else (b, a)
+            cap_moi, cap_cu = moi.metadata.get("_thu_bac"), cu.metadata.get("_thu_bac")
+            if cap_moi == CAP_HANH_CHINH and cap_cu and cap_cu < CAP_HANH_CHINH:
+                continue
+            duoc_cong.add(id(moi))
     for doc in co_ngay:
         if id(doc) in duoc_cong:
             doc.metadata["_retrieval_score"] += TRONG_SO_MOI_HON

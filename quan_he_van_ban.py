@@ -40,6 +40,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 import chuyen_tiep
+import thu_bac
 import van_ban_meta
 
 THU_MUC_DU_AN = os.path.dirname(os.path.abspath(__file__))
@@ -236,6 +237,11 @@ class SoQuanHe:
             for q in so_tay.get("loai_bo") or []
         }
         cac_quan_he: dict[tuple, QuanHe] = {}
+        # Quan hệ máy trích ra mà trái thứ bậc: công văn "sửa đổi" Thông tư,
+        # Thông tư "thay thế" Nghị định, Nghị định "hướng dẫn" Thông tư. Pháp
+        # luật không cho phép những chiều này, nên đó là câu trích nhầm (thường
+        # là câu kể lại văn bản khác). Giữ danh sách để còn rà, không đưa vào đồ thị.
+        self.quan_he_trai_thu_bac: list[QuanHe] = []
         for ten_file, muc in self.ho_so.items():
             nut = self.nut_cua_tep.get(ten_file)
             # Dự thảo "sửa đổi Thông tư X" chưa sửa đổi gì cả; tệp không nhận
@@ -253,8 +259,14 @@ class SoQuanHe:
             if getattr(muc, "kem_theo", None):
                 cac_cap.append(("kem_theo", muc.kem_theo))
             for loai, den in cac_cap:
-                if den != nut and (nut, loai, den) not in loai_bo:
-                    cac_quan_he.setdefault((nut, loai, den), QuanHe(nut, loai, den))
+                if den == nut or (nut, loai, den) in loai_bo:
+                    continue
+                if (loai in QUAN_HE_CO_MOC and thu_bac.thap_hon(nut, den)) or (
+                    loai == "huong_dan" and thu_bac.thap_hon(den, nut)
+                ):
+                    self.quan_he_trai_thu_bac.append(QuanHe(nut, loai, den))
+                    continue
+                cac_quan_he.setdefault((nut, loai, den), QuanHe(nut, loai, den))
         for q in so_tay.get("quan_he") or []:
             tu, den, loai = chuan_so_hieu(q.get("tu", "")), chuan_so_hieu(q.get("den", "")), q.get("loai")
             if tu and den and loai in TEN_QUAN_HE:
@@ -401,6 +413,17 @@ class SoQuanHe:
     def _chua_hieu_luc(self, nut: str, hom_nay: date | None) -> bool:
         ngay = self._ngay_bat_dau(nut)
         return bool(ngay and ngay > (hom_nay or date.today()).isoformat())
+
+    def mo_ta_thu_bac(self, ten_file: str) -> str | None:
+        """Dòng "Loại:" cho prompt (xem thu_bac.mo_ta); phụ lục theo văn bản chính."""
+        nut = self._nut_chinh(ten_file)
+        if not nut or nut.startswith("tep:"):
+            return None
+        return thu_bac.mo_ta(van_ban_meta.suy_loai_van_ban(nut), nut)
+
+    def cap_cua_tep(self, ten_file: str) -> int | None:
+        muc = thu_bac.thu_bac(self._nut_chinh(ten_file))
+        return muc.cap if muc else None
 
     def nhan_nut(self, nut: str) -> str:
         """'Nghị định 279/2026/NĐ-CP' - hoặc tên tệp với nút phụ lục."""
@@ -1038,6 +1061,7 @@ class SoQuanHe:
                 "tu_ngay": tt.get("tu_ngay"),
                 "ngay_hieu_luc": self.ngay_hieu_luc(nut),
                 "tep": self.tep_cua_nut.get(nut, []),
+                "thu_bac": (thu_bac.thu_bac(nut).cap if thu_bac.thu_bac(nut) else None),
                 # Chỉ là nghi vấn cần đối chiếu, không đổi "tinh_trang".
                 "het_theo_goc": self.het_theo_goc(nut, hom_nay)
                 if tt["code"] in ("con_hieu_luc", "da_sua_doi", "het_mot_phan") else None,
@@ -1052,6 +1076,9 @@ class SoQuanHe:
             ],
             "chuyen_tiep": [
                 quy_dinh for nut in sorted(self.chuyen_tiep) for quy_dinh in self.chuyen_tiep[nut]
+            ],
+            "quan_he_trai_thu_bac": [
+                {"tu": q.tu, "loai": q.loai, "den": q.den} for q in self.quan_he_trai_thu_bac
             ],
         }
 
@@ -1073,6 +1100,7 @@ class SoQuanHe:
             "tu_so_tay": sum(1 for q in self.quan_he if q.nguon == "so_tay"),
             "chuyen_tiep": sum(len(v) for v in self.chuyen_tiep.values()),
             "van_ban_con_ap_dung_chuyen_tiep": len(self.giu_lai),
+            "quan_he_trai_thu_bac_da_loai": len(self.quan_he_trai_thu_bac),
         }
 
 
@@ -1129,6 +1157,9 @@ def main() -> int:
             cu = ", ".join(quy_dinh["cu"]) or "(chưa xác định văn bản cũ)"
             print(f"  {so.nhan_nut(nut)} -> {cu} [{quy_dinh['doi_tuong']}, mốc {quy_dinh['moc'] or '?'}]")
             print(f"      \"{quy_dinh['trich'][:160]}\"")
+    print("\nQuan hệ máy trích bị loại vì trái thứ bậc (văn bản cấp dưới không thay/sửa được cấp trên):")
+    for q in so.quan_he_trai_thu_bac:
+        print(f"  {so.nhan_nut(q.tu)} --{q.loai}--> {so.nhan_nut(q.den)}")
     print("\nCó thể hết hiệu lực theo văn bản được hướng dẫn (cần đối chiếu):")
     for nut in sorted(n for n in so.tep_cua_nut if not n.startswith("tep:")):
         if so.tinh_trang_nut(nut)["code"] in ("con_hieu_luc", "da_sua_doi", "het_mot_phan"):
