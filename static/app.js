@@ -48,6 +48,8 @@ const elements = {
   suggestionMoreTitle: $('#suggestionMoreTitle'),
   suggestionGrid: $('.suggestion-grid'),
   refreshSuggestions: $('#refreshSuggestions'),
+  vaiTroKhung: $('#vaiTroKhung'),
+  vaiTroChon: $('#vaiTroChon'),
   clearHistory: $('#clearHistoryButton'),
   searchHistory: $('#searchHistoryButton'),
   historySearchBox: $('#historySearchBox'),
@@ -645,6 +647,8 @@ function capNhatGoiYTheoTep() {
   elements.suggestionGrid?.classList.toggle('hidden', sanSang.length > 0);
   // Bộ câu tĩnh lần nào cũng như nhau nên không có mẻ nào khác để đổi.
   elements.refreshSuggestions?.classList.toggle('hidden', sanSang.length > 0 || theoNhom);
+  // Gợi ý về tệp không phụ thuộc người hỏi là ai.
+  elements.vaiTroKhung?.classList.toggle('hidden', sanSang.length > 0);
   if (elements.suggestionMoreTitle) {
     elements.suggestionMoreTitle.textContent = sanSang.length
       ? 'Gợi ý hỏi về tệp đã đính kèm'
@@ -939,17 +943,20 @@ function renderNhomGoiY(cacNhom) {
   khung.classList.add('theo-nhom');
   elements.suggestionMore.classList.remove('hidden');
 
-  const xenKe = [];
-  const dai = Math.max(...cacNhom.map((nhom) => nhom.cau_hoi.length));
+  // Nhóm của vai trò người dùng đã chọn (máy chủ đặt đứng đầu, có "vai_tro")
+  // được hiện sẵn trước, còn chỗ mới chia xen kẽ cho các nhóm chủ đề.
+  const xenKe = cacNhom.filter((nhom) => nhom.vai_tro).flatMap((nhom) => nhom.cau_hoi);
+  const nhomChuDe = cacNhom.filter((nhom) => !nhom.vai_tro);
+  const dai = Math.max(0, ...nhomChuDe.map((nhom) => nhom.cau_hoi.length));
   for (let i = 0; i < dai; i += 1) {
-    for (const nhom of cacNhom) if (i < nhom.cau_hoi.length) xenKe.push(nhom.cau_hoi[i]);
+    for (const nhom of nhomChuDe) if (i < nhom.cau_hoi.length) xenKe.push(nhom.cau_hoi[i]);
   }
   const hienSan = new Set(xenKe.slice(0, SO_GOI_Y_MO_DAU));
 
   let soAn = 0;
   for (const nhom of cacNhom) {
     const khoi = document.createElement('div');
-    khoi.className = 'suggestion-group';
+    khoi.className = nhom.vai_tro ? 'suggestion-group theo-vai-tro' : 'suggestion-group';
     const tieuDe = document.createElement('div');
     tieuDe.className = 'suggestion-group-title';
     tieuDe.textContent = nhom.chu_de;
@@ -983,27 +990,65 @@ function renderNhomGoiY(cacNhom) {
   khung.append(nut);
 }
 
+// Đổi vai trò liền tay thì mẻ gợi ý của lần chọn trước có thể về sau mẻ mới;
+// chỉ lượt gọi gần nhất được vẽ.
+let luotTaiGoiY = 0;
+
 async function taiGoiYMoDau() {
   // Mở bằng file:// thì không có máy chủ để gọi; còn nếu trình duyệt đang giữ
   // bản index.html cũ trong bộ nhớ đệm thì cũng không có hàng gợi ý để vẽ vào.
   if (!elements.suggestionChips || window.location.protocol === 'file:') return;
+  const luot = ++luotTaiGoiY;
   elements.refreshSuggestions.disabled = true;
+  const thamSo = new URLSearchParams({ so_luong: String(SO_GOI_Y_MO_DAU) });
+  const vaiTro = window.vaiTroNguoiDung?.lay();
+  if (vaiTro) thamSo.set('vai_tro', vaiTro);
+  let moi = { goiY: [], nhom: [] };
   try {
-    const response = await fetch(`/api/goi-y?so_luong=${SO_GOI_Y_MO_DAU}`, { cache: 'no-store' });
+    const response = await fetch(`/api/goi-y?${thamSo}`, { cache: 'no-store' });
     if (!response.ok) throw new Error('goi-y');
     const payload = await response.json();
-    goiYKho = payload.goi_y || [];
-    nhomGoiY = (payload.nhom || []).filter((nhom) => nhom.cau_hoi?.length);
+    moi = {
+      goiY: payload.goi_y || [],
+      nhom: (payload.nhom || []).filter((nhom) => nhom.cau_hoi?.length),
+    };
   } catch (error) {
     // Không lấy được gợi ý thì ẩn hẳn hàng này: bốn thẻ chủ đề vẫn dùng bình
     // thường, không cần báo lỗi cho một thứ chỉ để bấm cho nhanh.
-    goiYKho = [];
-    nhomGoiY = [];
-  } finally {
-    // Vẽ qua capNhatGoiYTheoTep: đang có tệp đính kèm thì gợi ý về tệp vẫn giữ.
-    capNhatGoiYTheoTep();
-    elements.refreshSuggestions.disabled = false;
   }
+  if (luot !== luotTaiGoiY) return;
+  goiYKho = moi.goiY;
+  nhomGoiY = moi.nhom;
+  // Vẽ qua capNhatGoiYTheoTep: đang có tệp đính kèm thì gợi ý về tệp vẫn giữ.
+  capNhatGoiYTheoTep();
+  elements.refreshSuggestions.disabled = false;
+}
+
+// Ô "Gợi ý dành cho" trên màn hình chào: chỗ chọn vai trò cho người đã bỏ qua
+// hộp giới thiệu, hoặc muốn đổi. Cùng một nguồn với bước đầu hộp giới thiệu
+// (vai-tro.js), chọn ở đâu thì chỗ kia cũng theo.
+function khoiTaoChonVaiTro() {
+  const vaiTro = window.vaiTroNguoiDung;
+  const chon = elements.vaiTroChon;
+  if (!chon || !vaiTro) {
+    elements.vaiTroKhung?.remove();
+    return;
+  }
+  const chuaChon = document.createElement('option');
+  chuaChon.value = '';
+  chuaChon.textContent = 'Mọi người (chưa chọn)';
+  chon.replaceChildren(chuaChon, ...vaiTro.DANH_SACH.map(({ ma, nhan }) => {
+    const option = document.createElement('option');
+    option.value = ma;
+    option.textContent = nhan;
+    return option;
+  }));
+  chon.value = vaiTro.lay();
+  chon.addEventListener('change', () => vaiTro.dat(chon.value));
+  vaiTro.khiDoi((ma) => {
+    chon.value = ma;
+    taiGoiYMoDau();
+  });
 }
 
 function renderGoiYTiepTheo(body, danhSach) {
@@ -2009,6 +2054,8 @@ async function submitQuestion(question, tuyChon = {}) {
       body: JSON.stringify({
         question, history, tep_ids: tepIds, hoi_thoai_id: hoiThoaiId,
         pham_vi: phamViDangChon(),
+        // Chỉ để máy chủ thống kê nhóm người dùng nào hỏi gì (lich_su_chat).
+        ...(window.vaiTroNguoiDung?.lay() ? { vai_tro: window.vaiTroNguoiDung.lay() } : {}),
         ...(doanTrich ? { doan_trich: doanTrich } : {}),
         ...(moHinhRieng ? { model: moHinhRieng } : {}),
       }),
@@ -3809,6 +3856,7 @@ try {
 })();
 renderHistory();
 resizeInput();
+khoiTaoChonVaiTro();
 taiGoiYMoDau();
 taiBoLocPhamVi();
 pollStatus();

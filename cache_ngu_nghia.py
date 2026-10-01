@@ -213,6 +213,27 @@ class CacheNguNghia:
             self._muc.sort(key=lambda m: m.get("dung_lan_cuoi", 0), reverse=True)
             self._muc = self._muc[:SO_MUC_TOI_DA]
 
+    def xoa_qua_han(self, so_ngay_toi_da: int = 0, bay_gio: float | None = None) -> int:
+        """Xóa hẳn khỏi đĩa các mục đã hết hạn.
+
+        Mục hết hạn vốn không còn được dùng, nhưng _don_dep chỉ chạy khi thêm
+        mục mới, nên lúc ít người hỏi chúng vẫn nằm trên đĩa kèm nguyên câu hỏi
+        của người dùng. Hàm này chạy định kỳ cùng việc dọn lịch sử chat; có
+        so_ngay_toi_da (hạn giữ lịch sử) thì không mục nào sống lâu hơn hạn đó,
+        kể cả khi RAG_CACHE_NGAY đặt dài hơn.
+        """
+        so_ngay = SO_NGAY_HET_HAN
+        if so_ngay_toi_da > 0:
+            so_ngay = min(so_ngay, so_ngay_toi_da)
+        han = (time.time() if bay_gio is None else bay_gio) - so_ngay * 86400
+        with self._khoa:
+            truoc = len(self._muc)
+            self._muc = [m for m in self._muc if m.get("tao_luc", 0) >= han]
+            da_xoa = truoc - len(self._muc)
+            if da_xoa:
+                self._ghi()
+            return da_xoa
+
     def xoa_theo_van_tay_khac(self, van_tay: str) -> int:
         """
         Gọi sau khi cập nhật chỉ mục. Câu trả lời dựa trên kho cũ có thể đã sai

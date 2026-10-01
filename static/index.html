@@ -6,7 +6,7 @@
   <meta name="description" content="Chatbot RAG hỗ trợ tra cứu và hỏi đáp từ kho tri thức giáo dục.">
   <title>Chatbot RAG Giáo dục</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=1.9.24">
+  <link rel="stylesheet" href="./styles.css?v=1.9.26">
   <script>
     /* Đặt nền đúng ngay từ lần vẽ đầu: app.js dùng defer nên nếu đợi nó thì
        người dùng chế độ tối sẽ thấy một nháy màu trắng khi mở trang. */
@@ -220,6 +220,10 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>
                 <span>Đổi gợi ý</span>
               </button>
+            </div>
+            <div class="vai-tro-chon" id="vaiTroKhung">
+              <label for="vaiTroChon">Gợi ý dành cho</label>
+              <select id="vaiTroChon"></select>
             </div>
             <div class="suggestion-chips" id="suggestionChips"></div>
           </div>
@@ -654,14 +658,23 @@
     <button class="icon-button gt-dong" id="gioiThieuDong" type="button" aria-label="Bỏ qua giới thiệu" title="Bỏ qua">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
     </button>
-    <p class="eyebrow" id="gioiThieuBuoc" aria-live="polite">BƯỚC 1/4</p>
+    <p class="eyebrow" id="gioiThieuBuoc" aria-live="polite">BƯỚC 1/5</p>
 
     <div class="gt-cac-buoc">
+      <!-- Vai trò chỉ đổi câu gợi ý trên màn hình chào (vai-tro.js), không lọc
+           tài liệu. Các nút do gioi-thieu.js dựng từ danh sách trong vai-tro.js. -->
       <section class="gt-buoc" data-buoc>
+        <h3>Chào bạn! Bạn là…</h3>
+        <p>Chọn một mục để trợ lý <strong>gợi ý câu hỏi sát với bạn</strong> hơn.</p>
+        <div class="gt-vai-tro" id="gioiThieuVaiTro" role="group" aria-label="Bạn là"></div>
+        <p class="gt-phu">Không muốn chọn thì bấm <strong>Tiếp</strong>. Đổi lại lúc nào cũng được, ở mục <strong>Gợi ý dành cho</strong> trên màn hình chào.</p>
+      </section>
+
+      <section class="gt-buoc" data-buoc hidden>
         <div class="gt-minh-hoa gt-chao" aria-hidden="true">
           <svg viewBox="0 0 64 64" fill="none"><path d="M14 13h25a11 11 0 0 1 11 11v27H25a11 11 0 0 1-11-11V13Z"/><path d="M23 25h18M23 32h14M23 39h10"/><path d="m46 8 1.3 3.7L51 13l-3.7 1.3L46 18l-1.3-3.7L41 13l3.7-1.3L46 8Z"/></svg>
         </div>
-        <h3>Chào bạn!</h3>
+        <h3>Trợ lý làm được gì?</h3>
         <p>Đây là trợ lý <strong>tra cứu tài liệu giáo dục</strong>. Bạn hỏi bằng tiếng Việt, trợ lý tìm trong kho văn bản (luật, nghị định, thông tư, chương trình…) rồi trả lời ngắn gọn, <strong>kèm nguồn</strong> để bạn tự kiểm tra.</p>
         <p class="gt-phu">Chỉ mất nửa phút để làm quen.</p>
       </section>
@@ -755,13 +768,14 @@
       </div>
     </div>
   </dialog>
-  <script src="./app.js?v=1.9.25" defer></script>
+  <script src="./vai-tro.js?v=1.9.26" defer></script>
+  <script src="./app.js?v=1.9.27" defer></script>
   <script src="./so-tay.js?v=1.9.19" defer></script>
   <script src="./tai-khoan.js?v=1.9.12" defer></script>
   <script src="./quan-ly-tai-khoan.js?v=1.9.9" defer></script>
   <script src="./dich.js?v=1.9.12" defer></script>
   <script src="./huong-dan.js?v=1.9.22" defer></script>
-  <script src="./gioi-thieu.js?v=1.9.21" defer></script>
+  <script src="./gioi-thieu.js?v=1.9.26" defer></script>
   <script src="./giong-noi.js?v=1.9.7" defer></script>
 </body>
 </html>

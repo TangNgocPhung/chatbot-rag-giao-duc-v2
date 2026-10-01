@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 import cache_ngu_nghia
 import lich_su_chat
+import tai_khoan
 from api import app
 from rag_service import service
 
@@ -42,13 +43,29 @@ class ApiLichSuTests(unittest.TestCase):
         self.patcher.stop()
         self.thu_muc.cleanup()
 
-    def _hoi(self, cau_hoi="Quy định về dạy thêm?", hoi_thoai_id=None, tu_cache=False):
+    def _hoi(self, cau_hoi="Quy định về dạy thêm?", hoi_thoai_id=None, tu_cache=False,
+             vai_tro=None):
         with patch.object(service, "stream_answer",
                           return_value=su_kien_tra_loi(tu_cache)):
             than = {"question": cau_hoi}
             if hoi_thoai_id:
                 than["hoi_thoai_id"] = hoi_thoai_id
+            if vai_tro is not None:
+                than["vai_tro"] = vai_tro
             return self.client.post("/api/chat/stream", json=than, headers=CLIENT)
+
+    def _vai_tro_da_ghi(self):
+        ma = self.client.get("/api/hoi-thoai", headers=CLIENT).json()["hoi_thoai"][0]["id"]
+        return [l["vai_tro"] for l in self.client.get(
+            f"/api/hoi-thoai/{ma}", headers=CLIENT).json()["luot"]]
+
+    def test_ghi_vai_tro_nguoi_hoi_kem_luot(self):
+        self.assertEqual(self._hoi(vai_tro="phu_huynh").status_code, 200)
+        self.assertEqual(self._vai_tro_da_ghi(), ["phu_huynh"])
+
+    def test_vai_tro_la_ghi_nhu_chua_chon_khong_lam_hong_cau_hoi(self):
+        self.assertEqual(self._hoi(vai_tro="hieu_truong").status_code, 200)
+        self.assertEqual(self._vai_tro_da_ghi(), [""])
 
     def test_moi_luot_chat_duoc_ghi_lai(self):
         self.assertEqual(self._hoi().status_code, 200)
@@ -130,6 +147,15 @@ class ApiThongKeTests(unittest.TestCase):
         self.assertEqual(payload["so_luot"], 1)
         self.assertIn("cache", payload)
         self.assertIn("so_muc", payload["cache"])
+
+    def test_thong_ke_chia_theo_vai_tro(self):
+        lich_su_chat.ghi_luot("c", "Câu?", "Đáp.", vai_tro="hoc_sinh")
+        with patch.object(tai_khoan, "bat_khoa_quan_tri", return_value=False):
+            payload = self.client.get("/api/thong-ke").json()
+        self.assertEqual(
+            [(nhom["vai_tro"], nhom["so_luot"]) for nhom in payload["theo_vai_tro"]],
+            [("hoc_sinh", 1)],
+        )
 
     def test_xoa_cache_can_header_hanh_dong(self):
         self.assertEqual(self.client.delete("/api/cache").status_code, 403)
