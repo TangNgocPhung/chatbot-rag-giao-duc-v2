@@ -95,6 +95,17 @@ class BoCauHoiThatTests(unittest.TestCase):
                 self.assertGreater(dem[ct.TAP_DEV], 0)
                 self.assertGreater(dem[ct.TAP_TEST], 0)
 
+    def test_khong_co_cau_trung_lap(self):
+        # Hai câu y hệt ở hai tập là rò rỉ thẳng từ dev sang test.
+        cac_cau = [muc["cau_hoi"].casefold().strip() for muc in self.bo]
+        self.assertEqual(len(cac_cau), len(set(cac_cau)))
+
+    def test_cau_nao_cung_co_nhan_hoac_la_cau_phai_tu_choi(self):
+        for muc in self.bo:
+            with self.subTest(cau=muc["cau_hoi"][:60]):
+                self.assertNotEqual(bool(muc.get("nguon_mong_doi")), bool(muc.get("mong_doi_tu_choi")))
+                self.assertEqual(muc["nhom"] == "ngoai_pham_vi", bool(muc.get("mong_doi_tu_choi")))
+
     def test_chay_lai_script_khong_doi_gi(self):
         self.assertEqual(ct.gan_tap(self.bo), self.bo)
 

@@ -15,11 +15,11 @@ TẬP DEV VÀ TẬP TEST (trường `tap` trong bộ câu hỏi, gán bằng chi
   (--do-nguong) đều làm ở đây. `--tap test` chỉ dùng SAU KHI đã đóng băng tham
   số, để lấy con số đưa vào báo cáo; nhìn kết quả test rồi quay lại chỉnh tiếp
   thì tập test đã thành tập dev thứ hai và con số đó không còn khách quan.
-  `--tap tat_ca` chạy cả 127 câu như trước khi chia, để so với các lần đo cũ.
+  `--tap tat_ca` chạy cả bộ như trước khi chia, để so với các lần đo cũ.
 
 BA CHẾ ĐỘ, BA MỤC ĐÍCH KHÁC NHAU
   --bo    gọi đủ cả LLM. Đo được chất lượng câu chữ (trích dẫn, số liệu) nhưng
-          tốn ~150 giây/câu trên CPU, tức hơn 5 tiếng cho cả bộ 127 câu.
+          tốn ~150 giây/câu trên CPU, tức gần 8 tiếng cho cả bộ 186 câu.
   --nhanh chỉ chạy truy hồi + cổng chặn lạc đề, KHÔNG gọi LLM. Vài phút cho cả
           bộ. Đây là chế độ dùng khi tinh chỉnh tham số truy hồi hoặc ngưỡng
           chặn, vì hai thứ đó không phụ thuộc vào model sinh câu trả lời.

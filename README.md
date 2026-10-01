@@ -243,7 +243,7 @@ Kết quả OCR, phiên âm và sổ ghi chép giúp lần chạy tiếp theo ti
 
 ## Đo chất lượng hệ thống
 
-Bộ câu hỏi chuẩn nằm ở `bo_cau_hoi_benchmark.json` (127 câu, trong đó 97 câu có nhãn nguồn đúng và 30 câu cố tình ngoài phạm vi kho).
+Bộ câu hỏi chuẩn nằm ở `bo_cau_hoi_benchmark.json` (186 câu, trong đó 145 câu có nhãn nguồn đúng và 41 câu cố tình ngoài phạm vi kho). Nhóm `sach_giao_khoa` đo riêng phần sách giáo khoa, vốn chiếm 302/713 tệp của kho.
 
 ### Tập dev và tập test
 
@@ -251,10 +251,10 @@ Hệ thống không huấn luyện mô hình nào, nhưng vẫn có tham số đ
 
 | Tập | Số câu | Dùng để |
 | --- | --- | --- |
-| `dev` | 76 (58 có nhãn + 18 ngoài phạm vi) | Tinh chỉnh tham số, quét ngưỡng; chạy bao nhiêu lần cũng được |
-| `test` | 51 (39 có nhãn + 12 ngoài phạm vi) | Chỉ chạy **sau khi** đã đóng băng tham số; lấy số liệu này vào báo cáo |
+| `dev` | 113 (88 có nhãn + 25 ngoài phạm vi) | Tinh chỉnh tham số, quét ngưỡng; chạy bao nhiêu lần cũng được |
+| `test` | 73 (57 có nhãn + 16 ngoài phạm vi) | Chỉ chạy **sau khi** đã đóng băng tham số; lấy số liệu này vào báo cáo |
 
-Mọi chế độ của `benchmark_chatbot.py` mặc định chạy trên `dev`. `--tap test` lấy số cho báo cáo, `--tap tat_ca` chạy cả 127 câu để so với các lần đo trước khi chia. Quét ngưỡng (`--do-nguong`) bị chặn trên tập test. Mỗi tập ghi ra tệp kết quả riêng (`bang_chi_so_ir_dev.md`, `bang_chi_so_ir_test.md`; `bang_chi_so_ir.md` là bản cả bộ).
+Mọi chế độ của `benchmark_chatbot.py` mặc định chạy trên `dev`. `--tap test` lấy số cho báo cáo, `--tap tat_ca` chạy cả bộ để so với các lần đo trước khi chia. Quét ngưỡng (`--do-nguong`) bị chặn trên tập test. Mỗi tập ghi ra tệp kết quả riêng (`bang_chi_so_ir_dev.md`, `bang_chi_so_ir_test.md`; `bang_chi_so_ir.md` là bản cả bộ).
 
 ```powershell
 .\.venv\Scripts\python.exe benchmark_chatbot.py --ir               # tinh chỉnh trên dev
@@ -263,7 +263,9 @@ Mọi chế độ của `benchmark_chatbot.py` mặc định chạy trên `dev`.
 
 Câu hỏi mới thêm vào bộ phải được gán tập trước khi chạy: chạy `chia_tap_benchmark.py` (chỉ gán cho câu chưa có `tap`, không bao giờ đổi tập của câu cũ), hoặc gán tay `"tap": "test"`. Cách cho ước lượng sạch nhất là **viết câu test mới** mà không nhìn tên tệp trong kho, vì nhãn là một phần tên tệp và reranker có cộng điểm khớp tên tài liệu.
 
-> **Giới hạn cần nêu trong báo cáo:** các tham số hiện có được chọn khi nhìn toàn bộ 127 câu, trước khi chia tập. Tập test tách từ bộ cũ vì thế chỉ sạch đối với những lần tinh chỉnh từ nay về sau.
+Thêm câu mới thì chạy `kiem_tra_nhan_benchmark.py` trên máy có kho **trước** khi đo: script đối chiếu từng nhãn với sổ chỉ mục và thư mục kho, báo nhãn không khớp tệp nào, tệp chưa lập chỉ mục (cả hai làm câu luôn trượt dù truy hồi không có lỗi) và nhãn khớp quá nhiều tệp. Có lỗi thì script thoát với mã 1.
+
+> **Giới hạn cần nêu trong báo cáo:** các tham số hiện có được chọn khi nhìn 127 câu đầu tiên, trước khi chia tập. Phần test tách từ 127 câu đó vì thế chỉ sạch đối với những lần tinh chỉnh từ nay về sau. 59 câu thêm sau khi chia (22 câu rơi vào tập test) chưa từng được dùng để chọn tham số. Tuy vậy, người viết các câu này đã nhìn tên tệp để gắn nhãn, và nhãn chỉ ghi những tài liệu chắc chắn liên quan: sách giáo khoa và bài giảng cùng bài thường liên quan cả hai, nên điểm có thể bị đánh giá thấp đi.
 
 ### Các chế độ đo
 
