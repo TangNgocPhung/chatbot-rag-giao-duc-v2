@@ -292,6 +292,7 @@ Dù đăng nhập hay không, **máy chủ của trang web đều lưu lại m�
 - **Lưu:** câu hỏi, câu trả lời, các nguồn được trích, thời gian trả lời và vai trò bạn đã chọn ở mục *Gợi ý dành cho* (nếu có).
 - **Ai xem được:** trên giao diện, chỉ bạn thấy lịch sử của mình. Quản trị viên của trang xem được **số liệu thống kê**, gồm cả nội dung các câu hay được hỏi hoặc hay bị từ chối, nhưng thống kê không ghi câu nào của ai. Người quản lý máy chủ có quyền truy cập trực tiếp vào cơ sở dữ liệu thì đọc được toàn bộ.
 - **Dùng để làm gì:** để bạn mở lại cuộc trò chuyện, và để nhóm thực hiện biết người dùng hay hỏi gì, câu nào trả lời chưa tốt, từ đó bổ sung tài liệu. Dữ liệu không được gửi sang dịch vụ trí tuệ nhân tạo bên ngoài.
+- **Lưu bao lâu:** mỗi lượt hỏi đáp **tự xóa hẳn khỏi máy chủ sau 12 tháng** kể từ lúc hỏi. Một cuộc trò chuyện kéo dài qua mốc đó thì chỉ mất phần cũ hơn 12 tháng.
 - **Xóa:** bấm thùng rác (một cuộc hoặc toàn bộ) là xóa **cả trên trình duyệt lẫn trên máy chủ**. Nếu chưa đăng nhập, hãy xóa lịch sử **trước** khi xóa dữ liệu duyệt web. Mất mã của trình duyệt rồi thì trang không còn biết bản nào trên máy chủ là của bạn để xóa giúp.
 
 > Vì vậy, **đừng gõ thông tin cá nhân nhạy cảm** (số căn cước, số điện thoại, điểm số kèm họ tên học sinh…) vào câu hỏi. Trợ lý trả lời theo văn bản, không cần những thông tin đó.

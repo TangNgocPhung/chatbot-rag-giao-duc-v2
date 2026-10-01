@@ -36,6 +36,21 @@ def bat_luu_lich_su() -> bool:
     return os.getenv("RAG_LUU_LICH_SU", "1") == "1"
 
 
+# Lịch sử hỏi đáp giữ bao nhiêu ngày rồi tự xóa hẳn (xoa_qua_han). Đây là dữ
+# liệu người dùng thật, kể cả của khách, nên phải có hạn chứ không giữ mãi;
+# 365 ngày đủ cho một năm học để thống kê. Đặt 0 là giữ mãi.
+SO_NGAY_GIU_MAC_DINH = 365
+
+
+def so_ngay_giu() -> int:
+    try:
+        so = int(os.getenv("RAG_NGAY_GIU_LICH_SU", str(SO_NGAY_GIU_MAC_DINH)))
+    except ValueError:
+        # Gõ sai cấu hình thì giữ theo mặc định, đừng lặng lẽ thành giữ mãi.
+        return SO_NGAY_GIU_MAC_DINH
+    return max(0, so)
+
+
 DO_DAI_TIEU_DE = 80
 _khoa_ghi = threading.Lock()
 _ket_noi: sqlite3.Connection | None = None
@@ -54,6 +69,9 @@ def _connect() -> sqlite3.Connection:
         # WAL cho phép đọc trong khi đang ghi - giao diện tải danh sách hội thoại
         # không phải đợi lượt chat đang chạy ghi xong.
         _ket_noi.execute("PRAGMA journal_mode=WAL")
+        # Xóa là xóa thật: ghi đè vùng dữ liệu vừa xóa bằng số 0, không để câu
+        # hỏi cũ còn nằm trong trang trống của tệp cơ sở dữ liệu.
+        _ket_noi.execute("PRAGMA secure_delete=ON")
         _tao_bang(_ket_noi)
     return _ket_noi
 
@@ -309,6 +327,57 @@ def chuyen_chu_so_huu(tu_client: str, sang_client: str) -> int:
     except sqlite3.Error as exc:
         print(f"⚠️  Không chuyển được lịch sử sang tài khoản: {exc}")
         return 0
+
+
+def xoa_qua_han(so_ngay: int | None = None, bay_gio: float | None = None) -> dict:
+    """Xóa hẳn các lượt hỏi cũ hơn hạn giữ, và hội thoại không còn lượt nào.
+
+    Xóa theo từng lượt chứ không theo hội thoại: một cuộc trò chuyện kéo dài
+    qua mốc hạn vẫn còn, nhưng phần cũ hơn hạn phải mất. Hội thoại còn lượt thì
+    đặt lại tiêu đề và giờ tạo theo lượt cũ nhất còn lại, vì tiêu đề chính là
+    câu hỏi đầu tiên - giữ nguyên là giữ lại đúng câu đã quá hạn.
+
+    Sổ tay (tai_khoan.py) là ghi chép của người dùng, không phải nhật ký hỏi
+    đáp, nên không đụng tới. Không bao giờ ném lỗi ra ngoài.
+    """
+    so_ngay = so_ngay_giu() if so_ngay is None else so_ngay
+    ket_qua = {"so_luot": 0, "so_hoi_thoai": 0}
+    if so_ngay <= 0:
+        return ket_qua
+    moc = (time.time() if bay_gio is None else bay_gio) - so_ngay * 86400
+    try:
+        with _khoa_ghi:
+            conn = _connect()
+            ket_qua["so_luot"] = conn.execute(
+                "DELETE FROM luot WHERE tao_luc < ?", (moc,)
+            ).rowcount
+            ket_qua["so_hoi_thoai"] = conn.execute(
+                "DELETE FROM hoi_thoai WHERE tao_luc < ?"
+                " AND id NOT IN (SELECT DISTINCT hoi_thoai_id FROM luot)",
+                (moc,),
+            ).rowcount
+            con_lai = conn.execute(
+                "SELECT h.id,"
+                "       (SELECT l.cau_hoi FROM luot l WHERE l.hoi_thoai_id = h.id"
+                "         ORDER BY l.id LIMIT 1) AS cau_dau,"
+                "       (SELECT MIN(l.tao_luc) FROM luot l WHERE l.hoi_thoai_id = h.id)"
+                "         AS tao_luc_dau"
+                "  FROM hoi_thoai h WHERE h.tao_luc < ?",
+                (moc,),
+            ).fetchall()
+            for dong in con_lai:
+                conn.execute(
+                    "UPDATE hoi_thoai SET tieu_de = ?, tao_luc = ? WHERE id = ?",
+                    (_tieu_de_tu_cau_hoi(dong["cau_dau"] or ""), dong["tao_luc_dau"], dong["id"]),
+                )
+            conn.commit()
+            if ket_qua["so_luot"]:
+                # Bản cũ của các trang vừa xóa còn nằm trong tệp WAL tới lần
+                # checkpoint kế tiếp; dồn ngay để chúng không sống lâu hơn hạn.
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    except sqlite3.Error as exc:
+        print(f"⚠️  Không xóa được lịch sử quá hạn: {exc}")
+    return ket_qua
 
 
 def thong_ke(so_ngay: int = 30) -> dict:

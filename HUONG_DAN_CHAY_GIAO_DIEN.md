@@ -88,6 +88,7 @@ Thiết lập biến môi trường trước khi chạy nếu cấu hình máy k
 | `RAG_SMTP_MAY_CHU` / `RAG_SMTP_CONG` / `RAG_SMTP_NGUOI_GUI` | `smtp.gmail.com` / `465` / như tài khoản | Máy chủ thư khi không dùng Gmail; cổng 465 là SSL, 587 là STARTTLS |
 | `RAG_TAI_KHOAN_DB` | `tai_khoan.db` trong dự án | Cơ sở dữ liệu tài khoản, phiên đăng nhập và sổ tay |
 | `RAG_LICH_SU_DB` | trong dự án | Cơ sở dữ liệu lịch sử hội thoại |
+| `RAG_NGAY_GIU_LICH_SU` | `365` | Lượt hỏi đáp cũ hơn số ngày này bị xóa hẳn khỏi lịch sử (kiểm lúc khởi động rồi mỗi ngày một lần); cache câu trả lời cũng không giữ lâu hơn hạn này. Đặt `0` là giữ mãi. Đổi số này thì sửa luôn câu "tự xóa sau 12 tháng" ở mục 8 của `HUONG_DAN_SU_DUNG.md` |
 | `RAG_KHO_TAI_LEN_DB` | `kho_tai_len.db` trong dự án | Sổ ghi tệp gửi lên kho, hàng chờ duyệt và thùng rác |
 | `RAG_THU_MUC_BAN_PDF` | `ban_pdf_tam` trong dự án | Nơi nhớ bản PDF do LibreOffice chuyển từ Word, Excel, PowerPoint, HTML |
 | `RAG_SO_BAN_PDF_TOI_DA` | `300` | Số bản PDF chuyển đổi được giữ (bản dùng gần nhất) |

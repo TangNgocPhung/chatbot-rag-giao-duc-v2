@@ -105,6 +105,32 @@ class ChatMessage(BaseModel):
 ChatRequest.model_rebuild()
 
 
+# Dọn lịch sử hỏi đáp quá hạn mỗi ngày một lần (lần đầu ngay khi khởi động):
+# máy chủ chạy liền nhiều tháng không khởi động lại thì vẫn phải xóa đúng hạn.
+GIAY_GIUA_HAI_LAN_DON = 24 * 3600
+
+
+def _don_du_lieu_qua_han() -> None:
+    so_ngay = lich_su_chat.so_ngay_giu()
+    da_xoa = lich_su_chat.xoa_qua_han(so_ngay)
+    so_muc_cache = cache_ngu_nghia.cache.xoa_qua_han(so_ngay)
+    if da_xoa["so_luot"] or so_muc_cache:
+        print(
+            f"🧹 Đã xóa {da_xoa['so_luot']} lượt hỏi, {da_xoa['so_hoi_thoai']} hội thoại"
+            f" và {so_muc_cache} mục cache quá hạn."
+        )
+
+
+def _don_dinh_ky(dung: threading.Event) -> None:
+    while True:
+        try:
+            _don_du_lieu_qua_han()
+        except Exception as exc:  # luồng nền chết thì không còn ai dọn nữa
+            print(f"⚠️  Dọn dữ liệu quá hạn lỗi: {exc}")
+        if dung.wait(GIAY_GIUA_HAI_LAN_DON):
+            return
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     # Kiểm ngay lúc khởi động: bật chế độ công khai mà thiếu mật khẩu thì dừng
@@ -118,7 +144,12 @@ async def lifespan(_: FastAPI):
     threading.Thread(
         target=service.initialize, daemon=True, name="rag-initialize"
     ).start()
+    dung_don = threading.Event()
+    threading.Thread(
+        target=_don_dinh_ky, args=(dung_don,), daemon=True, name="don-qua-han"
+    ).start()
     yield
+    dung_don.set()
 
 
 app = FastAPI(

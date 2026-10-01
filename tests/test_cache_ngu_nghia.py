@@ -140,6 +140,23 @@ class CacheTests(unittest.TestCase):
         muc, _ = cache_moi.tim(GIONG_A, MODEL, VAN_TAY)
         self.assertIsNotNone(muc)
 
+    def test_xoa_qua_han_xoa_ca_tren_dia(self):
+        self._them_mau(cau_hoi="Câu cũ?")
+        self._them_mau(cau_hoi="Câu mới?", vec=KHAC_HAN)
+        self.cache._muc[0]["tao_luc"] = time.time() - 40 * 86400
+        self.assertEqual(self.cache.xoa_qua_han(), 1)
+        cache_moi = CacheNguNghia(self.duong_dan)
+        self.assertEqual([m["cau_hoi"] for m in cache_moi._muc], ["Câu mới?"])
+
+    def test_han_giu_lich_su_ngan_hon_thi_cache_theo_han_do(self):
+        # RAG_CACHE_NGAY đặt dài hơn hạn giữ lịch sử thì cache cũng không được
+        # giữ câu hỏi của người dùng lâu hơn hạn đó.
+        with patch.object(cache_ngu_nghia, "SO_NGAY_HET_HAN", 400):
+            self._them_mau(cau_hoi="Câu 370 ngày?")
+            self.cache._muc[0]["tao_luc"] = time.time() - 370 * 86400
+            self.assertEqual(self.cache.xoa_qua_han(), 0)
+            self.assertEqual(self.cache.xoa_qua_han(so_ngay_toi_da=365), 1)
+
     def test_cache_hong_tren_dia_khong_lam_vo_ung_dung(self):
         with open(self.duong_dan, "w", encoding="utf-8") as f:
             f.write("{ day khong phai json hop le")
