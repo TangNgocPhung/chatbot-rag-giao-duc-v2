@@ -117,8 +117,11 @@
 <rect x="1116.9" y="1446" width="76.2" height="32" rx="16" fill="#1d5bbf"/>
 <text x="1155" y="1467.5" font-size="15.5" font-weight="600" fill="#ffffff" text-anchor="middle">Top-4</text>
 <text x="1155" y="1504" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">độ phủ từ khoá, tên tệp</text>
-<text x="1155" y="1526" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">tối đa 2 đoạn mỗi tệp</text>
-<text x="1155" y="1548" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">rồi đưa vào prompt</text>
+<text x="1155" y="1526" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">lọc văn bản hết hiệu lực,</text>
+<text x="1155" y="1548" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">ưu tiên văn bản mới hơn</text>
+<text x="1155" y="1570" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">tối đa 2 đoạn mỗi tệp</text>
+<text x="1155" y="1592" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">+ tối đa 2 đoạn văn bản đi kèm</text>
+<text x="1155" y="1614" font-size="15" font-weight="400" fill="#5a7299" text-anchor="middle">rồi đưa vào prompt</text>
 <path d="M1237,1330 H1297" stroke="#1b4f9c" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
 <path d="M1305,1330 l-13,-6.5 v13 z" fill="#1b4f9c"/>
 <rect x="1315" y="1260" width="140" height="140" rx="20" fill="#f4f8fe" stroke="#dbe7f7" stroke-width="2" filter="url(#bong)"/>
