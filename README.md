@@ -245,6 +245,14 @@ Kết quả OCR, phiên âm và sổ ghi chép giúp lần chạy tiếp theo ti
 
 ## Đo chất lượng hệ thống
 
+Cách nhanh nhất là chạy cả phần đo bằng một lệnh. Script kiểm tra trước chỉ mục và Ollama (thiếu thì dừng ngay, không tự lập chỉ mục mới), chạy lần lượt hai bước đo bên dưới rồi gom toàn bộ kết quả vào `ket_qua_do_luong.md`:
+
+```powershell
+.\.venv\Scripts\python.exe chay_do_luong.py                 # thêm --chi-kiem-tra để chỉ kiểm tra điều kiện
+```
+
+Không cần chạy `van_ban_meta.py` trước, vì mỗi lần khởi tạo dịch vụ đều tự dựng lại hồ sơ văn bản và đồ thị quan hệ từ chỉ mục.
+
 Bộ câu hỏi chuẩn nằm ở `bo_cau_hoi_benchmark.json` (127 câu, trong đó 97 câu có nhãn nguồn đúng và 30 câu cố tình ngoài phạm vi kho).
 
 ### Tập dev và tập test

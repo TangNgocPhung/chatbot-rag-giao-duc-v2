@@ -140,6 +140,8 @@ Những điểm dưới đây là giới hạn thật của hệ thống, nên n
 1. **Độ chính xác trích quan hệ**: `python danh_gia_trich_quan_he.py xuat` lấy mẫu câu có động từ quan hệ và số hiệu. Mẫu được chọn theo từ khóa, không theo kết quả của hệ thống, để đo được recall. Gán nhãn mù ba cột (thay thế / bãi bỏ một phần / sửa đổi), rồi `python danh_gia_trich_quan_he.py cham` cho P/R/F1 kèm khoảng tin cậy Wilson và ma trận nhầm lẫn. Muốn so trước/sau một thay đổi mã nguồn trên **cùng bộ nhãn**, thêm `--ma-nguon <git worktree của phiên bản cũ>`.
 2. **Trả lời đúng mốc**: `python benchmark_moc_thoi_gian.py` chạy bộ `bo_cau_hoi_moc_thoi_gian.json` (45 câu, 20 cặp văn bản cũ - mới, 14 cặp có nhãn đã đối chiếu với sổ quan hệ nhập tay). Mỗi câu truy hồi ba lần trên cùng chỉ mục: tắt chế độ thời gian, bật, và bật kèm hạ bậc văn bản ngoài mốc. Đo bản đúng mốc có xếp trước bản sai mốc không, kèm kiểm định McNemar chính xác cho từng bước. Script cũng in đồ thị có nhận ra quan hệ thay thế của từng cặp không.
 3. **Không ảnh hưởng câu hỏi thường**: `python benchmark_chatbot.py --ir` trên bộ 127 câu, so MRR và Hit@K trước và sau.
+
+   Phép đo 2 và 3 chạy chung bằng `python chay_do_luong.py`. Script kiểm tra trước chỉ mục và Ollama, rồi ghi kết quả của cả hai cùng phiên bản mã nguồn và cấu hình vào `ket_qua_do_luong.md`.
 4. **Tỉ lệ trả lời bằng văn bản hết hiệu lực mà không cảnh báo**: trên tập câu hỏi hiện hành có cặp cũ - mới, đếm câu trả lời có bằng chứng từ văn bản đã hết hiệu lực. Mục tiêu là 0.
 5. **Thời gian cập nhật**: thời gian từ lúc thêm một văn bản tới lúc hỏi được, so với chi phí fine-tune ước tính cho cùng văn bản.
 
