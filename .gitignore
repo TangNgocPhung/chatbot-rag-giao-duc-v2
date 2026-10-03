@@ -62,3 +62,6 @@ nhat_ky_lap_chi_muc/
 *.truoc-khi-gop-*
 sao_luu_tam_dung_*/
 ban_pdf_tam/
+
+# Ket qua cua xem_do_thi.py (sinh lai bang lenh, khong luu vao git)
+do_thi.html
