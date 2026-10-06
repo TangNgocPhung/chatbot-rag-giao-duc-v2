@@ -6,7 +6,7 @@
   <meta name="description" content="Chatbot RAG hỗ trợ tra cứu và hỏi đáp từ kho tri thức giáo dục.">
   <title>Chatbot RAG Giáo dục</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=1.9.27">
+  <link rel="stylesheet" href="./styles.css?v=1.9.30">
   <script>
     /* Đặt nền đúng ngay từ lần vẽ đầu: app.js dùng defer nên nếu đợi nó thì
        người dùng chế độ tối sẽ thấy một nháy màu trắng khi mở trang. */
@@ -457,6 +457,10 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M17.5 14.2A5.5 5.5 0 0 1 20.5 19"/></svg>
       Quản lý tài khoản
     </button>
+    <button type="button" role="menuitem" data-tk="quan-ly-tu-ngu" class="chi-quan-tri">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 4v-14Z"/><path d="m9.5 8.5 5 4M14.5 8.5l-5 4"/></svg>
+      Từ ngữ cấm
+    </button>
     <button type="button" role="menuitem" data-tk="sua-thong-tin">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 10.5-10.5-3-3L5 16l-1 4Z"/><path d="m13.5 7.5 3 3"/></svg>
       Sửa họ tên / email
@@ -758,6 +762,48 @@
     <div class="document-list" id="qltkDanhSach"></div>
   </dialog>
 
+  <dialog class="document-dialog qltk-dialog tn-dialog" id="tnDialog" aria-labelledby="tnTitle">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">QUẢN TRỊ</p>
+        <h2 id="tnTitle">Từ ngữ cấm</h2>
+      </div>
+      <div class="dialog-header-actions">
+        <button class="icon-button" id="tnDong" type="button" aria-label="Đóng quản lý từ ngữ cấm">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+    </div>
+    <form class="tn-form" id="tnForm" autocomplete="off">
+      <label class="tn-o tn-o-tu">
+        <span>Từ hoặc cụm từ</span>
+        <input id="tnTu" type="text" maxlength="60" placeholder="vd. một từ lóng mới" required>
+      </label>
+      <label class="tn-o">
+        <span>Nhóm</span>
+        <select id="tnNhom"></select>
+      </label>
+      <button class="kho-nut chinh tn-them" id="tnThem" type="submit">Thêm</button>
+    </form>
+    <p class="tn-goi-y">Gõ có dấu thì chỉ chặn khi người dùng gõ đúng dấu đó; gõ không dấu thì chỉ chặn khi người dùng gõ không dấu. Không cần thêm cách viết lách như "đ.m", "l0n": bộ lọc tự nhận ra. Trước khi thêm, máy thử từ đó trên các câu hỏi gần đây để bạn thấy nó có chặn nhầm câu học tập không.</p>
+    <div class="tn-xem-truoc hidden" id="tnXemTruoc" aria-live="polite"></div>
+    <label class="document-search tn-thu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6M10 4v5l-5 9a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2l-5-9V4"/></svg>
+      <input id="tnThuCau" type="text" maxlength="2000" placeholder="Thử một câu xem có bị chặn không...">
+      <span class="tn-ket-qua-thu" id="tnKetQuaThu" aria-live="polite"></span>
+    </label>
+    <div class="kho-tabs" id="tnTabs" role="tablist" aria-label="Danh sách từ">
+      <button type="button" role="tab" data-loc="them" aria-selected="true">Đã thêm <span class="qltk-dem" data-dem="them"></span></button>
+      <button type="button" role="tab" data-loc="co-san" aria-selected="false">Có sẵn <span class="qltk-dem" data-dem="co-san"></span></button>
+    </div>
+    <div class="document-summary" id="tnTomTat"></div>
+    <label class="document-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input id="tnTim" type="search" placeholder="Tìm trong danh sách..." autocomplete="off">
+    </label>
+    <div class="document-list" id="tnDanhSach"></div>
+  </dialog>
+
   <dialog class="confirm-dialog" id="confirmDialog" aria-labelledby="confirmTitle">
     <div class="confirm-body">
       <h2 id="confirmTitle">Xác nhận</h2>
@@ -769,11 +815,12 @@
     </div>
   </dialog>
   <script src="./vai-tro.js?v=1.9.26" defer></script>
-  <script src="./loc-tu-ngu.js?v=1.9.29" defer></script>
+  <script src="./loc-tu-ngu.js?v=1.9.30" defer></script>
   <script src="./app.js?v=1.9.29" defer></script>
   <script src="./so-tay.js?v=1.9.19" defer></script>
-  <script src="./tai-khoan.js?v=1.9.12" defer></script>
+  <script src="./tai-khoan.js?v=1.9.13" defer></script>
   <script src="./quan-ly-tai-khoan.js?v=1.9.9" defer></script>
+  <script src="./quan-ly-tu-ngu.js?v=1.9.30" defer></script>
   <script src="./dich.js?v=1.9.12" defer></script>
   <script src="./huong-dan.js?v=1.9.22" defer></script>
   <script src="./gioi-thieu.js?v=1.9.26" defer></script>

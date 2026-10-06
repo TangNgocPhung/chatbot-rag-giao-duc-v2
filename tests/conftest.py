@@ -66,6 +66,17 @@ def cach_ly_tep_dinh_kem(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def cach_ly_tu_ngu_cam(tmp_path, monkeypatch):
+    """Từ cấm quản trị viên thêm: mỗi test một sổ riêng, bộ lọc dựng lại từ đầu."""
+    import loc_tu_ngu
+
+    monkeypatch.setattr(loc_tu_ngu, "DUONG_DAN_DB", str(tmp_path / "tu_ngu_cam.db"))
+    loc_tu_ngu.dong_ket_noi()
+    yield
+    loc_tu_ngu.dong_ket_noi()
+
+
+@pytest.fixture(autouse=True)
 def mo_khoa_quan_tri(monkeypatch):
     """Các test cũ gọi thẳng endpoint quản trị (cập nhật chỉ mục, đổi mô hình...)
     mà không đăng nhập. Chúng kiểm tra việc khác, nên tắt khoá quản trị cho

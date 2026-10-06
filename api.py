@@ -1402,6 +1402,83 @@ def xoa_tai_khoan(ma: str, request: Request, x_rag_action: str | None = Header(d
 
 
 # ============================================================
+# QUẢN LÝ TỪ NGỮ CẤM (chỉ quản trị viên)
+# ============================================================
+class TuNguMoi(BaseModel):
+    tu: str = Field(min_length=1, max_length=200)
+    nhom: str = Field(max_length=32)
+
+
+class CauThu(BaseModel):
+    cau: str = Field(min_length=1, max_length=2000)
+
+
+# Số câu hỏi cũ đem ra thử khi xem trước một từ mới. Đủ để thấy từ đó có chặn
+# nhầm câu học tập hay không, mà vẫn chạy trong khoảng một giây.
+SO_CAU_XEM_TRUOC = 3000
+
+
+def _loi_tu_ngu(exc: loc_tu_ngu.LoiTuNgu) -> HTTPException:
+    return HTTPException(status_code=exc.ma_http, detail=str(exc))
+
+
+@app.get("/api/quan-ly/tu-ngu")
+def danh_sach_tu_ngu(request: Request):
+    _nguoi_quan_tri(request)
+    return {
+        "bat": loc_tu_ngu.dang_bat(),
+        "nhom": [{"ma": ma, "nhan": nhan} for ma, nhan in loc_tu_ngu.NHOM.items()],
+        "co_san": {
+            "co_dau": {n: list(t) for n, t in loc_tu_ngu.TU_CO_DAU.items()},
+            "khong_dau": {n: list(t) for n, t in loc_tu_ngu.TU_KHONG_DAU.items()},
+        },
+        "them": loc_tu_ngu.danh_sach_tu_them(),
+    }
+
+
+@app.post("/api/quan-ly/tu-ngu/xem-truoc")
+def xem_truoc_tu_ngu(thong_tin: TuNguMoi, request: Request):
+    """Từ sắp thêm sẽ chặn những câu hỏi cũ nào. Chỉ đọc, không lưu gì."""
+    _nguoi_quan_tri(request)
+    try:
+        return loc_tu_ngu.thu_tu_moi(
+            thong_tin.tu, thong_tin.nhom, lich_su_chat.cau_hoi_gan_day(SO_CAU_XEM_TRUOC)
+        )
+    except loc_tu_ngu.LoiTuNgu as exc:
+        raise _loi_tu_ngu(exc) from exc
+
+
+@app.post("/api/quan-ly/tu-ngu/thu-cau")
+def thu_cau_tu_ngu(thong_tin: CauThu, request: Request):
+    """Thử một câu với bộ lọc đang dùng, kèm từ đã khớp để biết vì sao bị chặn."""
+    _nguoi_quan_tri(request)
+    ket_qua = loc_tu_ngu.kiem_tra(thong_tin.cau)
+    return {"vi_pham": ket_qua.vi_pham, "nhom": list(ket_qua.nhom), "tu_khop": list(ket_qua.tu_khop)}
+
+
+@app.post("/api/quan-ly/tu-ngu")
+def them_tu_ngu(thong_tin: TuNguMoi, request: Request, x_rag_action: str | None = Header(default=None)):
+    nguoi = _nguoi_quan_tri(request)
+    if x_rag_action != "them-tu-ngu":
+        raise HTTPException(status_code=403, detail="Yêu cầu không hợp lệ.")
+    try:
+        return {"tu_ngu": loc_tu_ngu.them_tu(thong_tin.tu, thong_tin.nhom, nguoi)}
+    except loc_tu_ngu.LoiTuNgu as exc:
+        raise _loi_tu_ngu(exc) from exc
+
+
+@app.delete("/api/quan-ly/tu-ngu/{ma}")
+def xoa_tu_ngu(ma: str, request: Request, x_rag_action: str | None = Header(default=None)):
+    _nguoi_quan_tri(request)
+    if x_rag_action != "xoa-tu-ngu":
+        raise HTTPException(status_code=403, detail="Yêu cầu không hợp lệ.")
+    try:
+        return {"tu_ngu": loc_tu_ngu.xoa_tu(ma)}
+    except loc_tu_ngu.LoiTuNgu as exc:
+        raise _loi_tu_ngu(exc) from exc
+
+
+# ============================================================
 # DỊCH: mô hình nhỏ chạy qua Ollama trên máy chủ, văn bản không rời máy
 # ============================================================
 class YeuCauDich(BaseModel):

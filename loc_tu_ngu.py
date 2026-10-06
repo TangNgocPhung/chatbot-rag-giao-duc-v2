@@ -47,7 +47,11 @@ from __future__ import annotations
 
 import os
 import re
+import sqlite3
+import threading
+import time
 import unicodedata
+import uuid
 from dataclasses import dataclass
 
 from can_cu_van_ban import bo_dau
@@ -184,10 +188,6 @@ def _bien_dich(danh_sach: dict[str, tuple[str, ...]]) -> dict[str, re.Pattern]:
     return ket_qua
 
 
-_MAU_CO_DAU = _bien_dich(TU_CO_DAU)
-_MAU_KHONG_DAU = _bien_dich(TU_KHONG_DAU)
-
-
 def _tu_don(danh_sach: dict[str, tuple[str, ...]]) -> list[tuple[str, str]]:
     """(nhóm, từ) của các mục một chữ, đủ dài để tìm như chuỗi con."""
     return [
@@ -196,8 +196,6 @@ def _tu_don(danh_sach: dict[str, tuple[str, ...]]) -> list[tuple[str, str]]:
     ]
 
 
-_TU_DON_CO_DAU = _tu_don(TU_CO_DAU)
-_TU_DON_KHONG_DAU = _tu_don(TU_KHONG_DAU)
 _RE_HOP_LE = re.compile(
     r"(?<!\w)(?:" + "|".join(re.escape(c) for c in CUM_HOP_LE) + r")(?!\w)"
 )
@@ -209,27 +207,55 @@ _RE_HOP_LE = re.compile(
 @dataclass(frozen=True)
 class KetQuaLoc:
     vi_pham: bool
-    # Mã nhóm vi phạm, theo thứ tự khai báo: "chui_the", "tuc_tiu",
+    # Mã nhóm vi phạm, theo thứ tự trong NHOM: "chui_the", "tuc_tiu",
     # "tinh_duc", "xuc_pham". Dùng cho log và thống kê.
     nhom: tuple[str, ...] = ()
-    # Từ đã khớp (dạng sau chuẩn hoá). Chỉ để ghi log và viết test, KHÔNG
-    # đưa ngược lên giao diện.
+    # Từ đã khớp (dạng sau chuẩn hoá). Chỉ để ghi log, viết test và cho quản
+    # trị viên thử câu; KHÔNG đưa ngược lên giao diện người hỏi.
     tu_khop: tuple[str, ...] = ()
 
 
-def kiem_tra(van_ban: str) -> KetQuaLoc:
+@dataclass(frozen=True)
+class _BoLoc:
+    """Các mẫu đã biên dịch từ một bộ danh sách. Dựng lại cả bộ khi quản trị
+    viên thêm hay xoá từ, rồi thay một lần: luồng đang kiểm tra dở vẫn dùng
+    trọn bộ cũ, không bao giờ thấy bộ dựng nửa chừng."""
+
+    co_dau: dict[str, tuple[str, ...]]
+    khong_dau: dict[str, tuple[str, ...]]
+    mau_co_dau: dict[str, re.Pattern]
+    mau_khong_dau: dict[str, re.Pattern]
+    tu_don_co_dau: list[tuple[str, str]]
+    tu_don_khong_dau: list[tuple[str, str]]
+
+    @classmethod
+    def dung(cls, co_dau: dict, khong_dau: dict) -> "_BoLoc":
+        # Nhóm không còn từ nào thì bỏ hẳn: mẫu rỗng "(?:)" khớp mọi chỗ.
+        co_dau = {n: tuple(t) for n, t in co_dau.items() if t}
+        khong_dau = {n: tuple(t) for n, t in khong_dau.items() if t}
+        return cls(
+            co_dau, khong_dau, _bien_dich(co_dau), _bien_dich(khong_dau),
+            _tu_don(co_dau), _tu_don(khong_dau),
+        )
+
+
+def kiem_tra(van_ban: str, bo_loc: _BoLoc | None = None) -> KetQuaLoc:
     """Tìm từ ngữ không phù hợp trong văn bản người dùng gõ.
+
+    bo_loc: bỏ trống là bộ đang dùng (có sẵn + quản trị viên thêm); truyền vào
+    để thử riêng một từ (xem thu_tu_moi).
 
     Chi phí O(độ dài câu): mỗi góc nhìn chỉ qua một biểu thức chính quy cho
     mỗi nhóm, không có vòng lặp theo từng từ trong danh sách.
     """
+    bo_loc = bo_loc or _bo_loc_hien_tai()
     chuan = _RE_HOP_LE.sub(" ", _chuan_hoa(van_ban))
     if not chuan:
         return KetQuaLoc(False)
     cac_dang = (chuan, *_cac_dang_go_lach(chuan))
     goc_nhin = (
-        (_MAU_CO_DAU, cac_dang),
-        (_MAU_KHONG_DAU, tuple(_goc_khong_dau(d) for d in cac_dang)),
+        (bo_loc.mau_co_dau, cac_dang),
+        (bo_loc.mau_khong_dau, tuple(_goc_khong_dau(d) for d in cac_dang)),
     )
     nhom_vi_pham: list[str] = []
     tu_khop: list[str] = []
@@ -247,7 +273,7 @@ def kiem_tra(van_ban: str) -> KetQuaLoc:
     for khoi in _RE_CHU_LE.findall(chuan):
         khoi = khoi.replace(" ", "")
         cac_khoi = (khoi, _RE_LAP.sub(r"\1", khoi))
-        tu_don = _TU_DON_KHONG_DAU if bo_dau(khoi) == khoi else _TU_DON_CO_DAU
+        tu_don = bo_loc.tu_don_khong_dau if bo_dau(khoi) == khoi else bo_loc.tu_don_co_dau
         for nhom, tu in tu_don:
             if any(tu in k for k in cac_khoi):
                 if nhom not in nhom_vi_pham:
@@ -256,10 +282,9 @@ def kiem_tra(van_ban: str) -> KetQuaLoc:
                     tu_khop.append(tu)
     if not nhom_vi_pham:
         return KetQuaLoc(False)
-    thu_tu = list(TU_CO_DAU)
     return KetQuaLoc(
         True,
-        tuple(sorted(nhom_vi_pham, key=thu_tu.index)),
+        tuple(sorted(nhom_vi_pham, key=list(NHOM).index)),
         tuple(tu_khop),
     )
 
@@ -279,22 +304,236 @@ def du_lieu_cho_giao_dien() -> dict:
     sớm muộn sẽ lệch nhau. Giao diện chỉ để báo sớm cho người dùng sửa câu;
     chốt chặn thật vẫn là kiem_tra() trong stream_answer, vì ai cũng gọi thẳng
     được /api/chat/stream mà không qua giao diện."""
+    bo_loc = _bo_loc_hien_tai()
     return {
         "bat": dang_bat(),
-        "co_dau": {nhom: list(cac_tu) for nhom, cac_tu in TU_CO_DAU.items()},
-        "khong_dau": {nhom: list(cac_tu) for nhom, cac_tu in TU_KHONG_DAU.items()},
+        "co_dau": {nhom: list(cac_tu) for nhom, cac_tu in bo_loc.co_dau.items()},
+        "khong_dau": {nhom: list(cac_tu) for nhom, cac_tu in bo_loc.khong_dau.items()},
         "hop_le": list(CUM_HOP_LE),
     }
+
+
+# ============================================================
+# TỪ QUẢN TRỊ VIÊN THÊM
+# ============================================================
+# Danh sách có sẵn ở trên nằm trong mã nguồn, có test chốt chặn. Từ mới gặp
+# trong thực tế (tiếng lóng mới, cách viết lách mới) thì quản trị viên thêm qua
+# giao diện, không phải sửa mã: lưu trong SQLite, bộ lọc dựng lại ngay.
+#
+# Từ thêm vào đi đúng một trong hai danh sách theo chính cách nó được gõ: có
+# dấu thì vào danh sách có dấu, không dấu thì vào danh sách không dấu - cùng
+# quy tắc với danh sách có sẵn. Từ không dấu là thứ dễ chặn nhầm nhất ("cac" là
+# "các"), nên giao diện bắt xem trước nó chặn những câu hỏi cũ nào (thu_tu_moi)
+# rồi mới cho thêm.
+
+NHOM: dict[str, str] = {
+    "chui_the": "Chửi thề",
+    "tuc_tiu": "Tục tĩu",
+    "tinh_duc": "Tình dục, 18+",
+    "xuc_pham": "Xúc phạm",
+}
+
+THU_MUC_DU_AN = os.path.dirname(os.path.abspath(__file__))
+DUONG_DAN_DB = os.path.abspath(os.getenv(
+    "RAG_TU_NGU_CAM_DB", os.path.join(THU_MUC_DU_AN, "tu_ngu_cam.db")
+))
+DO_DAI_TOI_DA = 60
+
+_khoa = threading.Lock()
+_ket_noi: sqlite3.Connection | None = None
+_bo_loc: _BoLoc | None = None
+
+
+class LoiTuNgu(ValueError):
+    def __init__(self, thong_bao: str, ma_http: int = 400):
+        super().__init__(thong_bao)
+        self.ma_http = ma_http
+
+
+def _connect() -> sqlite3.Connection:
+    global _ket_noi
+    if _ket_noi is None:
+        _ket_noi = sqlite3.connect(DUONG_DAN_DB, check_same_thread=False)
+        _ket_noi.row_factory = sqlite3.Row
+        _ket_noi.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS tu_them (
+                id        TEXT PRIMARY KEY,
+                tu        TEXT NOT NULL UNIQUE,   -- dạng đã chuẩn hoá
+                nhom      TEXT NOT NULL,
+                tao_luc   REAL NOT NULL,
+                tao_boi   TEXT NOT NULL
+            );
+            """
+        )
+        _ket_noi.commit()
+    return _ket_noi
+
+
+def dong_ket_noi() -> None:
+    """Đóng sổ và quên bộ lọc đã dựng (test đổi DUONG_DAN_DB rồi gọi hàm này)."""
+    global _ket_noi, _bo_loc
+    with _khoa:
+        if _ket_noi is not None:
+            _ket_noi.close()
+            _ket_noi = None
+        _bo_loc = None
+
+
+def _dung_bo_loc() -> _BoLoc:
+    co_dau = {nhom: list(TU_CO_DAU.get(nhom, ())) for nhom in NHOM}
+    khong_dau = {nhom: list(TU_KHONG_DAU.get(nhom, ())) for nhom in NHOM}
+    for muc in danh_sach_tu_them():
+        dich = khong_dau if muc["khong_dau"] else co_dau
+        dich[muc["nhom"]].append(muc["tu"])
+    return _BoLoc.dung(co_dau, khong_dau)
+
+
+def _bo_loc_hien_tai() -> _BoLoc:
+    global _bo_loc
+    bo_loc = _bo_loc
+    if bo_loc is None:
+        try:
+            bo_loc = _dung_bo_loc()
+        except sqlite3.Error:
+            # Sổ hỏng hay không mở được: vẫn lọc bằng danh sách có sẵn, không
+            # để lỗi lưu trữ làm hỏng mọi câu hỏi.
+            bo_loc = _BoLoc.dung(TU_CO_DAU, TU_KHONG_DAU)
+        _bo_loc = bo_loc
+    return bo_loc
+
+
+def _lam_moi() -> None:
+    global _bo_loc
+    _bo_loc = _dung_bo_loc()
+
+
+def chuan_hoa_tu_moi(tu: str) -> str:
+    """Kiểm tra và đưa từ quản trị viên gõ về dạng lưu.
+
+    Từ phải sống sót qua đúng bước chuẩn hoá mà câu hỏi phải qua: "đ.m" thành
+    "đ m", "l0n" thành "lon" - lưu nguyên dạng gõ thì không bao giờ khớp, lưu
+    dạng đã đổi thì "l0n" âm thầm thành "lon" (lon nước). Nên báo lỗi để người
+    thêm gõ lại, thay vì tự đổi hộ."""
+    goc = " ".join(unicodedata.normalize("NFC", tu or "").lower().split())
+    if len(goc) < 2:
+        raise LoiTuNgu("Từ cần ít nhất 2 ký tự.")
+    if len(goc) > DO_DAI_TOI_DA:
+        raise LoiTuNgu(f"Từ dài quá {DO_DAI_TOI_DA} ký tự.")
+    if not re.search(_CHU, goc):
+        raise LoiTuNgu("Từ phải có ít nhất một chữ cái.")
+    if _chuan_hoa(goc) != goc:
+        raise LoiTuNgu(
+            "Chỉ gõ chữ, số, khoảng trắng và dấu *. Không cần thêm các cách viết "
+            "lách như \"đ.m\", \"l0n\": bộ lọc tự gỡ dấu chấm và số thay chữ."
+        )
+    if goc in CUM_HOP_LE:
+        raise LoiTuNgu("Cụm này đang nằm trong danh sách cụm hợp lệ.")
+    return goc
+
+
+def _la_khong_dau(tu: str) -> bool:
+    return bo_dau(tu) == tu
+
+
+def thu_tu_moi(tu: str, nhom: str, cac_cau: list[str], so_vi_du: int = 5) -> dict:
+    """Xem trước một từ sắp thêm: dạng sẽ lưu, thuộc danh sách nào, và trong
+    các câu hỏi cũ thì nó chặn những câu nào.
+
+    Chỉ dựng bộ lọc từ riêng từ đó, nên câu bị đếm là câu từ này chặn THÊM chứ
+    không lẫn câu vốn đã bị danh sách hiện có chặn."""
+    if nhom not in NHOM:
+        raise LoiTuNgu("Nhóm không hợp lệ.")
+    tu = chuan_hoa_tu_moi(tu)
+    khong_dau = _la_khong_dau(tu)
+    bo_loc = _BoLoc.dung({} if khong_dau else {nhom: [tu]}, {nhom: [tu]} if khong_dau else {})
+    bi_chan = [cau for cau in cac_cau if kiem_tra(cau, bo_loc).vi_pham]
+    return {
+        "tu": tu,
+        "nhom": nhom,
+        "khong_dau": khong_dau,
+        "da_co": _da_co(tu),
+        "so_cau_xet": len(cac_cau),
+        "so_cau_bi_chan": len(bi_chan),
+        "vi_du": [cau[:160] for cau in bi_chan[:so_vi_du]],
+    }
+
+
+def _da_co(tu: str) -> bool:
+    """Từ đã nằm trong danh sách đang dùng, ở bất kỳ nhóm nào."""
+    hien_tai = _bo_loc_hien_tai()
+    return any(
+        tu in cac_tu
+        for bo in (hien_tai.co_dau, hien_tai.khong_dau) for cac_tu in bo.values()
+    )
+
+
+def danh_sach_tu_them() -> list[dict]:
+    with _khoa:
+        dong = _connect().execute(
+            "SELECT id, tu, nhom, tao_luc, tao_boi FROM tu_them ORDER BY tao_luc DESC"
+        ).fetchall()
+    return [
+        {**dict(d), "khong_dau": _la_khong_dau(d["tu"])}
+        for d in dong if d["nhom"] in NHOM
+    ]
+
+
+def them_tu(tu: str, nhom: str, nguoi_lam: dict | None = None) -> dict:
+    if nhom not in NHOM:
+        raise LoiTuNgu("Nhóm không hợp lệ.")
+    tu = chuan_hoa_tu_moi(tu)
+    if _da_co(tu):
+        raise LoiTuNgu(f"\"{tu}\" đã có trong danh sách.", 409)
+    muc = {
+        "id": uuid.uuid4().hex,
+        "tu": tu,
+        "nhom": nhom,
+        "tao_luc": time.time(),
+        "tao_boi": ((nguoi_lam or {}).get("ten") or (nguoi_lam or {}).get("email")
+                    or "Quản trị viên"),
+    }
+    with _khoa:
+        conn = _connect()
+        try:
+            conn.execute(
+                "INSERT INTO tu_them (id, tu, nhom, tao_luc, tao_boi) VALUES (?, ?, ?, ?, ?)",
+                tuple(muc.values()),
+            )
+            conn.commit()
+        except sqlite3.IntegrityError as exc:
+            raise LoiTuNgu(f"\"{tu}\" đã có trong danh sách.", 409) from exc
+    _lam_moi()
+    return {**muc, "khong_dau": _la_khong_dau(tu)}
+
+
+def xoa_tu(ma: str) -> dict:
+    with _khoa:
+        conn = _connect()
+        dong = conn.execute("SELECT id, tu, nhom FROM tu_them WHERE id = ?", (ma,)).fetchone()
+        if dong is None:
+            raise LoiTuNgu("Không tìm thấy từ này (có thể đã bị xoá).", 404)
+        conn.execute("DELETE FROM tu_them WHERE id = ?", (ma,))
+        conn.commit()
+    _lam_moi()
+    return dict(dong)
 
 
 __all__ = [
     "CUM_HOP_LE",
     "KetQuaLoc",
     "LOI_NHAC",
+    "LoiTuNgu",
+    "NHOM",
     "TU_CO_DAU",
     "TU_KHONG_DAU",
+    "chuan_hoa_tu_moi",
     "co_tu_ngu_khong_phu_hop",
     "dang_bat",
+    "danh_sach_tu_them",
     "du_lieu_cho_giao_dien",
     "kiem_tra",
+    "them_tu",
+    "thu_tu_moi",
+    "xoa_tu",
 ]

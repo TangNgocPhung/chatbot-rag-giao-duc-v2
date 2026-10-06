@@ -243,6 +243,20 @@ def danh_sach_hoi_thoai(client_id: str, gioi_han: int = 50) -> list[dict]:
         return []
 
 
+def cau_hoi_gan_day(gioi_han: int = 2000) -> list[str]:
+    """Các câu hỏi mới nhất, không kèm ai hỏi. Dùng để quản trị viên xem trước
+    một từ cấm sắp thêm sẽ chặn những câu nào (loc_tu_ngu.thu_tu_moi)."""
+    try:
+        dong = _connect().execute(
+            "SELECT cau_hoi FROM luot ORDER BY tao_luc DESC LIMIT ?",
+            (max(1, min(gioi_han, 10000)),),
+        ).fetchall()
+        return [d["cau_hoi"] for d in dong]
+    except sqlite3.Error as exc:
+        print(f"⚠️  Không đọc được câu hỏi gần đây: {exc}")
+        return []
+
+
 def chi_tiet_hoi_thoai(hoi_thoai_id: str) -> dict | None:
     try:
         conn = _connect()

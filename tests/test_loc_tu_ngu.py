@@ -223,5 +223,125 @@ class GiaoDienTests(unittest.TestCase):
         self.assertEqual(json.loads(chay.stdout), [False, False])
 
 
+class TuQuanTriThemTests(unittest.TestCase):
+    """Từ quản trị viên thêm qua giao diện: có hiệu lực ngay, đi đúng danh
+    sách có dấu / không dấu, và không lưu được dạng sẽ không bao giờ khớp."""
+
+    def test_them_co_hieu_luc_ngay_va_xoa_la_bo_chan(self):
+        self.assertFalse(loc_tu_ngu.kiem_tra("đồ khỉ gió").vi_pham)
+        muc = loc_tu_ngu.them_tu("Khỉ Gió", "xuc_pham", {"ten": "Cô Lan"})
+        self.assertEqual(muc["tu"], "khỉ gió")
+        self.assertEqual(muc["tao_boi"], "Cô Lan")
+        ket_qua = loc_tu_ngu.kiem_tra("đồ khỉ gió")
+        self.assertTrue(ket_qua.vi_pham)
+        self.assertEqual(ket_qua.nhom, ("xuc_pham",))
+        self.assertTrue(loc_tu_ngu.kiem_tra("đồ KHỈ GIÓÓÓÓ").vi_pham)
+        loc_tu_ngu.xoa_tu(muc["id"])
+        self.assertFalse(loc_tu_ngu.kiem_tra("đồ khỉ gió").vi_pham)
+
+    def test_tu_luu_ben_vung_qua_lan_mo_lai(self):
+        loc_tu_ngu.them_tu("khỉ gió", "xuc_pham")
+        loc_tu_ngu.dong_ket_noi()  # như khởi động lại máy chủ
+        self.assertTrue(loc_tu_ngu.kiem_tra("khỉ gió").vi_pham)
+
+    def test_tu_co_dau_khong_chan_ban_khong_dau_va_nguoc_lai(self):
+        loc_tu_ngu.them_tu("khỉ gió", "xuc_pham")
+        self.assertFalse(loc_tu_ngu.kiem_tra("khi gio").vi_pham)
+        loc_tu_ngu.them_tu("dmvl", "chui_the")
+        self.assertTrue(loc_tu_ngu.kiem_tra("dmvl").vi_pham)
+        muc = loc_tu_ngu.danh_sach_tu_them()
+        self.assertEqual({m["tu"]: m["khong_dau"] for m in muc}, {"khỉ gió": False, "dmvl": True})
+
+    def test_tu_moi_vao_danh_sach_cho_giao_dien(self):
+        loc_tu_ngu.them_tu("dmvl", "chui_the")
+        self.assertIn("dmvl", loc_tu_ngu.du_lieu_cho_giao_dien()["khong_dau"]["chui_the"])
+
+    def test_tu_choi_tu_khong_hop_le(self):
+        for tu, nhom in [
+            ("đ.m", "chui_the"),      # dấu chấm bị chuẩn hoá thành khoảng trắng
+            ("l0n", "tuc_tiu"),       # "0" kẹp giữa chữ thành "o": sẽ chặn "lon"
+            ("a", "chui_the"),        # quá ngắn
+            ("123", "chui_the"),      # không có chữ
+            ("x" * 61, "chui_the"),   # quá dài
+            ("hạt óc chó", "xuc_pham"),  # đang là cụm hợp lệ
+            ("khỉ gió", "khong_co"),  # nhóm lạ
+        ]:
+            with self.subTest(tu=tu), self.assertRaises(loc_tu_ngu.LoiTuNgu):
+                loc_tu_ngu.them_tu(tu, nhom)
+        self.assertEqual(loc_tu_ngu.danh_sach_tu_them(), [])
+
+    def test_khong_them_trung(self):
+        with self.assertRaises(loc_tu_ngu.LoiTuNgu) as loi:
+            loc_tu_ngu.them_tu("VCL", "chui_the")  # có sẵn
+        self.assertEqual(loi.exception.ma_http, 409)
+        loc_tu_ngu.them_tu("khỉ gió", "xuc_pham")
+        with self.assertRaises(loc_tu_ngu.LoiTuNgu):
+            loc_tu_ngu.them_tu("khỉ  gió", "chui_the")  # trùng sau chuẩn hoá
+
+    def test_xem_truoc_dem_cau_ma_rieng_tu_moi_chan(self):
+        cac_cau = ["Các môn học lớp 10", "cac mon hoc lop 10", "vcl", "cac ban oi"]
+        kq = loc_tu_ngu.thu_tu_moi("cac", "tuc_tiu", cac_cau)
+        self.assertTrue(kq["khong_dau"])
+        # "vcl" vốn đã bị chặn nhưng không do từ này; "Các" có dấu không khớp.
+        self.assertEqual(kq["so_cau_bi_chan"], 2)
+        self.assertEqual(kq["vi_du"], ["cac mon hoc lop 10", "cac ban oi"])
+        self.assertEqual(loc_tu_ngu.danh_sach_tu_them(), [])  # xem trước không lưu
+
+
+class ApiQuanTriTuNguTests(unittest.TestCase):
+    def setUp(self):
+        from fastapi.testclient import TestClient
+        from api import app
+
+        self.client = TestClient(app)
+
+    def test_them_xem_truoc_thu_cau_xoa(self):
+        import lich_su_chat
+
+        lich_su_chat.ghi_luot(client_id="k", cau_hoi="cac mon hoc", tra_loi="x")
+        kq = self.client.post("/api/quan-ly/tu-ngu/xem-truoc",
+                              json={"tu": "cac", "nhom": "tuc_tiu"}).json()
+        self.assertGreaterEqual(kq["so_cau_bi_chan"], 1)
+
+        thieu_header = self.client.post("/api/quan-ly/tu-ngu", json={"tu": "dmvl", "nhom": "chui_the"})
+        self.assertEqual(thieu_header.status_code, 403)
+        moi = self.client.post(
+            "/api/quan-ly/tu-ngu", json={"tu": "dmvl", "nhom": "chui_the"},
+            headers={"X-RAG-Action": "them-tu-ngu"},
+        ).json()["tu_ngu"]
+        thu = self.client.post("/api/quan-ly/tu-ngu/thu-cau", json={"cau": "dmvl that"}).json()
+        self.assertEqual(thu, {"vi_pham": True, "nhom": ["chui_the"], "tu_khop": ["dmvl"]})
+        ds = self.client.get("/api/quan-ly/tu-ngu").json()
+        self.assertEqual([m["tu"] for m in ds["them"]], ["dmvl"])
+        self.assertIn("chui_the", ds["co_san"]["co_dau"])
+
+        xoa = self.client.delete(f"/api/quan-ly/tu-ngu/{moi['id']}", headers={"X-RAG-Action": "xoa-tu-ngu"})
+        self.assertEqual(xoa.status_code, 200)
+        lai = self.client.delete(f"/api/quan-ly/tu-ngu/{moi['id']}", headers={"X-RAG-Action": "xoa-tu-ngu"})
+        self.assertEqual(lai.status_code, 404)
+
+    def test_loi_dau_vao_tra_400(self):
+        r = self.client.post("/api/quan-ly/tu-ngu", json={"tu": "l0n", "nhom": "tuc_tiu"},
+                             headers={"X-RAG-Action": "them-tu-ngu"})
+        self.assertEqual(r.status_code, 400)
+
+    def test_khach_khong_vao_duoc(self):
+        with patch.dict("os.environ", {"RAG_KHOA_QUAN_TRI": "1"}):
+            for phuong_thuc, duong_dan in [
+                ("get", "/api/quan-ly/tu-ngu"),
+                ("post", "/api/quan-ly/tu-ngu/xem-truoc"),
+                ("post", "/api/quan-ly/tu-ngu/thu-cau"),
+                ("post", "/api/quan-ly/tu-ngu"),
+                ("delete", "/api/quan-ly/tu-ngu/abc"),
+            ]:
+                with self.subTest(duong_dan=duong_dan):
+                    kwargs = {"json": {"tu": "dmvl", "nhom": "chui_the", "cau": "x"}} \
+                        if phuong_thuc == "post" else {}
+                    r = getattr(self.client, phuong_thuc)(
+                        duong_dan, headers={"X-RAG-Action": "them-tu-ngu"}, **kwargs)
+                    self.assertEqual(r.status_code, 401)
+        self.assertEqual(loc_tu_ngu.danh_sach_tu_them(), [])
+
+
 if __name__ == "__main__":
     unittest.main()

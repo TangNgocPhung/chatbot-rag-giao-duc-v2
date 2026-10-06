@@ -152,8 +152,17 @@
   const LOI_NHAC = 'Câu hỏi có từ ngữ không phù hợp với môi trường học đường. '
     + 'Bạn vui lòng sửa lại cho lịch sự rồi gửi.';
 
+  function taiLai() {
+    if (typeof fetch !== 'function' || typeof window === 'undefined') return Promise.resolve();
+    return fetch('/api/loc-tu-ngu', { cache: 'no-store' })
+      .then((phanHoi) => (phanHoi.ok ? phanHoi.json() : null))
+      .then((duLieu) => { if (duLieu) nap(duLieu); })
+      .catch(() => { /* Không tải được thì để máy chủ tự chặn. */ });
+  }
+
   const api = {
     nap,
+    taiLai,
     kiemTra,
     dangBat: () => boLoc !== null,
     LOI_NHAC,
@@ -161,10 +170,5 @@
   goc.locTuNgu = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 
-  if (typeof fetch === 'function' && typeof window !== 'undefined') {
-    fetch('/api/loc-tu-ngu')
-      .then((phanHoi) => (phanHoi.ok ? phanHoi.json() : null))
-      .then((duLieu) => { if (duLieu) nap(duLieu); })
-      .catch(() => { /* Không tải được thì để máy chủ tự chặn. */ });
-  }
+  taiLai();
 })(typeof window !== 'undefined' ? window : globalThis);

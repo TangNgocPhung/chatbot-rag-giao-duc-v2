@@ -91,6 +91,7 @@ Thiết lập biến môi trường trước khi chạy nếu cấu hình máy k
 | `RAG_LICH_SU_DB` | trong dự án | Cơ sở dữ liệu lịch sử hội thoại |
 | `RAG_NGAY_GIU_LICH_SU` | `365` | Lượt hỏi đáp cũ hơn số ngày này bị xóa hẳn khỏi lịch sử (kiểm lúc khởi động rồi mỗi ngày một lần); cache câu trả lời cũng không giữ lâu hơn hạn này. Đặt `0` là giữ mãi. Đổi số này thì sửa luôn câu "tự xóa sau 12 tháng" ở mục 8 của `HUONG_DAN_SU_DUNG.md` |
 | `RAG_KHO_TAI_LEN_DB` | `kho_tai_len.db` trong dự án | Sổ ghi tệp gửi lên kho, hàng chờ duyệt và thùng rác |
+| `RAG_TU_NGU_CAM_DB` | `tu_ngu_cam.db` trong dự án | Từ cấm quản trị viên thêm qua giao diện |
 | `RAG_THU_MUC_BAN_PDF` | `ban_pdf_tam` trong dự án | Nơi nhớ bản PDF do LibreOffice chuyển từ Word, Excel, PowerPoint, HTML |
 | `RAG_SO_BAN_PDF_TOI_DA` | `300` | Số bản PDF chuyển đổi được giữ (bản dùng gần nhất) |
 | `RAG_MO_HINH_CHO_PHEP` | *(trống)* | Các mô hình người dùng được tự chọn, phân cách bằng dấu phẩy; trống là mọi mô hình |
