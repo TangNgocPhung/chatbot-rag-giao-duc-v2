@@ -36,7 +36,11 @@ Lọc theo danh sách thì luôn có hai giới hạn, nên ghi rõ ở đây:
     với chữ bên cạnh thì nó có nghĩa gì khác không?". Test TU_HOP_LE trong
     tests/test_loc_tu_ngu.py là chốt chặn cho kiểu hỏng này.
 
-Tắt bộ lọc bằng RAG_LOC_TU_NGU=0.
+Giao diện (static/loc-tu-ngu.js) chạy đúng thuật toán này, với danh sách lấy
+từ /api/loc-tu-ngu, để báo người dùng sửa câu trước khi gửi. Sửa thuật toán ở
+đây thì sửa cả bên đó: tests/test_loc_tu_ngu.py chạy cùng bộ câu qua hai bản.
+
+Tắt bộ lọc bằng RAG_LOC_TU_NGU=0 (tắt luôn phía giao diện).
 """
 
 from __future__ import annotations
@@ -268,6 +272,21 @@ def dang_bat() -> bool:
     return os.getenv("RAG_LOC_TU_NGU", "1") == "1"
 
 
+def du_lieu_cho_giao_dien() -> dict:
+    """Danh sách từ cho static/loc-tu-ngu.js kiểm tra trước khi gửi.
+
+    Giao diện lấy danh sách từ đây chứ không tự chép một bản: hai bản chép tay
+    sớm muộn sẽ lệch nhau. Giao diện chỉ để báo sớm cho người dùng sửa câu;
+    chốt chặn thật vẫn là kiem_tra() trong stream_answer, vì ai cũng gọi thẳng
+    được /api/chat/stream mà không qua giao diện."""
+    return {
+        "bat": dang_bat(),
+        "co_dau": {nhom: list(cac_tu) for nhom, cac_tu in TU_CO_DAU.items()},
+        "khong_dau": {nhom: list(cac_tu) for nhom, cac_tu in TU_KHONG_DAU.items()},
+        "hop_le": list(CUM_HOP_LE),
+    }
+
+
 __all__ = [
     "CUM_HOP_LE",
     "KetQuaLoc",
@@ -276,5 +295,6 @@ __all__ = [
     "TU_KHONG_DAU",
     "co_tu_ngu_khong_phu_hop",
     "dang_bat",
+    "du_lieu_cho_giao_dien",
     "kiem_tra",
 ]

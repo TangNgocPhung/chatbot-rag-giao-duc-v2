@@ -20,7 +20,7 @@ Giảng viên hướng dẫn: TS. Nguyễn Minh Hải
 Ứng dụng hỏi đáp tài liệu giáo dục chạy cục bộ bằng FastAPI, Ollama, FAISS và giao diện web tiếng Việt. Hệ thống hỗ trợ:
 
 - Tìm kiếm lai FAISS + BM25, chặn câu hỏi ngoài phạm vi kho
-- Chặn câu hỏi có từ chửi thề, tục tĩu, 18+ trước khi tới mô hình (`loc_tu_ngu.py`), hiểu cả cách gõ không dấu và viết lách (`đ.ị.t`, `l0z`, `vcllll`) mà không chặn nhầm `các`, `buổi`, `đeo` hay chủ đề giáo dục giới tính
+- Chặn câu hỏi có từ chửi thề, tục tĩu, 18+ trước khi tới mô hình (`loc_tu_ngu.py`), hiểu cả cách gõ không dấu và viết lách (`đ.ị.t`, `l0z`, `vcllll`) mà không chặn nhầm `các`, `buổi`, `đeo` hay chủ đề giáo dục giới tính; giao diện kiểm tra trước khi gửi (`static/loc-tu-ngu.js`, danh sách từ lấy qua `GET /api/loc-tu-ngu`) và giữ câu lại trong ô nhập để sửa
 - Trích dẫn nguồn chỉ đúng dòng trên trang gốc: tô sáng đoạn được trích ngay trên ảnh trang PDF, kể cả bản scan
 - Hậu kiểm trích dẫn và số liệu; cảnh báo văn bản bị thay thế, sửa đổi, còn là dự thảo hoặc chưa tới ngày áp dụng
 - Công cụ tính bằng Python cho lương nhà giáo, định mức tiết dạy (GDTX, phổ thông) và số học: trả kết quả kèm công thức và văn bản căn cứ, không để mô hình làm toán

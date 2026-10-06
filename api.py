@@ -25,6 +25,7 @@ import giong_noi
 import goi_y_cau_hoi
 import gui_thu
 import lich_su_chat
+import loc_tu_ngu
 import phan_loai_giao_duc
 import quan_ly_kho
 import tai_khoan
@@ -295,6 +296,13 @@ def goi_y_mo_dau(so_luong: int = 6, che_do: str | None = None, vai_tro: str | No
             if che_do == goi_y_cau_hoi.CHE_DO_TINH else []
         ),
     }
+
+
+@app.get("/api/loc-tu-ngu")
+def loc_tu_ngu_cho_giao_dien():
+    """Danh sách từ không phù hợp, để giao diện báo người dùng sửa câu trước
+    khi gửi. Máy chủ vẫn tự kiểm tra lại trong stream_answer."""
+    return loc_tu_ngu.du_lieu_cho_giao_dien()
 
 
 @app.post("/api/reinitialize")

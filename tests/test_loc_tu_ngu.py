@@ -8,10 +8,16 @@ Hai kiểu hỏng cần chốt chặn, và kiểu thứ hai nguy hiểm hơn:
     dùng chỉ thấy bị mắng vô cớ chứ không biết vì sao.
 """
 
+import json
+import shutil
+import subprocess
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import loc_tu_ngu
+
+FILE_JS = Path(__file__).resolve().parent.parent / "static" / "loc-tu-ngu.js"
 
 # (câu, nhóm phải báo)
 CAU_VI_PHAM = [
@@ -156,6 +162,65 @@ class TuChoiTrongLuotHoiTests(unittest.TestCase):
                 patch.dict("os.environ", {"RAG_LOC_TU_NGU": "0"}):
             list(service.stream_answer("vcl"))
         sinh.assert_called_once()
+
+
+class GiaoDienTests(unittest.TestCase):
+    """static/loc-tu-ngu.js là bản port tay của loc_tu_ngu.py. Hai bản lệch
+    nhau thì giao diện chặn câu máy chủ cho qua (người dùng bị giữ câu vô cớ)
+    hoặc ngược lại - nên chạy cùng bộ câu qua cả hai và so từng câu."""
+
+    def test_endpoint_tra_danh_sach(self):
+        from fastapi.testclient import TestClient
+        from api import app
+
+        du_lieu = TestClient(app).get("/api/loc-tu-ngu").json()
+        self.assertEqual(du_lieu["co_dau"].keys(), loc_tu_ngu.TU_CO_DAU.keys())
+        self.assertIn("hop_le", du_lieu)
+
+    @unittest.skipUnless(shutil.which("node"), "cần Node.js để chạy bản JS")
+    def test_ban_js_cho_cung_ket_qua_voi_python(self):
+        import unicodedata
+        cac_cau = (
+            [cau for cau, _ in CAU_VI_PHAM] + CAU_VIET_LACH + CAU_HOP_LE
+            + [unicodedata.normalize("NFD", "địt mẹ"), "", "  ...  ",
+               "đ.m.m trả lời đi", "d.c.m.m", "l ồ n g", "đmmmm", "hạt óc chó"]
+        )
+        dau_vao = json.dumps({
+            "du_lieu": loc_tu_ngu.du_lieu_cho_giao_dien() | {"bat": True},
+            "cac_cau": cac_cau,
+        }, ensure_ascii=False)
+        ma_node = (
+            "const L = require(process.argv[1]);"
+            "let s = ''; process.stdin.on('data', (d) => { s += d; });"
+            "process.stdin.on('end', () => { const v = JSON.parse(s);"
+            " L.nap(v.du_lieu);"
+            " console.log(JSON.stringify(v.cac_cau.map((c) => L.kiemTra(c)))); });"
+        )
+        chay = subprocess.run(
+            ["node", "-e", ma_node, str(FILE_JS)], input=dau_vao,
+            capture_output=True, text=True, encoding="utf-8", timeout=60,
+        )
+        self.assertEqual(chay.returncode, 0, chay.stderr)
+        ket_qua_js = json.loads(chay.stdout)
+        for cau, js in zip(cac_cau, ket_qua_js):
+            py = loc_tu_ngu.kiem_tra(cau)
+            with self.subTest(cau=cau):
+                self.assertEqual(js["viPham"], py.vi_pham)
+                self.assertEqual(tuple(js["nhom"]), py.nhom)
+
+    @unittest.skipUnless(shutil.which("node"), "cần Node.js để chạy bản JS")
+    def test_tat_loc_thi_giao_dien_khong_chan(self):
+        ma_node = (
+            "const L = require(process.argv[1]);"
+            "L.nap({bat: false, co_dau: {a: ['địt']}, khong_dau: {}});"
+            "console.log(JSON.stringify([L.dangBat(), L.kiemTra('địt').viPham]));"
+        )
+        chay = subprocess.run(
+            ["node", "-e", ma_node, str(FILE_JS)],
+            capture_output=True, text=True, encoding="utf-8", timeout=60,
+        )
+        self.assertEqual(chay.returncode, 0, chay.stderr)
+        self.assertEqual(json.loads(chay.stdout), [False, False])
 
 
 if __name__ == "__main__":

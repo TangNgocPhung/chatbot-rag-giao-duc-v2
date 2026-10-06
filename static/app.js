@@ -1989,6 +1989,13 @@ function formatTime(seconds) {
 async function submitQuestion(question, tuyChon = {}) {
   question = question.trim();
   if (question.length < 2 || inFlight || !hoiDuoc()) return;
+  // Giữ câu lại trong ô nhập để người dùng sửa, thay vì gửi đi rồi nhận lời
+  // nhắc từ máy chủ (máy chủ vẫn tự kiểm tra lại, xem loc-tu-ngu.js).
+  if (window.locTuNgu?.kiemTra(question).viPham) {
+    showToast(window.locTuNgu.LOI_NHAC, 4000);
+    elements.input.focus();
+    return;
+  }
   if (dangDocTep()) {
     showToast('Đang đọc tệp đính kèm, vui lòng đợi giây lát');
     return;
