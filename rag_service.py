@@ -24,6 +24,7 @@ import drive_sync
 import goi_y_cau_hoi
 import kiem_tra_tra_loi
 import hieu_luc_bo_sung
+import loc_tu_ngu
 import phan_loai_giao_duc
 import quan_he_van_ban
 import quan_ly_kho
@@ -1990,12 +1991,36 @@ class RAGService:
         # thừa hưởng lệnh dừng của lượt trước.
         self.huy_sinh.clear()
         self.thoi_diem_chat_cuoi = time.time()
+        if loc_tu_ngu.dang_bat():
+            ket_qua_loc = loc_tu_ngu.kiem_tra(question)
+            if ket_qua_loc.vi_pham:
+                yield from self._tu_choi_tu_ngu(ket_qua_loc)
+                return
         try:
             yield from self._sinh_cau_tra_loi(
                 question, history, tep_ids, pham_vi, doan_trich, self.chon_mo_hinh(model)
             )
         finally:
             self.thoi_diem_chat_cuoi = time.time()
+
+    def _tu_choi_tu_ngu(self, ket_qua_loc: "loc_tu_ngu.KetQuaLoc") -> Iterator[dict]:
+        """Nhắc người hỏi khi câu hỏi có từ chửi thề, tục tĩu hay 18+.
+
+        Đứng trước mọi nhánh khác - tệp đính kèm, công cụ tính, cache, truy hồi:
+        không tốn lượt sinh nào cho câu này, không để mô hình lặp lại những chữ
+        đó, và cũng không để câu đó vào cache ngữ nghĩa. Không nhắc lại từ đã
+        khớp: chỉ báo chung là không phù hợp."""
+        yield {"type": "sources", "sources": []}
+        yield {"type": "token", "content": loc_tu_ngu.LOI_NHAC}
+        yield {"type": "goi_y", "goi_y": self.goi_y_mo_dau(3)}
+        yield {
+            "type": "done",
+            "elapsed_seconds": 0.0,
+            "citations_ok": True,
+            "figures_ok": True,
+            "abstained": True,
+            "ly_do_chan": "tu_ngu_khong_phu_hop:" + ",".join(ket_qua_loc.nhom),
+        }
 
     def _sinh_cau_tra_loi(
         self,

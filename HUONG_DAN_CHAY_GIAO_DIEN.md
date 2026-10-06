@@ -77,6 +77,7 @@ Thiết lập biến môi trường trước khi chạy nếu cấu hình máy k
 | `RAG_WHISPER_MODEL` | `small` | Model phiên âm video: tiny/base/small/medium/large-v3 |
 | `RAG_TRANSCRIBE_ON_INDEX` | `1` | Đặt `0` nếu chỉ nạp video đã phiên âm sẵn |
 | `RAG_TU_CHOI_KHI_LAC_DE` | `1` | Tự trả lời "không tìm thấy" khi truy hồi lạc đề |
+| `RAG_LOC_TU_NGU` | `1` | Từ chối câu hỏi có từ chửi thề, tục tĩu, 18+ (`loc_tu_ngu.py`) |
 | `RAG_OCR_ON_INDEX` | `1` | Đặt `0` nếu chỉ nạp PDF đã OCR sẵn |
 | `RAG_OCR_DPI` | `300` | Độ phân giải render trang PDF trước khi OCR |
 | `RAG_OCR_LUONG` | số lõi − 2 | Số trang OCR song song |
