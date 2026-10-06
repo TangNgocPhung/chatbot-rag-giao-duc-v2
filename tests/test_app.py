@@ -49,7 +49,7 @@ class ApiTests(unittest.TestCase):
     def test_homepage_is_served(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Chatbot RAG Giáo dục", response.text)
+        self.assertIn("XÂY DỰNG CHATBOT RAG HỖ TRỢ TRA CỨU VĂN BẢN QUY PHẠM PHÁP LUẬT VỀ GIÁO DỤC VIỆT NAM", response.text)
 
     def test_question_validation(self):
         response = self.client.post("/api/chat/stream", json={"question": " "})

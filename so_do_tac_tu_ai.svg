@@ -9,7 +9,7 @@
 </defs>
 <rect width="1600" height="900" fill="url(#nen)"/>
 <rect x="0" y="28" width="1600" height="84" fill="url(#tieude)"/>
-<text x="60" y="84" font-size="38" fill="#ffffff">Tác tử AI trong Chatbot RAG Giáo dục</text>
+<text x="60" y="84" font-size="38" fill="#ffffff">Tác tử AI trong Chatbot RAG tra cứu văn bản pháp luật giáo dục</text>
 
 <g filter="url(#bong)">
 <rect x="580" y="150" width="440" height="124" rx="20" fill="#e3eaf4" stroke="#8a9cc0" stroke-width="3"/>
@@ -115,5 +115,5 @@
 <polyline points="1170,714 1170,744 470,744 470,720" fill="none" stroke="#3f4a5a" stroke-width="2" marker-end="url(#mui)"/>
 <text x="820" y="770" font-size="15" font-style="italic" fill="#4a5566" text-anchor="middle">chỉ câu trả lời đạt hậu kiểm mới được ghi vào cache</text>
 <rect x="0" y="846" width="1600" height="34" fill="#8577b3" opacity="0.85"/>
-<text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">Chatbot RAG Giáo dục</text>
+<text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">XÂY DỰNG CHATBOT RAG HỖ TRỢ TRA CỨU VĂN BẢN QUY PHẠM PHÁP LUẬT VỀ GIÁO DỤC VIỆT NAM</text>
 </svg>

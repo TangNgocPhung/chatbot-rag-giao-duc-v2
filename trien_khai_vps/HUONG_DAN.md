@@ -15,7 +15,7 @@
 
 Hai ứng dụng chạy chung:
 
-- **Chatbot RAG Giáo dục** — chạy thẳng trên host: Python + FastAPI + Ollama + FAISS
+- **Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam** — chạy thẳng trên host: Python + FastAPI + Ollama + FAISS
 - **Nearby** (`location-recommendation`) — 11 container Docker: PostGIS, OpenSearch,
   Neo4j, Redis, backend, frontend, gateway nginx, 3 máy chủ định tuyến OSRM
 

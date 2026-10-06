@@ -21,7 +21,7 @@ import ssl
 from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 
-TEN_NGUOI_GUI = "Chatbot RAG Giáo dục"
+TEN_NGUOI_GUI = "Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam"
 GIAY_CHO_MAY_CHU = 20
 
 
@@ -79,7 +79,7 @@ def gui_ma_xac_minh(den: str, ten: str, ma: str, phut_hieu_luc: int) -> None:
     tieu_de = f"{ma} là mã xác minh tài khoản của bạn"
     van_ban = (
         f"Chào {ten},\n\n"
-        f"Mã xác minh email cho tài khoản Chatbot RAG Giáo dục của bạn là:\n\n"
+        f"Mã xác minh email cho tài khoản Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam của bạn là:\n\n"
         f"    {ma}\n\n"
         f"Mã có hiệu lực trong {phut_hieu_luc} phút. Nếu bạn không yêu cầu mã này, "
         f"hãy bỏ qua thư - tài khoản của bạn vẫn an toàn.\n"
@@ -88,7 +88,7 @@ def gui_ma_xac_minh(den: str, ten: str, ma: str, phut_hieu_luc: int) -> None:
     html = f"""\
 <div style="font-family:Segoe UI,Arial,sans-serif;max-width:440px;margin:0 auto;color:#10233f">
   <p>Chào {ten_html},</p>
-  <p>Mã xác minh email cho tài khoản <b>Chatbot RAG Giáo dục</b> của bạn là:</p>
+  <p>Mã xác minh email cho tài khoản <b>Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam</b> của bạn là:</p>
   <p style="font-size:30px;font-weight:700;letter-spacing:8px;margin:18px 0;padding:14px 0;
      text-align:center;background:#eef3fb;border-radius:12px">{ma}</p>
   <p style="color:#51607a;font-size:13px">Mã có hiệu lực trong {phut_hieu_luc} phút. Nếu bạn

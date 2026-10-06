@@ -1,4 +1,4 @@
-# Chatbot RAG Giáo dục — Tài liệu bàn giao kỹ thuật
+# Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam — Tài liệu bàn giao kỹ thuật
 
 > Tài liệu này mô tả phần **RAG backend** và các lần đo đạc thật (không phải giả định). Ban đầu viết cho đội làm UI; giao diện web nay đã hoàn thiện: cách chạy và các tính năng xem [README.md](README.md), API và biến môi trường xem [HUONG_DAN_CHAY_GIAO_DIEN.md](HUONG_DAN_CHAY_GIAO_DIEN.md).
 >

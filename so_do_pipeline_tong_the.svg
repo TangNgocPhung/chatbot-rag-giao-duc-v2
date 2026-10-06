@@ -192,5 +192,5 @@
 
   <!-- Thanh chân trang -->
   <rect x="0" y="846" width="1600" height="34" fill="#8577b3" opacity="0.85"/>
-  <text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">Chatbot RAG Giáo dục · mọi nhánh rẽ đều trả kết quả về giao diện người dùng</text>
+  <text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam · mọi nhánh rẽ đều trả kết quả về giao diện người dùng</text>
 </svg>

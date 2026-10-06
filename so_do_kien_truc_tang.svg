@@ -13,7 +13,7 @@
 </defs>
 <rect width="1600" height="900" fill="url(#nen)"/>
 <rect x="0" y="28" width="1600" height="84" fill="url(#tieude)"/>
-<text x="60" y="84" font-size="38" fill="#ffffff">Kiến trúc hệ thống Chatbot RAG Giáo dục</text>
+<text x="60" y="84" font-size="38" fill="#ffffff">Kiến trúc hệ thống Chatbot RAG tra cứu văn bản pháp luật giáo dục</text>
 <polygon points="200,742 1400,742 1480,814 120,814" fill="#2b3340" stroke="#9fdcf7" stroke-width="2"/>
 <polygon points="120,814 1480,814 1480,826 120,826" fill="#1b212a"/>
 <line x1="238" y1="800" x2="222" y2="800" stroke="#7fd0f2" stroke-width="3" opacity="0.8"/>
@@ -113,5 +113,5 @@
 <path d="M790,424 h20 l-10,11 z" fill="#dff4ff" stroke="#5fb6de"/>
 <path d="M793,672 h14 v-2 h9 l-16,-14 l-16,14 h9 z" fill="url(#muiten)" stroke="#5fb6de" stroke-width="1.2" opacity="0.9"/>
 <rect x="0" y="846" width="1600" height="34" fill="#8577b3" opacity="0.85"/>
-<text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">Chatbot RAG Giáo dục</text>
+<text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">XÂY DỰNG CHATBOT RAG HỖ TRỢ TRA CỨU VĂN BẢN QUY PHẠM PHÁP LUẬT VỀ GIÁO DỤC VIỆT NAM</text>
 </svg>

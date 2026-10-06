@@ -1,4 +1,4 @@
-"""FastAPI phục vụ giao diện web và API streaming cho Chatbot RAG Giáo dục."""
+"""FastAPI phục vụ giao diện web và API streaming cho Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam."""
 
 from __future__ import annotations
 
@@ -156,7 +156,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(
-    title="Chatbot RAG Giáo dục",
+    title="XÂY DỰNG CHATBOT RAG HỖ TRỢ TRA CỨU VĂN BẢN QUY PHẠM PHÁP LUẬT VỀ GIÁO DỤC VIỆT NAM",
     version="1.4.0",
     docs_url="/api/docs",
     redoc_url=None,

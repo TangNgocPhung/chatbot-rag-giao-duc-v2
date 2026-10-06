@@ -1,4 +1,4 @@
-# Hướng dẫn sử dụng Chatbot RAG Giáo dục
+# Hướng dẫn sử dụng Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam
 
 *Dành cho người mới bắt đầu, không cần biết nhiều về tin học.*
 
@@ -6,7 +6,7 @@
 
 > **Giới thiệu ngắn**
 >
-> **Chatbot RAG Giáo dục** là trợ lý tra cứu tài liệu giáo dục bằng tiếng Việt. Bạn gõ câu hỏi như khi nhắn tin, trợ lý tìm trong kho hơn một nghìn văn bản và tài liệu giáo dục (luật, nghị định, thông tư, chương trình giáo dục, tài liệu chuyên môn…) rồi trả lời ngắn gọn, **kèm theo nguồn**: tên tài liệu và đúng trang chứa thông tin, để bạn tự kiểm tra lại. Trợ lý còn cảnh báo khi văn bản đã bị thay thế hoặc chỉ là bản dự thảo, và tính sẵn lương nhà giáo, định mức tiết dạy theo đúng văn bản quy định.
+> **Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam** là trợ lý tra cứu tài liệu giáo dục bằng tiếng Việt. Bạn gõ câu hỏi như khi nhắn tin, trợ lý tìm trong kho hơn một nghìn văn bản và tài liệu giáo dục (luật, nghị định, thông tư, chương trình giáo dục, tài liệu chuyên môn…) rồi trả lời ngắn gọn, **kèm theo nguồn**: tên tài liệu và đúng trang chứa thông tin, để bạn tự kiểm tra lại. Trợ lý còn cảnh báo khi văn bản đã bị thay thế hoặc chỉ là bản dự thảo, và tính sẵn lương nhà giáo, định mức tiết dạy theo đúng văn bản quy định.
 >
 > Sản phẩm do học viên Khoa Công nghệ thông tin, Trường Đại học Sư phạm Thành phố Hồ Chí Minh thực hiện, dưới sự hướng dẫn của TS. Nguyễn Minh Hải.
 

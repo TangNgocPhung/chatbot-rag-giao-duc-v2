@@ -6,7 +6,7 @@
 </defs>
 <rect width="1600" height="1381" fill="url(#nen)"/>
 <rect x="0" y="28" width="1600" height="84" fill="url(#tieude)"/>
-<text x="60" y="84" font-size="38" fill="#ffffff">Các chức năng của Chatbot RAG Giáo dục</text>
+<text x="60" y="84" font-size="38" fill="#ffffff">Các chức năng của Chatbot RAG tra cứu văn bản pháp luật giáo dục</text>
 
 <g filter="url(#bong)"><rect x="45" y="136" width="490" height="375" rx="14" fill="#ffffff" fill-opacity="0.92" stroke="#4f73a8" stroke-opacity="0.55" stroke-width="1.6"/></g>
 <path d="M45,150 a14,14 0 0 1 14,-14 h462 a14,14 0 0 1 14,14 v40 h-490 z" fill="#dbe6f3"/>
@@ -199,5 +199,5 @@
 <circle cx="1095" cy="1260" r="4" fill="#62853a"/>
 <text x="1109" y="1265" font-size="16" fill="#27313d">Âm thanh không rời khỏi máy chủ</text>
 <rect x="0" y="1327" width="1600" height="34" fill="#8577b3" opacity="0.85"/>
-<text x="800" y="1350" font-size="16" fill="#ffffff" text-anchor="middle">Chatbot RAG Giáo dục</text>
+<text x="800" y="1350" font-size="16" fill="#ffffff" text-anchor="middle">XÂY DỰNG CHATBOT RAG HỖ TRỢ TRA CỨU VĂN BẢN QUY PHẠM PHÁP LUẬT VỀ GIÁO DỤC VIỆT NAM</text>
 </svg>

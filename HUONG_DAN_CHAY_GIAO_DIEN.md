@@ -1,4 +1,4 @@
-# Hướng dẫn chạy giao diện Chatbot RAG Giáo dục
+# Hướng dẫn chạy giao diện Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam
 
 ## Chạy nhanh trên Windows
 

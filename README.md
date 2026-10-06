@@ -1,4 +1,4 @@
-# Chatbot RAG Giáo dục
+# XÂY DỰNG CHATBOT RAG HỖ TRỢ TRA CỨU VĂN BẢN QUY PHẠM PHÁP LUẬT VỀ GIÁO DỤC VIỆT NAM
 
 **Trường Đại học Sư phạm Thành phố Hồ Chí Minh**\
 **Khoa Công nghệ thông tin**
@@ -44,7 +44,7 @@ Các con số trong sơ đồ lấy thẳng từ mã nguồn: cắt đoạn tron
 
 ### Các chức năng
 
-![Các chức năng của Chatbot RAG Giáo dục](so_do_chuc_nang.svg)
+![Các chức năng của Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam](so_do_chuc_nang.svg)
 
 ### Kiến trúc năm tầng
 
@@ -98,7 +98,7 @@ Cùng quy trình hỏi đáp, vẽ theo các điểm quyết định: có đư�
 
 Mô hình ngôn ngữ chạy cục bộ qua Ollama và chỉ soạn câu trả lời từ các đoạn trích được cấp; phép tính do công cụ Python làm.
 
-![Tác tử AI trong Chatbot RAG Giáo dục](so_do_tac_tu_ai.svg)
+![Tác tử AI trong Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam](so_do_tac_tu_ai.svg)
 
 ## Tính năng trên giao diện
 

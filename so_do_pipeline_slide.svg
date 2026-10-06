@@ -24,7 +24,7 @@
 
   <!-- Thanh tiêu đề -->
   <rect x="0" y="28" width="1600" height="84" fill="url(#tieude)"/>
-  <text x="60" y="84" font-size="38" fill="#ffffff">Pipeline Chatbot RAG Giáo dục: Trả lời có căn cứ &amp; chống “Ảo giác”</text>
+  <text x="60" y="84" font-size="38" fill="#ffffff">Pipeline chatbot RAG: Trả lời có căn cứ &amp; chống “Ảo giác”</text>
 
   <!-- ===== Cột trái: kho tri thức ===== -->
   <rect x="50" y="292" width="310" height="356" rx="14" fill="#e6e1f3" stroke="#9c8cc6" stroke-width="2" filter="url(#bong)"/>
@@ -141,5 +141,5 @@
 
   <!-- Thanh chân trang -->
   <rect x="0" y="846" width="1600" height="34" fill="#8577b3" opacity="0.85"/>
-  <text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">Chatbot RAG Giáo dục</text>
+  <text x="800" y="869" font-size="16" fill="#ffffff" text-anchor="middle">XÂY DỰNG CHATBOT RAG HỖ TRỢ TRA CỨU VĂN BẢN QUY PHẠM PHÁP LUẬT VỀ GIÁO DỤC VIỆT NAM</text>
 </svg>
