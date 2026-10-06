@@ -231,6 +231,25 @@ class ApiTests(unittest.TestCase):
                 dung = self.client.post("/api/tai-khoan/xac-minh", json={"ma": lan_gui[-1]})
                 self.assertEqual(dung.status_code, 200)
 
+    def test_bam_tinh_nang_bi_khoa_khong_bao_gio_gui_thu(self):
+        lan_gui = []
+        with patch.dict("os.environ", CO_THU), patch.object(
+            gui_thu, "gui_ma_xac_minh", side_effect=lambda den, ten, ma, phut: lan_gui.append(ma)
+        ):
+            # Chưa gửi mã lần nào: chỉ báo, không gửi.
+            chua = self.client.post("/api/tai-khoan/gui-ma-xac-minh", json={"chi_xem": True}).json()
+            self.assertFalse(chua["da_gui"])
+            self.assertFalse(chua["co_ma"])
+            self.assertEqual(chua["email"], "a@x.vn")
+            self.assertEqual(lan_gui, [])
+            # Bấm "Gửi mã" mới gửi; mở lại hộp vẫn không gửi thêm.
+            self.assertTrue(self.client.post("/api/tai-khoan/gui-ma-xac-minh", json={}).json()["da_gui"])
+            lai = self.client.post("/api/tai-khoan/gui-ma-xac-minh", json={"chi_xem": True}).json()
+            self.assertFalse(lai["da_gui"])
+            self.assertTrue(lai["co_ma"])
+            self.assertGreater(lai["con_giay"], 0)
+            self.assertEqual(len(lan_gui), 1)
+
     def test_thu_loi_thi_tra_lai_luot_gui(self):
         with patch.dict("os.environ", CO_THU), patch.object(
             gui_thu, "gui_ma_xac_minh", side_effect=gui_thu.LoiGuiThu("hỏng")

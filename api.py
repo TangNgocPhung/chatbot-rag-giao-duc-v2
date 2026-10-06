@@ -802,6 +802,9 @@ def _dang_nhap_bat_buoc(request: Request) -> dict:
 class GuiMaXacMinh(BaseModel):
     # True khi hộp xác minh vừa mở (không phải người dùng bấm "Gửi lại mã").
     tu_dong: bool = False
+    # True khi hộp mở vì bấm vào tính năng bị khoá (sổ tay, tải tệp...): chỉ
+    # báo trạng thái mã, không bao giờ gửi thư - người dùng tự bấm "Gửi mã".
+    chi_xem: bool = False
 
 
 @app.post("/api/tai-khoan/gui-ma-xac-minh")
@@ -814,11 +817,12 @@ def gui_ma_xac_minh(request: Request, thong_tin: GuiMaXacMinh | None = None):
         )
     # Mở hộp xác minh chỉ tự gửi mã lần đầu. Đã gửi rồi thì chỉ báo mã còn
     # hạn hay đã hết; mã mới chỉ gửi khi người dùng bấm "Gửi lại mã".
-    if thong_tin is not None and thong_tin.tu_dong:
+    if thong_tin is not None and (thong_tin.tu_dong or thong_tin.chi_xem):
         da_gui = tai_khoan.ma_da_gui(nguoi_dung["id"])
-        if da_gui is not None:
+        if da_gui is not None or thong_tin.chi_xem:
             return {"email": nguoi_dung["email"], "phut": tai_khoan.PHUT_MA_XAC_MINH,
-                    "da_gui": False, **da_gui}
+                    "da_gui": False, "co_ma": da_gui is not None,
+                    **(da_gui or {"con_giay": 0, "cho_giay": 0})}
     try:
         nd, ma = tai_khoan.tao_ma_xac_minh(nguoi_dung["id"])
     except tai_khoan.LoiTaiKhoan as exc:

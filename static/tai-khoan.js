@@ -102,6 +102,8 @@
   let guiThu = false;
   let demNguoc = 0;
   let henDemNguoc = null;
+  // Email hiện tại đã được gửi mã lần nào chưa: đổi nhãn "Gửi mã" / "Gửi lại mã".
+  let coMa = true;
 
   function datCheDo(moi) {
     cheDo = moi;
@@ -138,8 +140,10 @@
     clearInterval(henDemNguoc);
     const hienNut = () => {
       if (cheDo !== 'xac-minh') return;
+      const nhan = coMa ? 'Gửi lại mã' : 'Gửi mã';
+      tk.chuyenChu.textContent = coMa ? 'Chưa nhận được thư?' : 'Chưa có mã?';
       tk.chuyenNut.disabled = demNguoc > 0;
-      tk.chuyenNut.textContent = demNguoc > 0 ? `Gửi lại mã (${demNguoc}s)` : 'Gửi lại mã';
+      tk.chuyenNut.textContent = demNguoc > 0 ? `${nhan} (${demNguoc}s)` : nhan;
     };
     hienNut();
     if (giay > 0) {
@@ -152,16 +156,22 @@
     if (giay <= 0) tk.chuyenNut.disabled = false;
   }
 
-  // tuDong: hộp xác minh vừa mở. Máy chủ chỉ gửi mã nếu email này chưa được
-  // gửi lần nào; gửi rồi thì chỉ báo mã còn hạn hay đã hết (quá 15 phút không
-  // nhập). Mã mới chỉ gửi khi bấm "Gửi lại mã", để người chưa muốn xác minh mà
-  // cứ bấm vào tính năng bị khoá không bị gửi thư liên tục.
-  async function guiMaXacMinh(tuDong = false) {
+  // cach: 'gui' - bấm "Gửi mã"/"Gửi lại mã", luôn gửi mã mới.
+  //       'tu-dong' - vừa đăng ký / đổi email / chọn "Xác minh email": máy chủ
+  //         chỉ gửi nếu email này chưa được gửi lần nào.
+  //       'xem' - bấm vào tính năng bị khoá (sổ tay, tải tệp): không bao giờ
+  //         gửi, chỉ báo trạng thái, để người chưa muốn xác minh mà cứ bấm vào
+  //         đó không bị gửi thư.
+  async function guiMaXacMinh(cach = 'gui') {
     baoLoi('');
     tk.chuyenNut.disabled = true;
-    tk.moTa.textContent = tuDong ? 'Đang kiểm tra…' : 'Đang gửi mã…';
+    tk.moTa.textContent = cach === 'gui' ? 'Đang gửi mã…' : 'Đang kiểm tra…';
     try {
-      const kq = await goi('/api/tai-khoan/gui-ma-xac-minh', { tu_dong: tuDong });
+      // 'xem' gửi kèm tu_dong: máy chủ chưa khởi động lại (không biết chi_xem)
+      // thì vẫn chỉ gửi lần đầu chứ không gửi mỗi lần bấm.
+      const kq = await goi('/api/tai-khoan/gui-ma-xac-minh',
+        { tu_dong: cach !== 'gui', chi_xem: cach === 'xem' });
+      coMa = kq.co_ma !== false;
       tk.moTa.textContent = moTaMaDaGui(kq);
       datDemNguoc(kq.cho_giay ?? 60);
     } catch (error) {
@@ -172,9 +182,10 @@
     }
   }
 
-  function moTaMaDaGui({ email, phut, da_gui: vuaGui = true, con_giay: conGiay = 0 }) {
+  function moTaMaDaGui({ email, phut, da_gui: vuaGui = true, co_ma: daCoMa = true, con_giay: conGiay = 0 }) {
     if (vuaGui) return `Đã gửi mã 6 số tới ${email}. Mã có hiệu lực trong ${phut} phút.`;
-    if (conGiay > 0) return `Mã 6 số đã gửi tới ${email}, còn hiệu lực khoảng ${Math.ceil(conGiay / 60)} phút.`;
+    if (!daCoMa) return `Bấm "Gửi mã" để nhận mã 6 số qua ${email}.`;
+    if (conGiay > 0) return `Mã 6 số gửi trước đó tới ${email} vẫn còn hiệu lực khoảng ${Math.ceil(conGiay / 60)} phút (không gửi thêm thư).`;
     return `Mã đã gửi tới ${email} không còn hiệu lực. Bấm "Gửi lại mã" để nhận mã mới.`;
   }
 
@@ -184,7 +195,8 @@
   }
 
   // tieuDe: thay tiêu đề mặc định, để hộp nói rõ vì sao nó hiện ra (moiMoKhoa).
-  function moHop(moi = 'dang-nhap', tieuDe = '') {
+  // chiXem: hộp xác minh chỉ báo trạng thái mã, không tự gửi thư.
+  function moHop(moi = 'dang-nhap', tieuDe = '', { chiXem = false } = {}) {
     dongMenu();
     closeSidebar();
     tk.form.reset();
@@ -198,7 +210,7 @@
     if (!tk.hop.open) tk.hop.showModal();
     const dau = { 'dang-ky': tk.ten, 'doi-mat-khau': tk.matKhauCu, 'xac-minh': tk.ma, 'sua-thong-tin': tk.ten }[moi] || tk.email;
     dau.focus();
-    if (moi === 'xac-minh') guiMaXacMinh(true);
+    if (moi === 'xac-minh') guiMaXacMinh(chiXem ? 'xem' : 'tu-dong');
   }
 
   function datMatKhauHien(hien) {
@@ -604,12 +616,12 @@
   tk.nutTren.addEventListener('click', () => moHop('dang-nhap'));
 
   // Bấm vào tính năng chưa có quyền: khách được mời đăng nhập, tài khoản chưa
-  // xác minh được mời xác minh email (hộp xác minh tự gửi mã, chỉ lần đầu).
+  // xác minh được mời xác minh email (hộp không tự gửi mã, phải bấm "Gửi mã").
   function moiMoKhoa(ten) {
     if (!nguoiDung) {
       moHop('dang-nhap', loiThieuQuyen(ten));
     } else if (guiThu) {
-      moHop('xac-minh', loiThieuQuyen(ten));
+      moHop('xac-minh', loiThieuQuyen(ten), { chiXem: true });
     } else {
       showToast(`${loiThieuQuyen(ten)} - hãy nhờ quản trị viên xác minh giúp`, 4000);
     }
