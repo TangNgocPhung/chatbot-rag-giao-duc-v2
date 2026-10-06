@@ -25,6 +25,7 @@
     tabs: $id('tnTabs'),
     tomTat: $id('tnTomTat'),
     tim: $id('tnTim'),
+    timO: $id('tnTimO'),
     danhSach: $id('tnDanhSach'),
   };
   if (!tn.hop) return;
@@ -35,6 +36,8 @@
   let loc = 'them';
   let henThu = null;
   let lanThu = 0;
+  let soNgayThongKe = 30;
+  let lanTaiThongKe = 0;
 
   async function goi(duongDan, { method = 'GET', hanhDong, than } = {}) {
     const headers = {};
@@ -72,6 +75,11 @@
   function ve() {
     for (const o of tn.tabs.querySelectorAll('[data-dem]')) {
       o.textContent = String(o.dataset.dem === 'them' ? tuThem.length : tuCoSan.length);
+    }
+    tn.timO.classList.toggle('hidden', loc === 'thong-ke');
+    if (loc === 'thong-ke') {
+      taiThongKe();
+      return;
     }
     tn.tomTat.textContent = loc === 'them'
       ? 'Từ quản trị viên thêm, có hiệu lực ngay. Xoá là bỏ chặn ngay.'
@@ -136,6 +144,111 @@
     }
     hang.append(avatar, info, nut);
     return hang;
+  }
+
+  // ---------- Thống kê ----------
+  const KY_THONG_KE = [[7, '7 ngày'], [30, '30 ngày'], [365, '1 năm']];
+
+  function tenVaiTro(ma) {
+    if (!ma) return 'Chưa chọn vai trò';
+    return window.vaiTroNguoiDung?.DANH_SACH.find((v) => v.ma === ma)?.nhan || ma;
+  }
+
+  async function taiThongKe() {
+    const lan = ++lanTaiThongKe;
+    tn.tomTat.textContent = 'Đang tải thống kê…';
+    try {
+      const kq = await goi(`/api/quan-ly/tu-ngu/thong-ke?so_ngay=${soNgayThongKe}`);
+      if (lan !== lanTaiThongKe || loc !== 'thong-ke') return;
+      veThongKe(kq);
+    } catch (error) {
+      if (lan !== lanTaiThongKe) return;
+      tn.tomTat.textContent = '';
+      const loi = document.createElement('div');
+      loi.className = 'document-empty error';
+      loi.textContent = error.message || 'Không tải được thống kê.';
+      tn.danhSach.replaceChildren(loi);
+    }
+  }
+
+  function veThongKe(kq) {
+    tn.tomTat.textContent = 'Đếm cả câu bị chặn ngay ở ô nhập lẫn câu lên tới máy chủ mới bị chặn. '
+      + 'Chỉ đếm nhóm vi phạm, không lưu nội dung câu.';
+    const khung = document.createElement('div');
+    khung.className = 'tn-thong-ke';
+
+    const ky = document.createElement('div');
+    ky.className = 'tn-ky';
+    ky.setAttribute('role', 'group');
+    ky.setAttribute('aria-label', 'Khoảng thời gian');
+    for (const [soNgay, nhanKy] of KY_THONG_KE) {
+      const nut = document.createElement('button');
+      nut.type = 'button';
+      nut.className = 'kho-nut';
+      nut.textContent = nhanKy;
+      nut.setAttribute('aria-pressed', String(soNgay === soNgayThongKe));
+      nut.addEventListener('click', () => {
+        soNgayThongKe = soNgay;
+        taiThongKe();
+      });
+      ky.append(nut);
+    }
+
+    const tong = document.createElement('div');
+    tong.className = 'tn-tong';
+    const so = document.createElement('strong');
+    so.textContent = kq.so_lan.toLocaleString('vi-VN');
+    const moTa = document.createElement('span');
+    moTa.textContent = kq.so_lan
+      ? `lần bị chặn trong ${kq.so_ngay} ngày qua · ${kq.theo_nguon.giao_dien} ở ô nhập, ${kq.theo_nguon.may_chu} ở máy chủ`
+      : `Chưa có câu nào bị chặn trong ${kq.so_ngay} ngày qua.`;
+    tong.append(so, moTa);
+    khung.append(ky, tong);
+
+    if (kq.so_lan) {
+      const tieuDe = document.createElement('p');
+      tieuDe.className = 'tn-tieu-de-bieu-do';
+      tieuDe.textContent = 'Số lần bị chặn theo nhóm';
+      const ds = document.createElement('ul');
+      ds.className = 'tn-thanh-ds';
+      const lonNhat = Math.max(1, ...kq.theo_nhom.map((n) => n.so_lan));
+      for (const n of kq.theo_nhom) {
+        const ten = nhanNhom[n.nhom] || n.nhom;
+        const chiTiet = `${ten}: ${n.so_lan} lần (ô nhập ${n.giao_dien}, máy chủ ${n.may_chu})`;
+        const hang = document.createElement('li');
+        hang.className = 'tn-thanh-hang';
+        hang.title = chiTiet;
+        hang.setAttribute('aria-label', chiTiet);
+        const nhanHang = document.createElement('span');
+        nhanHang.className = 'tn-thanh-nhan';
+        nhanHang.textContent = ten;
+        const ray = document.createElement('span');
+        ray.className = 'tn-thanh-ray';
+        const thanh = document.createElement('span');
+        thanh.className = 'tn-thanh';
+        thanh.style.width = `${(n.so_lan / lonNhat) * 100}%`;
+        // 0 lần thì không vẽ gì: vạch tối thiểu 2px nhìn như có số liệu.
+        if (n.so_lan) ray.append(thanh);
+        const giaTri = document.createElement('span');
+        giaTri.className = 'tn-thanh-so';
+        giaTri.textContent = n.so_lan.toLocaleString('vi-VN');
+        hang.append(nhanHang, ray, giaTri);
+        ds.append(hang);
+      }
+      const ghiChu = document.createElement('p');
+      ghiChu.className = 'tn-ghi-chu';
+      ghiChu.textContent = 'Một câu vi phạm nhiều nhóm được tính ở mỗi nhóm. Rê chuột vào thanh để xem số ở ô nhập và ở máy chủ.';
+      khung.append(tieuDe, ds, ghiChu);
+
+      if (kq.theo_vai_tro.length) {
+        const vaiTro = document.createElement('p');
+        vaiTro.className = 'tn-ghi-chu';
+        vaiTro.textContent = `Theo vai trò người hỏi: ${kq.theo_vai_tro
+          .map((v) => `${tenVaiTro(v.vai_tro)} ${v.so_lan}`).join(' · ')}`;
+        khung.append(vaiTro);
+      }
+    }
+    tn.danhSach.replaceChildren(khung);
   }
 
   function chonLoc(moi) {

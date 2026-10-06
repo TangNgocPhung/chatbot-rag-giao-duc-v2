@@ -305,6 +305,50 @@ def loc_tu_ngu_cho_giao_dien():
     return loc_tu_ngu.du_lieu_cho_giao_dien()
 
 
+class BaoBiChan(BaseModel):
+    cau: str = Field(min_length=1, max_length=2000)
+    vai_tro: str | None = Field(default=None, max_length=32)
+
+
+# Endpoint báo chặn mở cho cả khách nên giới hạn số lần ghi theo địa chỉ IP,
+# để một người không bơm thống kê lên hàng nghìn lần trong vài giây.
+SO_BAO_CHAN_MOI_PHUT = 20
+_bao_chan_gan_day: dict[str, list[float]] = {}
+_khoa_bao_chan = threading.Lock()
+
+
+def _qua_han_muc_bao_chan(ip: str) -> bool:
+    bay_gio = time.monotonic()
+    with _khoa_bao_chan:
+        if len(_bao_chan_gan_day) > 5000:  # dọn IP cũ, không để từ điển phình mãi
+            for khoa in [k for k, v in _bao_chan_gan_day.items() if not v or bay_gio - v[-1] > 60]:
+                del _bao_chan_gan_day[khoa]
+        lan = [t for t in _bao_chan_gan_day.get(ip, []) if bay_gio - t < 60]
+        if len(lan) >= SO_BAO_CHAN_MOI_PHUT:
+            _bao_chan_gan_day[ip] = lan
+            return True
+        _bao_chan_gan_day[ip] = [*lan, bay_gio]
+        return False
+
+
+@app.post("/api/loc-tu-ngu/bi-chan")
+def bao_bi_chan(thong_tin: BaoBiChan, http: Request):
+    """Giao diện báo vừa chặn một câu trước khi gửi, để thống kê không bỏ sót
+    những câu không bao giờ lên tới máy chủ.
+
+    Máy chủ kiểm tra lại câu bằng bộ lọc của chính nó và chỉ ghi khi câu thật
+    sự vi phạm, với nhóm do máy chủ xác định - không tin nhóm giao diện gửi.
+    Chỉ ghi nhóm, không ghi nội dung: người dùng chưa hề gửi câu đó đi."""
+    if not loc_tu_ngu.dang_bat() or _qua_han_muc_bao_chan(_dia_chi_ip(http)):
+        return {"ghi": False}
+    ket_qua = loc_tu_ngu.kiem_tra(thong_tin.cau)
+    if not ket_qua.vi_pham:
+        return {"ghi": False}
+    return {"ghi": lich_su_chat.ghi_chan_tu_ngu(
+        ket_qua.nhom, "giao_dien", goi_y_cau_hoi.chuan_hoa_vai_tro(thong_tin.vai_tro) or "",
+    )}
+
+
 @app.post("/api/reinitialize")
 def reinitialize():
     if service.status.state == "loading":
@@ -472,6 +516,11 @@ def chat_stream(
                     thong_tin["so_lieu_ok"] = event.get("figures_ok", True)
                     thong_tin["tu_choi"] = bool(event.get("abstained"))
                     thong_tin["tu_cache"] = bool(event.get("tu_cache"))
+                    if event.get("nhom_tu_ngu"):
+                        lich_su_chat.ghi_chan_tu_ngu(
+                            event["nhom_tu_ngu"], "may_chu",
+                            goi_y_cau_hoi.chuan_hoa_vai_tro(request.vai_tro) or "",
+                        )
                 if not _xep_hang(hang, event):
                     break
         except Exception as exc:
@@ -898,6 +947,7 @@ def thong_ke_su_dung(so_ngay: int = 30):
     nên cải tiến chỗ nào thay vì đoán."""
     return {
         **lich_su_chat.thong_ke(so_ngay),
+        "tu_ngu_bi_chan": lich_su_chat.thong_ke_chan_tu_ngu(so_ngay, list(loc_tu_ngu.NHOM)),
         "cache": cache_ngu_nghia.cache.thong_ke(),
     }
 
@@ -1434,6 +1484,14 @@ def danh_sach_tu_ngu(request: Request):
         },
         "them": loc_tu_ngu.danh_sach_tu_them(),
     }
+
+
+@app.get("/api/quan-ly/tu-ngu/thong-ke")
+def thong_ke_tu_ngu(request: Request, so_ngay: int = 30):
+    _nguoi_quan_tri(request)
+    return lich_su_chat.thong_ke_chan_tu_ngu(
+        max(1, min(so_ngay, 3650)), list(loc_tu_ngu.NHOM)
+    )
 
 
 @app.post("/api/quan-ly/tu-ngu/xem-truoc")

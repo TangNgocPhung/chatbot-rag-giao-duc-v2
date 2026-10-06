@@ -1992,6 +1992,7 @@ async function submitQuestion(question, tuyChon = {}) {
   // Giữ câu lại trong ô nhập để người dùng sửa, thay vì gửi đi rồi nhận lời
   // nhắc từ máy chủ (máy chủ vẫn tự kiểm tra lại, xem loc-tu-ngu.js).
   if (window.locTuNgu?.kiemTra(question).viPham) {
+    window.locTuNgu.baoBiChan(question);
     showToast(window.locTuNgu.LOI_NHAC, 4000);
     elements.input.focus();
     return;

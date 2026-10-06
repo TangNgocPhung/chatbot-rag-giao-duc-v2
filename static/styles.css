@@ -1350,6 +1350,21 @@ body:not([data-so-tay="1"]) .can-so-tay { display: none !important; }
 .tn-ket-qua-thu.chan { color: var(--danger-ink); }
 .tn-ket-qua-thu.qua { color: var(--ok); }
 .qltk-nhan.nhom { color: var(--blue); background: var(--blue-soft); }
+.tn-thong-ke { padding: 4px 9px 16px; }
+.tn-ky { display: flex; gap: 6px; margin-bottom: 16px; }
+.tn-ky .kho-nut[aria-pressed="true"] { color: var(--ink); background: var(--surface-3); border-color: var(--line-strong); }
+.tn-tong { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 18px; }
+.tn-tong strong { color: var(--ink); font-size: 48px; font-weight: 650; line-height: 1; }
+.tn-tong span { color: var(--ink-soft); font-size: 12.5px; }
+.tn-tieu-de-bieu-do { margin: 0 0 10px; color: var(--ink); font-size: 12.5px; font-weight: 650; }
+.tn-thanh-ds { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.tn-thanh-hang { display: grid; grid-template-columns: 110px minmax(0, 1fr) 44px; align-items: center; gap: 10px; }
+.tn-thanh-nhan { color: var(--ink-body); font-size: 12px; }
+.tn-thanh-ray { display: block; height: 12px; background: var(--blue-soft); border-radius: 0 4px 4px 0; }
+.tn-thanh { display: block; min-width: 2px; height: 100%; background: var(--blue); border-radius: 0 4px 4px 0; }
+.tn-thanh-hang:hover .tn-thanh { filter: brightness(1.12); }
+.tn-thanh-so { color: var(--ink); font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 650; text-align: right; }
+.tn-ghi-chu { margin: 12px 0 0; color: var(--ink-mute); font-size: 11px; line-height: 1.55; }
 @media (max-width: 470px) {
   .tn-form { grid-template-columns: minmax(0, 1fr) auto; margin-inline: 12px; }
   .tn-o-tu { grid-column: 1 / -1; }

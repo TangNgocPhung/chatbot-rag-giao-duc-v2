@@ -160,9 +160,23 @@
       .catch(() => { /* Không tải được thì để máy chủ tự chặn. */ });
   }
 
+  // Báo máy chủ để thống kê không bỏ sót câu bị chặn ngay tại đây. Máy chủ tự
+  // kiểm tra lại câu và chỉ ghi nhóm vi phạm, không ghi nội dung. Gửi kiểu
+  // "bắn rồi quên": hỏng thì thôi, không làm chậm hay chặn người dùng.
+  function baoBiChan(cau) {
+    if (typeof fetch !== 'function' || typeof window === 'undefined') return;
+    fetch('/api/loc-tu-ngu/bi-chan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cau, vai_tro: window.vaiTroNguoiDung?.lay?.() || null }),
+      keepalive: true,
+    }).catch(() => {});
+  }
+
   const api = {
     nap,
     taiLai,
+    baoBiChan,
     kiemTra,
     dangBat: () => boLoc !== null,
     LOI_NHAC,

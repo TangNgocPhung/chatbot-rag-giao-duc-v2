@@ -2020,6 +2020,8 @@ class RAGService:
             "figures_ok": True,
             "abstained": True,
             "ly_do_chan": "tu_ngu_khong_phu_hop:" + ",".join(ket_qua_loc.nhom),
+            # Để api.py ghi thống kê theo nhóm mà không phải tách chuỗi trên.
+            "nhom_tu_ngu": list(ket_qua_loc.nhom),
         }
 
     def _sinh_cau_tra_loi(

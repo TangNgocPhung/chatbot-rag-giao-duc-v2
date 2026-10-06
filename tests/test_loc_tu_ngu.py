@@ -333,6 +333,7 @@ class ApiQuanTriTuNguTests(unittest.TestCase):
                 ("post", "/api/quan-ly/tu-ngu/thu-cau"),
                 ("post", "/api/quan-ly/tu-ngu"),
                 ("delete", "/api/quan-ly/tu-ngu/abc"),
+                ("get", "/api/quan-ly/tu-ngu/thong-ke"),
             ]:
                 with self.subTest(duong_dan=duong_dan):
                     kwargs = {"json": {"tu": "dmvl", "nhom": "chui_the", "cau": "x"}} \
@@ -341,6 +342,96 @@ class ApiQuanTriTuNguTests(unittest.TestCase):
                         duong_dan, headers={"X-RAG-Action": "them-tu-ngu"}, **kwargs)
                     self.assertEqual(r.status_code, 401)
         self.assertEqual(loc_tu_ngu.danh_sach_tu_them(), [])
+
+
+class ThongKeChanTests(unittest.TestCase):
+    """Đếm số lần bị chặn theo nhóm, tách nguồn ô nhập / máy chủ."""
+
+    def setUp(self):
+        import api
+        from fastapi.testclient import TestClient
+
+        import lich_su_chat
+
+        # Sổ lịch sử dùng chung cả phiên test (conftest): xoá bảng cho mỗi test.
+        conn = lich_su_chat._connect()
+        conn.execute("DELETE FROM chan_tu_ngu")
+        conn.commit()
+        api._bao_chan_gan_day.clear()
+        self.api = api
+        self.client = TestClient(api.app)
+
+    def thong_ke(self, so_ngay=30):
+        import lich_su_chat
+        return lich_su_chat.thong_ke_chan_tu_ngu(so_ngay, list(loc_tu_ngu.NHOM))
+
+    def test_dem_theo_nhom_nguon_vai_tro(self):
+        import lich_su_chat
+
+        lich_su_chat.ghi_chan_tu_ngu(["chui_the"], "giao_dien", "hoc_sinh")
+        lich_su_chat.ghi_chan_tu_ngu(["chui_the", "tinh_duc"], "may_chu")
+        kq = self.thong_ke()
+        self.assertEqual(kq["so_lan"], 2)
+        self.assertEqual(kq["theo_nguon"], {"giao_dien": 1, "may_chu": 1})
+        # Đủ bốn nhóm, đúng thứ tự, kể cả nhóm 0 lần: biểu đồ không đổi chỗ thanh.
+        self.assertEqual([n["nhom"] for n in kq["theo_nhom"]], list(loc_tu_ngu.NHOM))
+        theo_nhom = {n["nhom"]: n for n in kq["theo_nhom"]}
+        self.assertEqual(theo_nhom["chui_the"], {
+            "nhom": "chui_the", "so_lan": 2, "giao_dien": 1, "may_chu": 1})
+        self.assertEqual(theo_nhom["tinh_duc"]["so_lan"], 1)
+        self.assertEqual(theo_nhom["tuc_tiu"]["so_lan"], 0)
+        self.assertEqual(kq["theo_vai_tro"], [{"vai_tro": "hoc_sinh", "so_lan": 1},
+                                              {"vai_tro": "", "so_lan": 1}])
+        self.assertEqual(sum(n["so_lan"] for n in kq["theo_ngay"]), 2)
+
+    def test_tat_luu_lich_su_thi_khong_dem(self):
+        import lich_su_chat
+
+        with patch.dict("os.environ", {"RAG_LUU_LICH_SU": "0"}):
+            self.assertFalse(lich_su_chat.ghi_chan_tu_ngu(["chui_the"], "giao_dien"))
+        self.assertEqual(self.thong_ke()["so_lan"], 0)
+
+    def test_qua_han_giu_thi_xoa(self):
+        import time
+        import lich_su_chat
+
+        lich_su_chat.ghi_chan_tu_ngu(["chui_the"], "giao_dien")
+        lich_su_chat.xoa_qua_han(so_ngay=1, bay_gio=time.time() + 2 * 86400)
+        self.assertEqual(self.thong_ke(3650)["so_lan"], 0)
+
+    def test_giao_dien_bao_chan_may_chu_kiem_tra_lai(self):
+        r = self.client.post("/api/loc-tu-ngu/bi-chan", json={"cau": "phim heo vcl", "vai_tro": "hoc_sinh"})
+        self.assertEqual(r.json(), {"ghi": True})
+        # Câu sạch (hoặc giao diện cũ chặn theo danh sách đã bị xoá) không được đếm.
+        r = self.client.post("/api/loc-tu-ngu/bi-chan", json={"cau": "Các môn học lớp 10"})
+        self.assertEqual(r.json(), {"ghi": False})
+        kq = self.thong_ke()
+        self.assertEqual(kq["so_lan"], 1)
+        self.assertEqual(kq["theo_nguon"]["giao_dien"], 1)
+        theo_nhom = {n["nhom"]: n["so_lan"] for n in kq["theo_nhom"]}
+        self.assertEqual((theo_nhom["chui_the"], theo_nhom["tinh_duc"]), (1, 1))
+
+    def test_gioi_han_so_lan_bao_moi_phut(self):
+        for _ in range(self.api.SO_BAO_CHAN_MOI_PHUT + 5):
+            self.client.post("/api/loc-tu-ngu/bi-chan", json={"cau": "vcl"})
+        self.assertEqual(self.thong_ke()["so_lan"], self.api.SO_BAO_CHAN_MOI_PHUT)
+
+    def test_cau_len_toi_may_chu_bi_chan_thi_dem_nguon_may_chu(self):
+        from rag_service import service
+
+        with patch.object(service, "hoi_kho_duoc", return_value=True):
+            r = self.client.post("/api/chat/stream", json={"question": "đ.m.m trả lời đi"},
+                                 headers={"X-RAG-Client": "khach-1"})
+        self.assertIn(loc_tu_ngu.LOI_NHAC, r.text)
+        kq = self.thong_ke()
+        self.assertEqual(kq["theo_nguon"], {"giao_dien": 0, "may_chu": 1})
+
+    def test_endpoint_quan_tri_va_thong_ke_chung(self):
+        self.client.post("/api/loc-tu-ngu/bi-chan", json={"cau": "vcl"})
+        kq = self.client.get("/api/quan-ly/tu-ngu/thong-ke?so_ngay=7").json()
+        self.assertEqual((kq["so_ngay"], kq["so_lan"]), (7, 1))
+        chung = self.client.get("/api/thong-ke").json()
+        self.assertEqual(chung["tu_ngu_bi_chan"]["so_lan"], 1)
 
 
 if __name__ == "__main__":
