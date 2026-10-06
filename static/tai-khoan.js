@@ -582,6 +582,11 @@
       window.quanLyTaiKhoan?.mo();
       return;
     }
+    if (viec === 'quan-ly-tu-ngu') {
+      closeSidebar();
+      window.quanLyTuNgu?.mo();
+      return;
+    }
     if (viec !== 'dang-xuat') return;
     try {
       await fetch('/api/tai-khoan/dang-xuat', { method: 'POST' });
