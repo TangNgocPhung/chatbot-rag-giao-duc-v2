@@ -105,6 +105,16 @@ def _tao_bang(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_luot_hoi_thoai
             ON luot(hoi_thoai_id, id);
         CREATE INDEX IF NOT EXISTS idx_luot_tao_luc ON luot(tao_luc);
+        -- Mỗi lần một câu bị chặn vì từ ngữ không phù hợp (loc_tu_ngu). KHÔNG
+        -- có nội dung câu: câu bị chặn ở giao diện chưa hề được gửi đi.
+        CREATE TABLE IF NOT EXISTS chan_tu_ngu (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            nhom      TEXT NOT NULL,      -- mã nhóm, cách nhau bằng dấu phẩy
+            nguon     TEXT NOT NULL,      -- giao_dien | may_chu
+            vai_tro   TEXT NOT NULL DEFAULT '',
+            tao_luc   REAL NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_chan_tu_ngu_tao_luc ON chan_tu_ngu(tao_luc);
         """
     )
     # Cột thêm sau: đủ nguồn (trang, đường dẫn), cảnh báo và gợi ý của câu trả
@@ -225,6 +235,79 @@ def ghi_luot(
         return None
 
 
+NGUON_CHAN = ("giao_dien", "may_chu")
+
+
+def ghi_chan_tu_ngu(nhom: list[str] | tuple[str, ...], nguon: str, vai_tro: str = "") -> bool:
+    """Ghi một lần chặn câu hỏi vì từ ngữ không phù hợp, chỉ nhóm chứ không
+    nội dung. Theo cùng công tắc và cùng hạn giữ với lịch sử hỏi đáp.
+
+    nguon: "giao_dien" - giao diện chặn trước khi gửi; "may_chu" - câu lên tới
+    stream_answer mới bị chặn (gọi thẳng API, hoặc giao diện chưa tải được bộ
+    lọc). Hai nguồn không trùng nhau: câu giao diện đã chặn thì không gửi đi.
+    Không bao giờ ném lỗi ra ngoài."""
+    nhom = [n for n in nhom if n]
+    if not bat_luu_lich_su() or not nhom or nguon not in NGUON_CHAN:
+        return False
+    try:
+        with _khoa_ghi:
+            conn = _connect()
+            conn.execute(
+                "INSERT INTO chan_tu_ngu (nhom, nguon, vai_tro, tao_luc) VALUES (?, ?, ?, ?)",
+                (",".join(nhom), nguon, (vai_tro or "").strip()[:32], time.time()),
+            )
+            conn.commit()
+        return True
+    except sqlite3.Error as exc:
+        print(f"⚠️  Không ghi được lần chặn từ ngữ: {exc}")
+        return False
+
+
+def thong_ke_chan_tu_ngu(so_ngay: int = 30, thu_tu_nhom: list[str] | None = None) -> dict:
+    """Bao nhiêu lần câu hỏi bị chặn vì từ ngữ, theo nhóm, nguồn, vai trò và
+    ngày. Một câu vi phạm nhiều nhóm thì được đếm ở mỗi nhóm, nên tổng theo
+    nhóm có thể lớn hơn so_lan.
+
+    thu_tu_nhom: các nhóm luôn có mặt (kể cả 0 lần) theo đúng thứ tự này, để
+    biểu đồ không đổi chỗ các thanh giữa hai lần xem."""
+    so_ngay = max(1, so_ngay)
+    moc = time.time() - so_ngay * 86400
+    rong = {"so_ngay": so_ngay, "so_lan": 0, "theo_nguon": dict.fromkeys(NGUON_CHAN, 0),
+            "theo_nhom": [], "theo_vai_tro": [], "theo_ngay": []}
+    try:
+        conn = _connect()
+        dong = conn.execute(
+            "SELECT nhom, nguon, vai_tro, date(tao_luc, 'unixepoch', 'localtime') AS ngay"
+            "  FROM chan_tu_ngu WHERE tao_luc >= ?",
+            (moc,),
+        ).fetchall()
+    except sqlite3.Error as exc:
+        print(f"⚠️  Không tính được thống kê chặn từ ngữ: {exc}")
+        return {**rong, "loi": str(exc)}
+
+    theo_nhom = {n: dict.fromkeys(NGUON_CHAN, 0) for n in (thu_tu_nhom or [])}
+    theo_vai_tro: dict[str, int] = {}
+    theo_ngay: dict[str, int] = {}
+    ket_qua = rong
+    for d in dong:
+        nguon = d["nguon"] if d["nguon"] in NGUON_CHAN else "may_chu"
+        ket_qua["so_lan"] += 1
+        ket_qua["theo_nguon"][nguon] += 1
+        for nhom in dict.fromkeys(d["nhom"].split(",")):
+            theo_nhom.setdefault(nhom, dict.fromkeys(NGUON_CHAN, 0))[nguon] += 1
+        theo_vai_tro[d["vai_tro"]] = theo_vai_tro.get(d["vai_tro"], 0) + 1
+        theo_ngay[d["ngay"]] = theo_ngay.get(d["ngay"], 0) + 1
+    ket_qua["theo_nhom"] = [
+        {"nhom": nhom, "so_lan": sum(dem.values()), **dem} for nhom, dem in theo_nhom.items()
+    ]
+    ket_qua["theo_vai_tro"] = [
+        {"vai_tro": vai_tro, "so_lan": so}
+        for vai_tro, so in sorted(theo_vai_tro.items(), key=lambda m: -m[1])
+    ]
+    ket_qua["theo_ngay"] = [{"ngay": ngay, "so_lan": so} for ngay, so in sorted(theo_ngay.items())]
+    return ket_qua
+
+
 def danh_sach_hoi_thoai(client_id: str, gioi_han: int = 50) -> list[dict]:
     try:
         conn = _connect()
@@ -240,6 +323,20 @@ def danh_sach_hoi_thoai(client_id: str, gioi_han: int = 50) -> list[dict]:
         return [dict(d) for d in dong]
     except sqlite3.Error as exc:
         print(f"⚠️  Không đọc được danh sách hội thoại: {exc}")
+        return []
+
+
+def cau_hoi_gan_day(gioi_han: int = 2000) -> list[str]:
+    """Các câu hỏi mới nhất, không kèm ai hỏi. Dùng để quản trị viên xem trước
+    một từ cấm sắp thêm sẽ chặn những câu nào (loc_tu_ngu.thu_tu_moi)."""
+    try:
+        dong = _connect().execute(
+            "SELECT cau_hoi FROM luot ORDER BY tao_luc DESC LIMIT ?",
+            (max(1, min(gioi_han, 10000)),),
+        ).fetchall()
+        return [d["cau_hoi"] for d in dong]
+    except sqlite3.Error as exc:
+        print(f"⚠️  Không đọc được câu hỏi gần đây: {exc}")
         return []
 
 
@@ -351,6 +448,7 @@ def xoa_qua_han(so_ngay: int | None = None, bay_gio: float | None = None) -> dic
             ket_qua["so_luot"] = conn.execute(
                 "DELETE FROM luot WHERE tao_luc < ?", (moc,)
             ).rowcount
+            conn.execute("DELETE FROM chan_tu_ngu WHERE tao_luc < ?", (moc,))
             ket_qua["so_hoi_thoai"] = conn.execute(
                 "DELETE FROM hoi_thoai WHERE tao_luc < ?"
                 " AND id NOT IN (SELECT DISTINCT hoi_thoai_id FROM luot)",
