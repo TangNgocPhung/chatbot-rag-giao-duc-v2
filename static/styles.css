@@ -405,6 +405,7 @@ h1 { margin: 0; color: var(--ink); font-family: Cambria, "Times New Roman", seri
 .action-button svg { width: 15px; height: 15px; }
 .action-button.stop { color: var(--danger); }
 .action-button.dang-doc { color: var(--blue-ink); background: var(--blue-soft); }
+.action-button.nhan-y-dinh { color: var(--blue-ink); background: var(--blue-soft); cursor: help; }
 /* minmax(0, 1fr): cột lưới mặc định giãn theo chip dài nhất (chữ không xuống
    dòng), nên khi sổ tay mở làm khung chat hẹp lại thì cả khung cuộn ngang. */
 .sources { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 16px; }
@@ -1365,7 +1366,23 @@ body:not([data-so-tay="1"]) .can-so-tay { display: none !important; }
 .tn-thanh-hang:hover .tn-thanh { filter: brightness(1.12); }
 .tn-thanh-so { color: var(--ink); font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 650; text-align: right; }
 .tn-ghi-chu { margin: 12px 0 0; color: var(--ink-mute); font-size: 11px; line-height: 1.55; }
+.yd-ket-qua-thu:empty { display: none; }
+.yd-ket-qua-thu .tn-ghi-chu { margin-top: 4px; }
+.yd-thu-nhan { margin: 0; color: var(--ink-body); font-size: 12.5px; }
+.yd-thu-nhan strong { color: var(--ink); }
+.yd-lang-gieng { margin: 4px 0 0; padding-left: 18px; color: var(--ink-soft); font-size: 11.5px; line-height: 1.55; }
+.yd-trang-thai { margin: 0 0 14px; }
+.yd-muc { margin-top: 20px; overflow-x: auto; }
+.yd-bang { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.yd-bang th, .yd-bang td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.yd-bang th { color: var(--ink-soft); font-size: 11px; font-weight: 650; }
+.yd-bang th:first-child, .yd-bang td:first-child { min-width: 150px; color: var(--ink-body); text-align: left; white-space: normal; }
+.yd-o { display: inline-block; min-width: 26px; padding: 2px 6px; color: var(--ink-mute); border-radius: 6px; text-align: center; }
+.yd-o.dung { color: var(--ok); background: var(--ok-soft); font-weight: 650; }
+.yd-o.sai { color: var(--danger-ink); background: var(--danger-soft); font-weight: 650; }
+.yd-thanh-hang { grid-template-columns: 170px minmax(0, 1fr) 44px; }
 @media (max-width: 470px) {
+  .yd-thanh-hang { grid-template-columns: 110px minmax(0, 1fr) 36px; }
   .tn-form { grid-template-columns: minmax(0, 1fr) auto; margin-inline: 12px; }
   .tn-o-tu { grid-column: 1 / -1; }
   .tn-goi-y, .tn-xem-truoc { margin-inline: 12px; }

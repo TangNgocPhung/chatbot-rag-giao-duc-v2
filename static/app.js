@@ -319,6 +319,7 @@ function luotThanhTinNhan(luot) {
       warning: ct.warning || '',
       hieuLuc: ct.hieuLuc || [],
       goiY: ct.goiY || [],
+      yDinh: ct.yDinh || null,
       interrupted: Boolean(ct.interrupted),
     });
   }
@@ -857,6 +858,7 @@ async function openChat(chat) {
       item.warning || (item.interrupted ? 'Câu trả lời này đã bị dừng giữa chừng.' : ''),
       item.hieuLuc,
       item.goiY,
+      item.yDinh,
     );
   }
   renderHistory();
@@ -1132,14 +1134,14 @@ function createAssistantMessage() {
   return { article, body, thinking, answer, sources, actions, stop };
 }
 
-function addCompletedAssistantMessage(content, sourceList, elapsed, warning, hieuLuc, goiY) {
+function addCompletedAssistantMessage(content, sourceList, elapsed, warning, hieuLuc, goiY, yDinh = null) {
   const ui = createAssistantMessage();
   renderAnswer(ui.answer, content, ui.article.dataset.messageId, sourceList.length);
   renderHieuLuc(ui.answer, hieuLuc);
   renderWarning(ui.answer, warning);
   ui.thinking.classList.add('hidden');
   renderSources(ui.sources, sourceList);
-  renderCompletedActions(ui, content, elapsed);
+  renderCompletedActions(ui, content, elapsed, null, yDinh);
   renderGoiYTiepTheo(ui.body, goiY);
 }
 
@@ -1888,7 +1890,7 @@ if ('speechSynthesis' in window) {
   window.addEventListener('pagehide', () => speechSynthesis.cancel());
 }
 
-function renderCompletedActions(ui, content, elapsed, tuCache = null) {
+function renderCompletedActions(ui, content, elapsed, tuCache = null, yDinh = null) {
   ui.actions.replaceChildren();
   const copy = document.createElement('button');
   copy.type = 'button';
@@ -1948,6 +1950,23 @@ function renderCompletedActions(ui, content, elapsed, tuCache = null) {
     duration.className = 'action-button';
     duration.textContent = `Hoàn tất sau ${elapsed} giây`;
     ui.actions.append(duration);
+  }
+  if (yDinh?.ten_nhan) {
+    // Nhãn của bộ phân loại ý định (KNN): kèm mấy câu mẫu gần nhất đã bỏ phiếu,
+    // để ai cũng kiểm lại được vì sao máy đoán câu hỏi thuộc loại này.
+    const nhan = document.createElement('span');
+    nhan.className = 'action-button nhan-y-dinh';
+    const phanTram = Math.round((yDinh.do_tin_cay || 0) * 100);
+    nhan.textContent = `${yDinh.ten_nhan} · KNN ${phanTram}%`;
+    const soThapPhan = (so) => String(so).replace('.', ',');
+    nhan.title = [
+      `Bộ phân loại ý định KNN (k=${yDinh.k}) đoán câu hỏi thuộc loại "${yDinh.ten_nhan}" `
+        + `với ${phanTram}% phiếu. Các câu mẫu gần nhất:`,
+      ...(yDinh.lang_gieng || []).map(
+        (lg) => `• ${lg.cau_hoi} (${lg.ten_nhan || lg.nhan}, giống ${soThapPhan(lg.do_giong)})`,
+      ),
+    ].join('\n');
+    ui.actions.append(nhan);
   }
 }
 
@@ -2029,6 +2048,7 @@ async function submitQuestion(question, tuyChon = {}) {
   let hieuLuc = [];
   let goiY = [];
   let tuCache = null;
+  let yDinh = null;
   // Bỏ tin rỗng: bấm Dừng trước khi có chữ nào thì câu trả lời được lưu là ''
   // (để giữ câu hỏi ở mục Gần đây), mà máy chủ từ chối cả request (422) nếu
   // lịch sử có tin rỗng - câu hỏi kế tiếp trong cuộc đó sẽ hỏng theo.
@@ -2104,6 +2124,8 @@ async function submitQuestion(question, tuyChon = {}) {
           warning = event.message;
         } else if (event.type === 'goi_y') {
           goiY = event.goi_y || [];
+        } else if (event.type === 'y_dinh') {
+          yDinh = event;
         } else if (event.type === 'done') {
           elapsed = event.elapsed_seconds;
           tuCache = event.tu_cache ? { cauHoiGoc: event.cache_cau_hoi_goc || '' } : null;
@@ -2117,9 +2139,9 @@ async function submitQuestion(question, tuyChon = {}) {
     renderAnswer(ui.answer, answer, ui.article.dataset.messageId, sources.length);
     renderHieuLuc(ui.answer, hieuLuc);
     renderWarning(ui.answer, warning);
-    renderCompletedActions(ui, answer, elapsed, tuCache);
+    renderCompletedActions(ui, answer, elapsed, tuCache, yDinh);
     renderGoiYTiepTheo(ui.body, goiY);
-    luuVaoLichSu(answer, { elapsed, warning, hieuLuc, goiY });
+    luuVaoLichSu(answer, { elapsed, warning, hieuLuc, goiY, yDinh });
   } catch (error) {
     if (error.name === 'AbortError') {
       // Dừng lúc chưa có chữ nào cũng vẫn lưu: người dùng mở lại ở mục "Gần đây"

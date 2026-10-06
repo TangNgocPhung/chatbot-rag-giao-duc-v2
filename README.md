@@ -194,6 +194,24 @@ Nút **Nói** trong khung hỏi ghi âm câu hỏi (tự dừng sau 60 giây, `E
 
 Mỗi người chọn mô hình trả lời cho câu hỏi của mình trong menu mô hình mà không làm đổi mô hình mặc định của máy chủ; tên lạ hoặc bị chặn thì máy chủ tự quay về mô hình mặc định. `RAG_MO_HINH_CHO_PHEP` giới hạn danh sách được chọn, ví dụ chặn mô hình lớn trên máy ít RAM.
 
+### Phân loại câu hỏi bằng học máy (KNN)
+
+Trước khi tới mô hình ngôn ngữ, câu hỏi đi qua một bộ phân loại ý định tự train (`phan_loai_y_dinh.py`). Câu hỏi được nhúng bằng bge-m3 (cùng model nhúng của chỉ mục) rồi so với khoảng 420 câu mẫu đã gán nhãn trong `du_lieu_y_dinh.json`. k câu giống nhất bỏ phiếu theo độ tương đồng cosin, cho ra một trong bảy loại: tra cứu văn bản, tính lương, định mức tiết dạy, đánh giá học sinh, tính toán, chào hỏi, ngoài phạm vi.
+
+- Câu chắc chắn là **ngoài phạm vi** (tỉ lệ phiếu ≥ `RAG_Y_DINH_NGUONG`) được từ chối ngay, không truy hồi và không tốn hàng chục giây sinh văn bản trên CPU. Câu **chào hỏi / cảm ơn** được đáp lời ngay kèm câu gợi ý.
+- Không tự chặn câu nối tiếp trong hội thoại, câu đang lọc phạm vi, hay câu mà công cụ tính đã nhận ra; các câu còn lại đi đường thường.
+- Dưới mỗi câu trả lời có nhãn loại câu hỏi kèm tỉ lệ phiếu; rê chuột vào nhãn để xem các câu mẫu gần nhất đã bỏ phiếu.
+- Quản trị viên mở **Phân loại câu hỏi (KNN)** trong menu tài khoản để xem kết quả đánh giá (độ chính xác từng loại, ma trận nhầm lẫn, ngưỡng, so sánh mô hình), xem câu hỏi gần đây theo loại, và thử ngay một câu bất kỳ.
+
+Máy chủ tự train lại khi khởi động nếu câu mẫu hoặc model nhúng đổi (mất khoảng một phút, chạy nền). Đánh giá và chọn k:
+
+```powershell
+.\.venv\Scripts\python.exe phan_loai_y_dinh.py danh_gia
+.\.venv\Scripts\python.exe phan_loai_y_dinh.py hoi "giá vàng hôm nay"
+```
+
+`danh_gia` chọn k bằng kiểm định chéo bỏ-một trên tập train, đo trên tập test gồm câu thật (bộ benchmark, lịch sử chat, câu trong test của các công cụ tính), rồi so với Logistic Regression, SVM, Naive Bayes và KNN trên TF-IDF (cần `pip install scikit-learn`; máy chủ thì không cần). Kết quả nằm ở `bang_phan_loai_y_dinh.md`.
+
 ## Yêu cầu
 
 - Windows 10/11 và Python 3.11
@@ -249,7 +267,7 @@ Bộ câu hỏi chuẩn nằm ở `bo_cau_hoi_benchmark.json` (127 câu, trong �
 
 ### Tập dev và tập test
 
-Hệ thống không huấn luyện mô hình nào, nhưng vẫn có tham số được **chọn theo kết quả đo**: trọng số rerank trong `hybrid_retrieval.py`, ngưỡng chặn lạc đề, số chunk đưa vào prompt. Chọn tham số trên bộ câu nào thì điểm trên chính bộ đó là ước lượng lạc quan. Vì vậy trường `tap` chia bộ câu hỏi thành hai phần, phân tầng theo nhóm:
+Ngoài bộ phân loại ý định (có tập train/test riêng, xem [Phân loại câu hỏi bằng học máy](#phân-loại-câu-hỏi-bằng-học-máy-knn)), hệ thống không huấn luyện mô hình nào, nhưng vẫn có tham số được **chọn theo kết quả đo**: trọng số rerank trong `hybrid_retrieval.py`, ngưỡng chặn lạc đề, số chunk đưa vào prompt. Chọn tham số trên bộ câu nào thì điểm trên chính bộ đó là ước lượng lạc quan. Vì vậy trường `tap` chia bộ câu hỏi thành hai phần, phân tầng theo nhóm:
 
 | Tập | Số câu | Dùng để |
 | --- | --- | --- |
@@ -307,6 +325,8 @@ Chạy tay: `.\.venv\Scripts\python.exe drive_sync.py` (thêm `--thu` để ch�
 | `RAG_MO_HINH_DICH` | `qwen2.5:3b-instruct` | Mô hình dịch trên máy (không có thì dùng mô hình trả lời) |
 | `RAG_WHISPER_MODEL` | `small` | Mô hình faster-whisper cho phiên âm và nhận giọng nói |
 | `RAG_WHISPER_BEAM_GIONG_NOI` | `5` | Beam size khi nhận giọng nói |
+| `RAG_PHAN_LOAI_Y_DINH` | `1` | `0` tắt bộ phân loại ý định câu hỏi (KNN) |
+| `RAG_Y_DINH_NGUONG` | `0.7` | Tỉ lệ phiếu tối thiểu để tự từ chối câu ngoài phạm vi / đáp lời chào |
 | `RAG_GOI_Y_MO_DAU` | `tinh` | Gợi ý màn hình chào: `tinh` là bộ 17 câu cố định theo 4 chủ đề, `metadata` là câu dựng từ metadata văn bản qua cây quyết định |
 
 ## Chạy công khai

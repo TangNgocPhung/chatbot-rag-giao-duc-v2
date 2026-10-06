@@ -26,6 +26,7 @@ import kiem_tra_tra_loi
 import hieu_luc_bo_sung
 import loc_tu_ngu
 import phan_loai_giao_duc
+import phan_loai_y_dinh
 import quan_he_van_ban
 import quan_ly_kho
 import tai_khoan
@@ -43,6 +44,7 @@ from capnhat_tailieu_moi import main as cap_nhat_chi_muc_tren_dia
 from chunking_utils import tinh_hash_file
 from hybrid_retrieval import (
     SO_KET_QUA_CUOI,
+    bo_dau,
     tach_tu_tieng_viet,
     truy_hoi,
     xay_dung_bm25,
@@ -317,6 +319,8 @@ class RAGService:
         # Giữ lại model nhúng: cache ngữ nghĩa cần nhúng câu hỏi mới
         # bằng đúng model đã nhúng kho.
         self.embeddings = None
+        # Bộ phân loại ý định câu hỏi (KNN trên vector bge-m3), xem phan_loai_y_dinh.py.
+        self.phan_loai_y_dinh = phan_loai_y_dinh.PhanLoaiYDinh()
         self.bm25_retriever = None
         # Từ vựng kho, dựng cùng lúc với BM25; dùng để chặn câu hỏi lạc đề.
         self.tu_vung = None
@@ -432,6 +436,14 @@ class RAGService:
                     started_at=self.status.started_at,
                 )
                 self._ham_nong_model()
+                # Chạy nền: lần đầu (hoặc khi câu mẫu đổi) phải nhúng vài trăm
+                # câu mẫu, mất cỡ một phút trên CPU - không bắt người dùng đợi.
+                # Chưa xong thì câu hỏi đi đường cũ, chỉ thiếu nhãn ý định.
+                threading.Thread(
+                    target=self.phan_loai_y_dinh.chuan_bi,
+                    args=(embeddings, os.getenv("RAG_EMBEDDING_MODEL", "bge-m3")),
+                    name="phan-loai-y-dinh", daemon=True,
+                ).start()
                 self.start_drive_auto_sync()
                 self.start_quet_thu_muc_nong()
             except Exception as exc:
@@ -2024,6 +2036,40 @@ class RAGService:
             "nhom_tu_ngu": list(ket_qua_loc.nhom),
         }
 
+    def _tra_loi_theo_y_dinh(self, question: str, nhan: str) -> Iterator[dict]:
+        """Trả lời ngay câu mà bộ phân loại ý định đã chắc chắn là chào hỏi hoặc
+        ngoài phạm vi, theo đúng thứ tự sự kiện của câu trả lời thường."""
+        if nhan == "ngoai_pham_vi":
+            van_ban = (
+                "Câu hỏi này nằm ngoài phạm vi của tôi. Tôi chỉ tra cứu được văn bản "
+                "pháp luật về giáo dục (luật, nghị định, thông tư) và tài liệu trong kho. "
+                "Bạn có thể thử một trong các câu gợi ý bên dưới."
+            )
+        else:
+            chu = bo_dau(question).lower()
+            if re.search(r"\b(cam on|cam ta|thank|thanks)\b", chu):
+                van_ban = "Rất vui vì giúp được bạn! Cần tra cứu thêm quy định nào thì cứ hỏi nhé."
+            elif re.search(r"\b(tam biet|bye|hen gap lai)\b", chu):
+                van_ban = "Tạm biệt bạn! Khi cần tra cứu văn bản giáo dục thì quay lại hỏi tôi nhé."
+            else:
+                van_ban = (
+                    "Xin chào! Tôi là trợ lý tra cứu văn bản pháp luật về giáo dục. "
+                    "Tôi trả lời câu hỏi về luật, nghị định, thông tư kèm trích dẫn nguồn, "
+                    "và tính giúp lương, định mức tiết dạy, điểm trung bình môn theo đúng "
+                    "văn bản hiện hành. Bạn muốn hỏi gì?"
+                )
+        yield {"type": "sources", "sources": []}
+        yield {"type": "token", "content": van_ban}
+        yield {"type": "goi_y", "goi_y": self.goi_y_mo_dau(3)}
+        yield {
+            "type": "done",
+            "elapsed_seconds": 0.0,
+            "citations_ok": True,
+            "figures_ok": True,
+            "abstained": nhan == "ngoai_pham_vi",
+            "ly_do_chan": f"y_dinh_{nhan}",
+        }
+
     def _sinh_cau_tra_loi(
         self,
         question: str,
@@ -2048,6 +2094,18 @@ class RAGService:
         # số 43/2019/QH14" không phải phép chia, còn câu trả lời lưu cache của
         # một đoạn khác thì chẳng giải thích được đoạn này.
         hoi_doan_khoanh = doan_khoanh is not None
+
+        # Bộ phân loại ý định (KNN) đọc câu hỏi trước mọi nhánh khác để giao
+        # diện hiện được nhãn cho cả câu đi sang công cụ tính. Vector này cũng
+        # chính là vector tra cache bên dưới, nên không nhúng câu hỏi hai lần.
+        # Bộ phân loại chưa sẵn sàng thì không nhúng sớm: giữ nguyên đường cũ.
+        vector_cau_hoi = None
+        y_dinh = None
+        if not hoi_doan_khoanh and self.phan_loai_y_dinh.bo is not None:
+            vector_cau_hoi = self._vector_cau_hoi(question)
+            y_dinh = self.phan_loai_y_dinh.du_doan(vector_cau_hoi)
+            if y_dinh:
+                yield {"type": "y_dinh", **y_dinh}
 
         # Câu hỏi tính toán rẽ sang công cụ tính bằng Python trước cả cache.
         # Hai lý do phải đặt ở đây chứ không đặt sau:
@@ -2087,13 +2145,23 @@ class RAGService:
                 )
                 return
 
+        # KNN đủ chắc là chào hỏi / ngoài phạm vi thì trả lời ngay, không truy
+        # hồi, không gọi mô hình. Đứng SAU công cụ tính: quy tắc của công cụ
+        # bóc được tham số nên chắc hơn. Câu nối tiếp và câu đang lọc phạm vi
+        # có luật riêng, xem phan_loai_y_dinh.hanh_dong_cho_cau.
+        hanh_dong = phan_loai_y_dinh.hanh_dong_cho_cau(
+            y_dinh, question, bool(history), bool(pham_vi)
+        )
+        if hanh_dong:
+            yield from self._tra_loi_theo_y_dinh(question, hanh_dong)
+            return
+
         # Tra cache TRƯỚC khi giành khóa sinh câu trả lời: một câu đã có sẵn
         # trong cache không nên phải xếp hàng sau câu đang chạy dở 150 giây.
-        vector_cau_hoi = (
-            self._vector_cau_hoi(question)
-            if not hoi_doan_khoanh and self._cache_duoc(question, history, pham_vi)
-            else None
-        )
+        if hoi_doan_khoanh or not self._cache_duoc(question, history, pham_vi):
+            vector_cau_hoi = None
+        elif vector_cau_hoi is None:
+            vector_cau_hoi = self._vector_cau_hoi(question)
         ung_vien_cache, diem_cache = (None, 0.0)
         if vector_cau_hoi:
             ung_vien_cache, diem_cache = cache_ngu_nghia.cache.tim(

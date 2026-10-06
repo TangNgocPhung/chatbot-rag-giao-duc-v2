@@ -538,6 +538,23 @@ def thong_ke(so_ngay: int = 30) -> dict:
         return {"so_ngay": so_ngay, "so_luot": 0, "loi": str(exc)}
 
 
+def thong_ke_y_dinh(so_ngay: int = 30) -> list[dict]:
+    """Bộ phân loại ý định đã xếp câu hỏi gần đây vào loại nào, mỗi loại bao
+    nhiêu lượt - người dùng thật sự đến đây để làm gì."""
+    moc = time.time() - max(1, so_ngay) * 86400
+    try:
+        return [dict(d) for d in _connect().execute(
+            "SELECT json_extract(chi_tiet, '$.yDinh.nhan') AS nhan, COUNT(*) AS so_luot"
+            "  FROM luot WHERE tao_luc >= ? AND json_valid(chi_tiet)"
+            "   AND json_extract(chi_tiet, '$.yDinh.nhan') IS NOT NULL"
+            " GROUP BY nhan ORDER BY so_luot DESC",
+            (moc,),
+        ).fetchall()]
+    except sqlite3.Error as exc:
+        print(f"⚠️  Không tính được thống kê ý định: {exc}")
+        return []
+
+
 # Mỗi vai trò chỉ kể vài câu hay hỏi nhất: đủ để thấy nhóm đó quan tâm gì,
 # không biến thống kê thành bản sao của cả bảng lượt hỏi.
 SO_CAU_MOI_VAI_TRO = 5

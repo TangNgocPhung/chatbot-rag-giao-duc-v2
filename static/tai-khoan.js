@@ -587,6 +587,11 @@
       window.quanLyTuNgu?.mo();
       return;
     }
+    if (viec === 'phan-loai-y-dinh') {
+      closeSidebar();
+      window.phanLoaiYDinh?.mo();
+      return;
+    }
     if (viec !== 'dang-xuat') return;
     try {
       await fetch('/api/tai-khoan/dang-xuat', { method: 'POST' });

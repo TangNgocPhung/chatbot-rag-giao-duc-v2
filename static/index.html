@@ -6,7 +6,7 @@
   <meta name="description" content="Chatbot RAG hỗ trợ tra cứu và hỏi đáp từ kho tri thức giáo dục.">
   <title>Chatbot RAG Giáo dục</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=1.9.31">
+  <link rel="stylesheet" href="./styles.css?v=1.9.32">
   <script>
     /* Đặt nền đúng ngay từ lần vẽ đầu: app.js dùng defer nên nếu đợi nó thì
        người dùng chế độ tối sẽ thấy một nháy màu trắng khi mở trang. */
@@ -461,6 +461,10 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 4v-14Z"/><path d="m9.5 8.5 5 4M14.5 8.5l-5 4"/></svg>
       Từ ngữ cấm
     </button>
+    <button type="button" role="menuitem" data-tk="phan-loai-y-dinh" class="chi-quan-tri">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.2"/><circle cx="5" cy="6" r="1.6"/><circle cx="19" cy="6" r="1.6"/><circle cx="5" cy="18" r="1.6"/><circle cx="19" cy="18" r="1.6"/><path d="m6.3 7 4 3.6M17.7 7l-4 3.6M6.3 17l4-3.6M17.7 17l-4-3.6"/></svg>
+      Phân loại câu hỏi (KNN)
+    </button>
     <button type="button" role="menuitem" data-tk="sua-thong-tin">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 10.5-10.5-3-3L5 16l-1 4Z"/><path d="m13.5 7.5 3 3"/></svg>
       Sửa họ tên / email
@@ -805,6 +809,27 @@
     <div class="document-list" id="tnDanhSach"></div>
   </dialog>
 
+  <dialog class="document-dialog qltk-dialog tn-dialog yd-dialog" id="ydDialog" aria-labelledby="ydTitle">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">QUẢN TRỊ · HỌC MÁY</p>
+        <h2 id="ydTitle">Phân loại câu hỏi (KNN)</h2>
+      </div>
+      <div class="dialog-header-actions">
+        <button class="icon-button" id="ydDong" type="button" aria-label="Đóng phân loại câu hỏi">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+    </div>
+    <p class="tn-goi-y">Trước khi tới mô hình ngôn ngữ, mỗi câu hỏi được nhúng bằng bge-m3 rồi so với các câu mẫu đã gán nhãn: k câu giống nhất bỏ phiếu ra loại câu hỏi. Câu chắc chắn là chào hỏi hoặc ngoài phạm vi được trả lời ngay; các câu khác vẫn đi đường thường và chỉ mang thêm nhãn.</p>
+    <label class="document-search tn-thu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6M10 4v5l-5 9a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2l-5-9V4"/></svg>
+      <input id="ydThuCau" type="text" maxlength="2000" placeholder="Thử một câu xem máy xếp vào loại nào...">
+    </label>
+    <div class="tn-xem-truoc yd-ket-qua-thu" id="ydKetQuaThu" aria-live="polite"></div>
+    <div class="document-list" id="ydNoiDung"></div>
+  </dialog>
+
   <dialog class="confirm-dialog" id="confirmDialog" aria-labelledby="confirmTitle">
     <div class="confirm-body">
       <h2 id="confirmTitle">Xác nhận</h2>
@@ -817,11 +842,12 @@
   </dialog>
   <script src="./vai-tro.js?v=1.9.26" defer></script>
   <script src="./loc-tu-ngu.js?v=1.9.31" defer></script>
-  <script src="./app.js?v=1.9.31" defer></script>
+  <script src="./app.js?v=1.9.32" defer></script>
   <script src="./so-tay.js?v=1.9.19" defer></script>
-  <script src="./tai-khoan.js?v=1.9.13" defer></script>
+  <script src="./tai-khoan.js?v=1.9.32" defer></script>
   <script src="./quan-ly-tai-khoan.js?v=1.9.9" defer></script>
   <script src="./quan-ly-tu-ngu.js?v=1.9.31" defer></script>
+  <script src="./phan-loai-y-dinh.js?v=1.9.32" defer></script>
   <script src="./dich.js?v=1.9.12" defer></script>
   <script src="./huong-dan.js?v=1.9.22" defer></script>
   <script src="./gioi-thieu.js?v=1.9.26" defer></script>

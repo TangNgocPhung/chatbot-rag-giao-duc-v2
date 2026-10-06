@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import queue
 import threading
 import time
@@ -27,6 +28,7 @@ import gui_thu
 import lich_su_chat
 import loc_tu_ngu
 import phan_loai_giao_duc
+import phan_loai_y_dinh
 import quan_ly_kho
 import tai_khoan
 import trinh_doc_tai_lieu
@@ -509,6 +511,8 @@ def chat_stream(
                     chi_tiet["warning"] = event.get("message", "")
                 elif loai == "goi_y":
                     chi_tiet["goiY"] = event.get("goi_y", [])
+                elif loai == "y_dinh":
+                    chi_tiet["yDinh"] = {k: v for k, v in event.items() if k != "type"}
                 elif loai == "done":
                     chi_tiet["interrupted"] = False
                     thong_tin["giay"] = event.get("elapsed_seconds") or 0.0
@@ -1534,6 +1538,46 @@ def xoa_tu_ngu(ma: str, request: Request, x_rag_action: str | None = Header(defa
         return {"tu_ngu": loc_tu_ngu.xoa_tu(ma)}
     except loc_tu_ngu.LoiTuNgu as exc:
         raise _loi_tu_ngu(exc) from exc
+
+
+# ============================================================
+# PHÂN LOẠI Ý ĐỊNH CÂU HỎI (KNN) - chỉ quản trị viên
+# ============================================================
+@app.get("/api/quan-ly/y-dinh")
+def tong_quan_y_dinh(request: Request, so_ngay: int = 30):
+    """Mô hình đang chạy, kết quả lần đánh giá gần nhất và câu hỏi gần đây
+    đã được xếp vào loại nào."""
+    _nguoi_quan_tri(request)
+    pl = service.phan_loai_y_dinh
+    danh_gia = None
+    if os.path.exists(phan_loai_y_dinh.DUONG_KET_QUA):
+        with open(phan_loai_y_dinh.DUONG_KET_QUA, encoding="utf-8") as f:
+            danh_gia = json.load(f)
+    ten_nhan = pl.ten_nhan or phan_loai_y_dinh.nap_du_lieu(duong_benchmark=None)[0]
+    return {
+        "bat": phan_loai_y_dinh.bat(),
+        "trang_thai": pl.trang_thai,
+        "k": pl.bo.k if pl.bo else None,
+        "so_cau_mau": len(pl.bo.cau) if pl.bo else 0,
+        "nguong": phan_loai_y_dinh.NGUONG,
+        "ten_nhan": ten_nhan,
+        "danh_gia": danh_gia,
+        "thong_ke": lich_su_chat.thong_ke_y_dinh(max(1, min(so_ngay, 3650))),
+    }
+
+
+@app.post("/api/quan-ly/y-dinh/thu-cau")
+def thu_cau_y_dinh(thong_tin: CauThu, request: Request):
+    """Thử một câu: nhãn đoán, độ tin cậy, các câu mẫu gần nhất và việc dịch
+    vụ sẽ làm (chặn / đáp lời chào / để đi đường thường)."""
+    _nguoi_quan_tri(request)
+    pl = service.phan_loai_y_dinh
+    if pl.bo is None or service.embeddings is None:
+        raise HTTPException(status_code=503, detail="Bộ phân loại ý định chưa sẵn sàng.")
+    y_dinh = pl.du_doan(service.embeddings.embed_query(thong_tin.cau))
+    if y_dinh is None:
+        raise HTTPException(status_code=503, detail="Không phân loại được câu này.")
+    return {**y_dinh, "hanh_dong": phan_loai_y_dinh.du_chac_de_hanh_dong(y_dinh)}
 
 
 # ============================================================

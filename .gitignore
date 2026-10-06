@@ -62,3 +62,9 @@ nhat_ky_lap_chi_muc/
 *.truoc-khi-gop-*
 sao_luu_tam_dung_*/
 ban_pdf_tam/
+
+# Bộ phân loại ý định (KNN): mô hình và vector sinh lại được từ du_lieu_y_dinh.json.
+# Bảng tổng kết bang_phan_loai_y_dinh.md thì VẪN theo dõi.
+mo_hinh_y_dinh.npz
+bo_nho_vector_y_dinh.npz
+ket_qua_phan_loai_y_dinh.json
