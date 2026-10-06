@@ -68,7 +68,9 @@ TU_CO_DAU: dict[str, tuple[str, ...]] = {
         # Không có "đm" đứng riêng: giáo viên viết tắt "đm" cho "định mức".
         "địt", "đụ", "đéo", "đù má", "đù mé", "đụ má", "đụ mẹ",
         "đm mày", "đmm", "đcm", "đcmm", "đkm", "đkmm",
-        "con mẹ mày", "tổ cha mày", "tiên sư bố", "tiên sư cha",
+        # "mẹ mày", "bố mày" đứng riêng: trong chatbot học đường gần như chỉ
+        # là chửi. Chỉ có dạng có dấu - "me may" không dấu còn là "mẹ may áo".
+        "mẹ mày", "bố mày", "con mẹ mày", "tổ cha mày", "tiên sư bố", "tiên sư cha",
         "vãi lồn", "vãi cặc", "đ*t", "đ**", "đ*m",
     ),
     "tuc_tiu": (
@@ -86,6 +88,8 @@ TU_CO_DAU: dict[str, tuple[str, ...]] = {
     "xuc_pham": (
         "óc chó", "đồ chó", "thằng chó", "chó đẻ", "thằng ngu", "con ngu",
         "đồ ngu", "thằng khốn", "đồ khốn",
+        # Chỉ có dấu: "mat day" không dấu còn là "mặt dày".
+        "mất dạy",
     ),
 }
 
@@ -107,6 +111,7 @@ TU_KHONG_DAU: dict[str, tuple[str, ...]] = {
     ),
     "tinh_duc": (
         "phim sex", "clip sex", "xem sex", "anh sex", "truyen sex", "web sex",
+        "chat sex", "sex chat",
         "sex video", "phim heo", "phim nguoi lon", "phim jav", "xem jav",
         "porn", "porno", "pornhub", "xvideos", "xnxx", "hentai", "nudes",
     ),

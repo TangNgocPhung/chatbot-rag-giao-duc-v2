@@ -34,6 +34,12 @@ CAU_VI_PHAM = [
     ("phim heo ở đâu", "tinh_duc"),
     ("thằng ngu này", "xuc_pham"),
     ("đồ óc chó", "xuc_pham"),
+    # Người dùng thử thật trên bản chạy cục bộ mà từng lọt qua.
+    ("mẹ mày", "chui_the"),
+    ("bố mày nói cho mà nghe", "chui_the"),
+    ("mất dạy", "xuc_pham"),
+    ("đồ mất dạy", "xuc_pham"),
+    ("chat sex", "tinh_duc"),
 ]
 
 # Viết lách: dấu câu, khoảng trắng chen giữa, lặp chữ, số thay chữ, ký tự
@@ -88,6 +94,13 @@ CAU_HOP_LE = [
     "lớp 10a1",
     "classic assessment",
     "Cocktail party",
+    "mẹ may áo cho con",
+    "me may ao cho con",                 # mẹ may áo
+    "mặt dày",
+    "mat day",                           # mặt dày
+    "mất dây sạc",
+    "chat với giáo viên",
+    "giáo viên bị mất tiết dạy",
 ]
 
 
