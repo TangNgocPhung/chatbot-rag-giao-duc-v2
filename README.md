@@ -196,7 +196,7 @@ Mỗi người chọn mô hình trả lời cho câu hỏi của mình trong men
 
 ### Phân loại câu hỏi bằng học máy (KNN)
 
-Trước khi tới mô hình ngôn ngữ, câu hỏi đi qua một bộ phân loại ý định tự train (`phan_loai_y_dinh.py`). Câu hỏi được nhúng bằng bge-m3 (cùng model nhúng của chỉ mục) rồi so với khoảng 420 câu mẫu đã gán nhãn trong `du_lieu_y_dinh.json`. k câu giống nhất bỏ phiếu theo độ tương đồng cosin, cho ra một trong bảy loại: tra cứu văn bản, tính lương, định mức tiết dạy, đánh giá học sinh, tính toán, chào hỏi, ngoài phạm vi.
+Trước khi tới mô hình ngôn ngữ, câu hỏi đi qua một bộ phân loại ý định tự train (`phan_loai_y_dinh.py`). Câu hỏi được nhúng bằng bge-m3 (cùng model nhúng của chỉ mục) rồi so với 482 câu mẫu đã gán nhãn trong `du_lieu_y_dinh.json`. k câu giống nhất bỏ phiếu theo độ tương đồng cosin, cho ra một trong bảy loại: tra cứu văn bản, tính lương, định mức tiết dạy, đánh giá học sinh, tính toán, chào hỏi, ngoài phạm vi.
 
 - Câu chắc chắn là **ngoài phạm vi** (tỉ lệ phiếu ≥ `RAG_Y_DINH_NGUONG`) được từ chối ngay, không truy hồi và không tốn hàng chục giây sinh văn bản trên CPU. Câu **chào hỏi / cảm ơn** được đáp lời ngay kèm câu gợi ý.
 - Không tự chặn câu nối tiếp trong hội thoại, câu đang lọc phạm vi, hay câu mà công cụ tính đã nhận ra; các câu còn lại đi đường thường.
@@ -210,7 +210,7 @@ Máy chủ tự train lại khi khởi động nếu câu mẫu hoặc model nh�
 .\.venv\Scripts\python.exe phan_loai_y_dinh.py hoi "giá vàng hôm nay"
 ```
 
-`danh_gia` chọn k bằng kiểm định chéo bỏ-một trên tập train, đo trên tập test gồm câu thật (bộ benchmark, lịch sử chat, câu trong test của các công cụ tính), rồi so với Logistic Regression, SVM, Naive Bayes và KNN trên TF-IDF (cần `pip install scikit-learn`; máy chủ thì không cần). Kết quả nằm ở `bang_phan_loai_y_dinh.md`.
+`danh_gia` chọn k bằng kiểm định chéo bỏ-một trên tập train (482 câu, k = 7), đo trên tập test gồm 202 câu thật (bộ benchmark, lịch sử chat, câu trong test của các công cụ tính): accuracy 0,896, macro-F1 0,865 (đo 06/10/2026). Sau đó so với Logistic Regression, SVM, Naive Bayes và KNN trên TF-IDF (cần `pip install scikit-learn`; máy chủ thì không cần). Kết quả nằm ở `bang_phan_loai_y_dinh.md`.
 
 ## Yêu cầu
 
@@ -296,6 +296,17 @@ Câu hỏi mới thêm vào bộ phải được gán tập trước khi chạy:
 ### Các chế độ đo
 
 Chế độ `--ir` đo chất lượng **xếp hạng** của khối truy hồi bằng bộ chỉ số IR/QA kinh điển — MRR, Hit@K, Recall@K, nDCG@K, MAP (công thức nằm trong `chi_so_ir.py`). Không gọi LLM nên chạy vài phút, kết quả ghi ra `ket_qua_chi_so_ir_<tập>.json` và bảng markdown `bang_chi_so_ir_<tập>.md`.
+
+Kết quả đo ngày 07/10/2026 trên tập `dev` (255 câu có nhãn nguồn, kho 111.152 vector, truy hồi sâu 24 chunk, 4 chunk đi vào prompt; chi tiết từng nhóm ở `bang_chi_so_ir_dev.md`):
+
+| Chỉ số | Giá trị |
+| --- | --- |
+| MRR | 0,791 (khoảng tin cậy 95%: 0,753 – 0,830) |
+| Hit@1 / Hit@3 / Hit@5 / Hit@10 | 67,8% / 89,4% / 94,1% / 95,7% |
+| nDCG@10 | 0,828 |
+| Có tài liệu đúng trong 4 chunk đưa vào prompt | 91% |
+
+Nhóm `phap_luat_noi_dung` (155 câu) đạt MRR 0,783, `phap_luat_so_hieu` (42 câu) đạt 0,883. Đây là số trên tập dev, dùng để tinh chỉnh; số liệu cho báo cáo phải lấy từ `--ir --tap test`, chưa chạy.
 
 Hai chế độ còn lại: `--nhanh` đo truy hồi kèm cổng chặn lạc đề, `--bo` gọi đủ LLM để đo thêm trích dẫn và số liệu (chậm, khoảng 150 giây/câu trên CPU).
 
