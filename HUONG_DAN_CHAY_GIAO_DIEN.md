@@ -45,7 +45,7 @@ Thiết lập biến môi trường trước khi chạy nếu cấu hình máy k
 | `RAG_EMBEDDING_MODEL` | `bge-m3` | Model embedding, phải khớp model dùng để build index |
 | `RAG_REASONING` | `0` | Đặt `1` để bật suy luận sâu; trên máy chỉ có CPU sẽ chậm hơn nhiều |
 | `RAG_CONTEXT_LENGTH` | `4096` | Cửa sổ ngữ cảnh dùng cho một câu hỏi; chạy được trên GPU thì nới lên `8192` |
-| `RAG_MAX_OUTPUT_TOKENS` | `420` | Độ dài tối đa của câu trả lời |
+| `RAG_MAX_OUTPUT_TOKENS` | `700` | Độ dài tối đa của câu trả lời; chạm hạn mức thì câu trả lời được cắt về ý trọn vẹn cuối cùng kèm ghi chú |
 | `RAG_MAX_OUTPUT_TOKENS_TOM_TAT` | `700` | Hạn mức riêng cho bản tóm tắt tệp đính kèm |
 | `RAG_SO_BANG_CHUNG` | `4` | Số đoạn tài liệu đưa vào prompt mỗi câu hỏi |
 | `RAG_KY_TU_MOI_BANG_CHUNG` | `900` | Cắt bớt mỗi đoạn còn bấy nhiêu ký tự; `0` = không cắt |
@@ -106,8 +106,8 @@ hiệu quả:
 
 1. Giảm `RAG_SO_BANG_CHUNG` (4 → 3) và `RAG_KY_TU_MOI_BANG_CHUNG` (900 → 700):
    mỗi đoạn bỏ đi tiết kiệm khoảng 15 giây chờ.
-2. Giảm `RAG_MAX_OUTPUT_TOKENS` (420 → 300): câu trả lời ngắn hơn, nhanh hơn
-   khoảng 20 giây.
+2. Giảm `RAG_MAX_OUTPUT_TOKENS` (700 → 450): chặn câu trả lời dài nên nhanh hơn,
+   nhưng câu nhiều ý sẽ hay bị rút gọn hơn.
 3. Đổi sang model nhỏ hơn ngay trên giao diện (`qwen2.5:3b-instruct`,
    `llama3.2:3b`): nhanh gần gấp đôi, đổi lại chất lượng trích dẫn giảm - nên
    chạy `benchmark_chatbot.py` để đối chiếu trước khi dùng lâu dài.
@@ -212,7 +212,7 @@ Chỉ chạy **một** máy chủ trên một kho tài liệu: máy chủ tự �
 .venv\Scripts\python.exe benchmark_chatbot.py "Câu hỏi cần kiểm tra"
 ```
 
-Chạy cả bộ 127 câu hỏi chuẩn trong `bo_cau_hoi_benchmark.json` (97 câu có nhãn nguồn đúng, 30 câu cố tình ngoài phạm vi kho; chấm điểm truy hồi đúng nguồn, trích dẫn hợp lệ, số liệu có căn cứ và từ chối đúng chỗ), kết quả ghi ra `ket_qua_benchmark_*.json`. Chạy nhanh chỉ phần truy hồi bằng `--nhanh`, đo MRR/Hit@K bằng `--ir`. Mặc định chỉ chạy trên tập `dev`; thêm `--tap test` khi đã chốt tham số và cần số liệu cho báo cáo (xem mục *Tập dev và tập test* trong README):
+Chạy cả bộ 500 câu hỏi chuẩn trong `bo_cau_hoi_benchmark.json` (425 câu có nhãn nguồn đúng, trong đó 328 câu hỏi về luật/nghị định/thông tư; 75 câu cố tình ngoài phạm vi kho; chấm điểm truy hồi đúng nguồn, trích dẫn hợp lệ, số liệu có căn cứ và từ chối đúng chỗ), kết quả ghi ra `ket_qua_benchmark_*.json`. Chạy nhanh chỉ phần truy hồi bằng `--nhanh`, đo MRR/Hit@K bằng `--ir`. Mặc định chỉ chạy trên tập `dev`; thêm `--tap test` khi đã chốt tham số và cần số liệu cho báo cáo (xem mục *Tập dev và tập test* trong README):
 
 ```powershell
 .venv\Scripts\python.exe benchmark_chatbot.py --bo

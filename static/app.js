@@ -2118,6 +2118,10 @@ async function submitQuestion(question, tuyChon = {}) {
           renderAnswer(ui.answer, answer, ui.article.dataset.messageId, sources.length);
           phaseNode.textContent = 'Đang trả lời';
           scrollToBottom(false);
+        } else if (event.type === 'thay_cau_tra_loi') {
+          // Mô hình hết hạn mức token giữa câu: máy chủ đã cắt về ý trọn vẹn.
+          answer = event.content || '';
+          renderAnswer(ui.answer, answer, ui.article.dataset.messageId, sources.length);
         } else if (event.type === 'hieu_luc') {
           hieuLuc.push({ message: event.message, kind: event.kind });
         } else if (event.type === 'warning') {

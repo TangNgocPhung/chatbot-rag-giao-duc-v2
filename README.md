@@ -263,7 +263,15 @@ Kết quả OCR, phiên âm và sổ ghi chép giúp lần chạy tiếp theo ti
 
 ## Đo chất lượng hệ thống
 
-Bộ câu hỏi chuẩn nằm ở `bo_cau_hoi_benchmark.json` (127 câu, trong đó 97 câu có nhãn nguồn đúng và 30 câu cố tình ngoài phạm vi kho).
+Bộ câu hỏi chuẩn nằm ở `bo_cau_hoi_benchmark.json` (500 câu, trong đó 425 câu có nhãn nguồn đúng và 75 câu cố tình ngoài phạm vi kho). 127 câu đầu là bộ gốc; 373 câu thêm ngày 06/10/2026 bám theo phạm vi mới của đề tài:
+
+| Nhóm | Số câu | Nội dung |
+| --- | --- | --- |
+| `phap_luat_noi_dung` | 258 | Hỏi nội dung một luật, nghị quyết, nghị định, thông tư còn hiệu lực, **không** nêu số hiệu (người dùng thường không nhớ số); văn bản dài như Luật Nhà giáo, Quy chế thi tốt nghiệp THPT, Điều lệ trường phổ thông có nhiều câu, mỗi câu hỏi một điều khác nhau |
+| `phap_luat_so_hieu` | 70 | Nêu thẳng số hiệu văn bản (vd "Thông tư 21/2025/TT-BGDĐT…"), đo khả năng tìm đúng văn bản theo số |
+| `ngoai_pham_vi` (thêm 45) | 45 | Câu pháp luật ngoài giáo dục (đất đai, lao động, thuế, hình sự…), câu nghe như giáo dục nhưng kho không có (học phí Harvard, điểm chuẩn lớp 10) và câu lạc đề hẳn |
+
+Nhãn của hai nhóm pháp luật là tên tệp (`Thông-tư-21-2025-TT-BGDĐT`, hoặc một phần tên đủ riêng như `238-ndcp`, `360_2026`). Chỉ chọn văn bản còn hiệu lực: không chỉ những văn bản bộ lọc `RAG_LOC_HIEU_LUC=1` đã ẩn, mà cả văn bản bị thay thế mà sổ quan hệ chưa ghi. Khi đối chiếu điều "Hiệu lực thi hành" trong kho thấy NĐ 238/2025 thay NĐ 81/2021 (học phí), NĐ 353/2026 làm NĐ 20/2014 hết hiệu lực (phổ cập, xóa mù chữ), TT 7/2025 thay TT 38/2020, NĐ 360/2026 thay phần lớn NĐ 125/2024 — nhãn trỏ vào văn bản mới, văn bản cũ trả về trước thì tính là trượt. Văn bản gốc và văn bản sửa đổi cùng trả lời một câu thì ghi cả hai nhãn, Recall@K tính trên cả hai.
 
 ### Tập dev và tập test
 
@@ -271,10 +279,10 @@ Ngoài bộ phân loại ý định (có tập train/test riêng, xem [Phân lo�
 
 | Tập | Số câu | Dùng để |
 | --- | --- | --- |
-| `dev` | 76 (58 có nhãn + 18 ngoài phạm vi) | Tinh chỉnh tham số, quét ngưỡng; chạy bao nhiêu lần cũng được |
-| `test` | 51 (39 có nhãn + 12 ngoài phạm vi) | Chỉ chạy **sau khi** đã đóng băng tham số; lấy số liệu này vào báo cáo |
+| `dev` | 300 (255 có nhãn + 45 ngoài phạm vi) | Tinh chỉnh tham số, quét ngưỡng; chạy bao nhiêu lần cũng được |
+| `test` | 200 (170 có nhãn + 30 ngoài phạm vi) | Chỉ chạy **sau khi** đã đóng băng tham số; lấy số liệu này vào báo cáo |
 
-Mọi chế độ của `benchmark_chatbot.py` mặc định chạy trên `dev`. `--tap test` lấy số cho báo cáo, `--tap tat_ca` chạy cả 127 câu để so với các lần đo trước khi chia. Quét ngưỡng (`--do-nguong`) bị chặn trên tập test. Mỗi tập ghi ra tệp kết quả riêng (`bang_chi_so_ir_dev.md`, `bang_chi_so_ir_test.md`; `bang_chi_so_ir.md` là bản cả bộ).
+Mọi chế độ của `benchmark_chatbot.py` mặc định chạy trên `dev`. `--tap test` lấy số cho báo cáo, `--tap tat_ca` chạy cả bộ. Muốn so với các lần đo trước 06/10/2026 thì lọc theo nhóm cũ (`--nhom chinh_sach_pdf`…), vì con số cả bộ giờ gồm thêm 328 câu pháp luật. Quét ngưỡng (`--do-nguong`) bị chặn trên tập test. Mỗi tập ghi ra tệp kết quả riêng (`bang_chi_so_ir_dev.md`, `bang_chi_so_ir_test.md`; `bang_chi_so_ir.md` là bản cả bộ).
 
 ```powershell
 .\.venv\Scripts\python.exe benchmark_chatbot.py --ir               # tinh chỉnh trên dev
@@ -283,7 +291,7 @@ Mọi chế độ của `benchmark_chatbot.py` mặc định chạy trên `dev`.
 
 Câu hỏi mới thêm vào bộ phải được gán tập trước khi chạy: chạy `chia_tap_benchmark.py` (chỉ gán cho câu chưa có `tap`, không bao giờ đổi tập của câu cũ), hoặc gán tay `"tap": "test"`. Cách cho ước lượng sạch nhất là **viết câu test mới** mà không nhìn tên tệp trong kho, vì nhãn là một phần tên tệp và reranker có cộng điểm khớp tên tài liệu.
 
-> **Giới hạn cần nêu trong báo cáo:** các tham số hiện có được chọn khi nhìn toàn bộ 127 câu, trước khi chia tập. Tập test tách từ bộ cũ vì thế chỉ sạch đối với những lần tinh chỉnh từ nay về sau.
+> **Giới hạn cần nêu trong báo cáo:** các tham số hiện có được chọn khi nhìn toàn bộ 127 câu gốc, trước khi chia tập. Tập test tách từ bộ cũ vì thế chỉ sạch đối với những lần tinh chỉnh từ nay về sau. 373 câu thêm ngày 06/10/2026 chưa từng dùng để chọn tham số nào, nên phần test của chúng (149 câu: 131 có nhãn + 18 ngoài phạm vi) sạch hơn; nhưng chúng được viết khi đã biết tên tệp, và câu nhóm `phap_luat_so_hieu` chứa số hiệu trùng tên tệp nên được reranker cộng điểm khớp tên — điểm nhóm này dễ cao hơn nhóm `phap_luat_noi_dung`.
 
 ### Các chế độ đo
 

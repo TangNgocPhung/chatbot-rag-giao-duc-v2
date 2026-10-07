@@ -9,17 +9,20 @@ Quét ngưỡng chặn:      python benchmark_chatbot.py --nhanh --do-nguong
 Chỉ một nhóm:          python benchmark_chatbot.py --nhanh --nhom video
 Lấy mẫu N câu:         python benchmark_chatbot.py --bo --so 20
 Số liệu cho báo cáo:   python benchmark_chatbot.py --ir --tap test
+Bộ câu hỏi do Gemma sinh (sinh_cau_hoi_gemma.py):
+                       python benchmark_chatbot.py --ir --bo-cau-hoi bo_cau_hoi_benchmark_gemma.json
 
 TẬP DEV VÀ TẬP TEST (trường `tap` trong bộ câu hỏi, gán bằng chia_tap_benchmark.py)
   Mặc định mọi chế độ chạy trên tập DEV. Tinh chỉnh trọng số, quét ngưỡng
   (--do-nguong) đều làm ở đây. `--tap test` chỉ dùng SAU KHI đã đóng băng tham
   số, để lấy con số đưa vào báo cáo; nhìn kết quả test rồi quay lại chỉnh tiếp
   thì tập test đã thành tập dev thứ hai và con số đó không còn khách quan.
-  `--tap tat_ca` chạy cả 127 câu như trước khi chia, để so với các lần đo cũ.
+  `--tap tat_ca` chạy cả bộ (500 câu từ 06/10/2026; 127 câu gốc là các nhóm
+  không mang tiền tố phap_luat_, lọc bằng --nhom để so với các lần đo cũ).
 
 BA CHẾ ĐỘ, BA MỤC ĐÍCH KHÁC NHAU
   --bo    gọi đủ cả LLM. Đo được chất lượng câu chữ (trích dẫn, số liệu) nhưng
-          tốn ~150 giây/câu trên CPU, tức hơn 5 tiếng cho cả bộ 127 câu.
+          tốn ~150 giây/câu trên CPU, tức gần 21 tiếng cho cả bộ 500 câu.
   --nhanh chỉ chạy truy hồi + cổng chặn lạc đề, KHÔNG gọi LLM. Vài phút cho cả
           bộ. Đây là chế độ dùng khi tinh chỉnh tham số truy hồi hoặc ngưỡng
           chặn, vì hai thứ đó không phụ thuộc vào model sinh câu trả lời.
@@ -169,6 +172,8 @@ def chay_mot_cau(service: RAGService, muc: dict) -> KetQuaMotCau:
             loai = su_kien["type"]
             if loai == "token":
                 ket_qua.tra_loi += su_kien.get("content", "")
+            elif loai == "thay_cau_tra_loi":
+                ket_qua.tra_loi = su_kien.get("content", "")
             elif loai == "sources":
                 ket_qua.nguon = [n["name"] for n in su_kien.get("sources", [])]
             elif loai == "done":
@@ -528,6 +533,22 @@ def _nap_danh_sach(nhom_loc: str | None, so_luong: int | None,
     return danh_sach
 
 
+def _dung_bo_cau_hoi(duong_dan: str) -> None:
+    """
+    Đo trên một bộ câu hỏi khác (vd bo_cau_hoi_benchmark_gemma.json). Mọi tệp
+    kết quả mang thêm hậu tố của bộ đó, để số đo hai bộ không ghi đè lên nhau.
+    """
+    global DUONG_DAN_BO_CAU_HOI, DUONG_DAN_KET_QUA, DUONG_DAN_KET_QUA_IR, DUONG_DAN_BANG_IR
+    ten = os.path.splitext(os.path.basename(duong_dan))[0]
+    hau_to = ten.replace("bo_cau_hoi_benchmark", "") or f"_{ten}"
+    if not hau_to.startswith("_"):
+        hau_to = f"_{hau_to}"
+    DUONG_DAN_BO_CAU_HOI = os.path.abspath(duong_dan)
+    for ten_bien in ("DUONG_DAN_KET_QUA", "DUONG_DAN_KET_QUA_IR", "DUONG_DAN_BANG_IR"):
+        goc, duoi = os.path.splitext(globals()[ten_bien])
+        globals()[ten_bien] = f"{goc}{hau_to}{duoi}"
+
+
 def _hau_to_tap(tap: str) -> str:
     """Tệp kết quả của từng tập tách riêng: một lượt dev chạy để thử tham số
     không được ghi đè lên số liệu test đang dùng cho báo cáo. `tat_ca` giữ tên
@@ -621,7 +642,7 @@ def chay_bo_cau_hoi(
             dau_hieu.append("LỖI")
 
         if nhanh:
-            # Một dòng mỗi câu: cả bộ 127 câu vẫn đọc hết được trong một màn hình.
+            # Một dòng mỗi câu: cả bộ vài trăm câu vẫn lướt đọc hết được.
             print(f"[{thu_tu:>3}/{len(danh_sach)}] {kq.giay:>5.2f}s "
                   f"{' · '.join(dau_hieu) or 'ổn':<40} {kq.cau_hoi[:52]}", flush=True)
         else:
@@ -816,7 +837,12 @@ def main() -> int:
                         default=chia_tap_benchmark.TAP_DEV,
                         help="tập câu hỏi: dev (mặc định, để tinh chỉnh), test (chỉ "
                              "chạy khi đã đóng băng tham số), tat_ca (cả bộ)")
+    parser.add_argument("--bo-cau-hoi", default=None,
+                        help="đo trên bộ câu hỏi khác, vd bo_cau_hoi_benchmark_gemma.json "
+                             "(tệp kết quả mang thêm hậu tố _gemma)")
     tham_so = parser.parse_args()
+    if tham_so.bo_cau_hoi:
+        _dung_bo_cau_hoi(tham_so.bo_cau_hoi)
 
     # Quét ngưỡng là CHỌN tham số theo kết quả - làm trên tập test thì nó không
     # còn là tập test nữa. Chặn ngay ở đây thay vì tin vào trí nhớ người chạy.

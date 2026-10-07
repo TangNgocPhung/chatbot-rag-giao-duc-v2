@@ -139,3 +139,53 @@ def qua_it_lien_quan(tai_lieu, cau_hoi: str = "", tu_vung=None) -> bool:
     """Bản bool của ly_do_bo_qua. `cau_hoi` và `tu_vung` là tùy chọn để chỗ gọi
     cũ không phải sửa; thiếu chúng thì hàm chạy đúng như trước."""
     return bool(ly_do_bo_qua(tai_lieu, cau_hoi, tu_vung))
+
+
+# ============================================================
+# CÂU TRẢ LỜI BỊ CẮT VÌ HẾT HẠN MỨC TOKEN
+# ============================================================
+# Ollama dừng ngay khi chạm num_predict, kể cả giữa chữ ("Cuốn sách cung").
+# Một ý dở dang dễ đọc thành ý sai, nên bỏ hẳn nó và nói rõ là đã rút gọn.
+GHI_CHU_BI_CAT = (
+    "\n\n*(Câu trả lời dài hơn giới hạn nên chỉ giữ đến ý trọn vẹn cuối cùng. "
+    "Hãy hỏi cụ thể hơn hoặc hỏi tiếp phần còn thiếu.)*"
+)
+# Hết câu: . ! ? … có thể kèm trích dẫn [n] và dấu đóng in đậm/ngoặc phía sau,
+# rồi tới khoảng trắng. "2.340.000" không khớp vì sau dấu chấm là chữ số.
+_HET_CAU = re.compile(r"[.!?…](?:\s*\[\d{1,2}\])*[*_)\"”]*(?=\s|$)")
+# Dòng không tự đứng được khi là dòng cuối: dấu đầu dòng trống ("-", "3."),
+# tiêu đề mở ra danh sách ("**Chi tiết:**", "### Căn cứ").
+_DONG_TREO = re.compile(r"^\s*(?:[-*+]|\d{1,2}[.)])?\s*(?:#{1,6}\s.*|.*:\**|)\s*$")
+# Giữ lại quá ít thì thà để nguyên kèm "…" còn hơn mất gần hết câu trả lời.
+TI_LE_GIU_TOI_THIEU = 0.3
+
+
+def cat_ve_y_tron_ven(cau_tra_loi: str) -> str:
+    """Cắt câu trả lời bị dừng giữa chừng về chỗ hết câu hoặc hết dòng gần nhất,
+    bỏ các dòng tiêu đề/đầu dòng treo ở cuối, rồi gắn ghi chú đã rút gọn."""
+    van_ban = cau_tra_loi.rstrip()
+    moc = max(
+        [m.end() for m in _HET_CAU.finditer(van_ban)]
+        # Model đã xuống dòng thì dòng trước đó là trọn vẹn (gạch đầu dòng, hàng
+        # bảng không có dấu chấm cuối).
+        + [i for i, ky_tu in enumerate(van_ban) if ky_tu == "\n"],
+        default=0,
+    )
+    giu = van_ban[:moc].rstrip()
+    dong = giu.split("\n")
+    while dong and _DONG_TREO.match(dong[-1]):
+        # "Được ạ! Dưới đây là các bước:" - giữ câu trọn vẹn đứng trước lời dẫn.
+        moc_trong_dong = [
+            m.end() for m in _HET_CAU.finditer(dong[-1]) if m.end() < len(dong[-1].rstrip())
+        ]
+        if moc_trong_dong:
+            dong[-1] = dong[-1][:moc_trong_dong[-1]]
+        else:
+            dong.pop()
+    giu = "\n".join(dong).rstrip()
+    if len(giu) < TI_LE_GIU_TOI_THIEU * len(van_ban):
+        return van_ban + "…" + GHI_CHU_BI_CAT
+    # Câu in đậm kéo dài qua chỗ cắt: đóng lại để markdown không in đậm tràn.
+    if dong and dong[-1].count("**") % 2:
+        giu += "**"
+    return giu + GHI_CHU_BI_CAT

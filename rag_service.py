@@ -18,6 +18,8 @@ from typing import Iterator
 from urllib.parse import quote
 
 import requests
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableSequence
 
 import cache_ngu_nghia
 import drive_sync
@@ -1773,17 +1775,18 @@ class RAGService:
                 "message": "Đang tóm tắt tệp" if tom_tat else "Đang soạn câu trả lời",
             }
 
+            ket_thuc: dict = {}
             if tom_tat:
                 dong_token = self._phat_token(self._cac_chuoi(ten_mo_hinh)[2], {
                     "ten_tep": ", ".join(tep.ten for tep in cac_tep),
                     "context": gop_ngu_canh(documents),
                     "question": model_question,
-                })
+                }, ket_thuc)
             else:
                 dong_token = self._phat_token(self._chain_tra_loi(doan_khoanh, ten_mo_hinh), {
                     "context": self.format_docs(documents),
                     "question": model_question,
-                })
+                }, ket_thuc)
             cau_tra_loi = ""
             for token in dong_token:
                 if token:
@@ -1791,6 +1794,9 @@ class RAGService:
                     yield {"type": "token", "content": token}
             if self.huy_sinh.is_set():
                 return
+            if ket_thuc.get("done_reason") == "length":
+                cau_tra_loi = kiem_tra_tra_loi.cat_ve_y_tron_ven(cau_tra_loi)
+                yield {"type": "thay_cau_tra_loi", "content": cau_tra_loi}
 
             kiem_tra = kiem_tra_tra_loi.kiem_tra(cau_tra_loi, documents)
             if tom_tat:
@@ -1932,8 +1938,23 @@ class RAGService:
         self.huy_sinh.set()
         return True
 
-    def _phat_token(self, chuoi, dau_vao: dict) -> Iterator[str]:
+    @staticmethod
+    def _bo_bo_doc_chuoi(chuoi):
+        """prompt | llm | StrOutputParser() -> prompt | llm.
+
+        StrOutputParser chỉ giữ lại chữ, làm mất response_metadata của mẩu cuối
+        - nơi Ollama báo done_reason. Bỏ nó đi thì mới biết câu trả lời dừng vì
+        viết xong ("stop") hay vì hết num_predict ("length")."""
+        buoc = getattr(chuoi, "steps", None)
+        if not buoc or len(buoc) < 2 or not isinstance(buoc[-1], StrOutputParser):
+            return chuoi
+        return RunnableSequence(*buoc[:-1]) if len(buoc) > 2 else buoc[0]
+
+    def _phat_token(self, chuoi, dau_vao: dict, ket_thuc: dict | None = None) -> Iterator[str]:
         """Phát token của chuỗi LLM, dừng được cả khi mô hình chưa ra chữ nào.
+
+        ket_thuc: nếu truyền vào thì nhận khoá "done_reason" của Ollama khi
+        dòng kết thúc.
 
         Cờ huy_sinh chỉ được xem mỗi lần có sự kiện để phát. Với .stream() thường,
         khoảng chờ token đầu tiên là một lần đọc socket chặn cứng: qwen3.5:9b trên
@@ -1943,7 +1964,7 @@ class RAGService:
         Ollama, và Ollama bỏ luôn yêu cầu thay vì nạp prompt cho không ai đọc.
         """
         vong = _vong_su_kien_llm()
-        dong = chuoi.astream(dau_vao)
+        dong = self._bo_bo_doc_chuoi(chuoi).astream(dau_vao)
         het = object()
         dang_doi: list[asyncio.Task] = []
 
@@ -1978,7 +1999,14 @@ class RAGService:
                             return
                 if token is het:
                     return
-                yield token
+                if isinstance(token, str):
+                    yield token
+                    continue
+                ly_do = (getattr(token, "response_metadata", None) or {}).get("done_reason")
+                if ly_do and ket_thuc is not None:
+                    ket_thuc["done_reason"] = ly_do
+                noi_dung = getattr(token, "content", "")
+                yield noi_dung if isinstance(noi_dung, str) else ""
         finally:
             try:
                 asyncio.run_coroutine_threadsafe(dong_lai(), vong).result(timeout=10)
@@ -2305,15 +2333,21 @@ class RAGService:
                     "văn bản đó đã bị văn bản nào thay.\n\n" + context
                 )
             cau_tra_loi = ""
+            ket_thuc: dict = {}
             for token in self._phat_token(
                 self._chain_tra_loi(doan_khoanh, ten_mo_hinh),
                 {"context": context, "question": model_question},
+                ket_thuc,
             ):
                 if token:
                     cau_tra_loi += token
                     yield {"type": "token", "content": token}
             if self.huy_sinh.is_set():
                 return
+            bi_cat = ket_thuc.get("done_reason") == "length"
+            if bi_cat:
+                cau_tra_loi = kiem_tra_tra_loi.cat_ve_y_tron_ven(cau_tra_loi)
+                yield {"type": "thay_cau_tra_loi", "content": cau_tra_loi}
 
             # Hậu kiểm bằng đối chiếu chuỗi: rẻ, không gọi thêm mô hình, và bắt
             # đúng hai lỗi nguy hiểm nhất (trích dẫn sai số, số liệu tự bịa).
@@ -2335,8 +2369,9 @@ class RAGService:
             }
             # Chỉ cache câu trả lời đã qua hậu kiểm. Câu có trích dẫn sai hoặc số
             # liệu không căn cứ được là câu cần sửa, không phải câu để phát lại
-            # cho nhiều người khác.
-            if vector_cau_hoi and kiem_tra.dat and cau_tra_loi.strip():
+            # cho nhiều người khác. Câu bị rút gọn vì hết hạn mức cũng không
+            # cache: nới hạn mức hay sửa prompt xong thì phải được sinh lại.
+            if vector_cau_hoi and kiem_tra.dat and not bi_cat and cau_tra_loi.strip():
                 cache_ngu_nghia.cache.them(
                     cau_hoi=question,
                     vector_cau_hoi=vector_cau_hoi,

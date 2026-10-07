@@ -503,6 +503,9 @@ def chat_stream(
                 loai = event.get("type")
                 if loai == "token":
                     cau_tra_loi += event.get("content", "")
+                elif loai == "thay_cau_tra_loi":
+                    # Câu bị cắt vì hết hạn mức token đã được rút về ý trọn vẹn.
+                    cau_tra_loi = event.get("content", "")
                 elif loai == "sources":
                     cac_nguon = event.get("sources", [])
                 elif loai == "hieu_luc":

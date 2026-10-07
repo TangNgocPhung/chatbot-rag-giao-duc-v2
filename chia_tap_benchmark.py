@@ -24,9 +24,10 @@ CÁCH CHIA
     cho câu viết riêng làm tập test (cách sạch nhất - xem README).
 
 GIỚI HẠN CẦN NÊU TRONG BÁO CÁO
-  Các tham số hiện có đã được chọn khi nhìn TOÀN BỘ 127 câu, trước khi chia.
-  Tập test tách từ bộ này vì thế chỉ sạch đối với những lần tinh chỉnh từ nay
-  về sau; muốn một ước lượng hoàn toàn không thiên lệch thì phải viết câu mới.
+  Các tham số hiện có đã được chọn khi nhìn TOÀN BỘ 127 câu gốc, trước khi
+  chia. Tập test tách từ bộ này vì thế chỉ sạch đối với những lần tinh chỉnh
+  từ nay về sau; muốn một ước lượng hoàn toàn không thiên lệch thì phải viết
+  câu mới - 373 câu thêm ngày 06/10/2026 là những câu như vậy.
 """
 
 from __future__ import annotations
@@ -44,7 +45,7 @@ DUONG_DAN_BO_CAU_HOI = os.path.join(THU_MUC_DU_AN, "bo_cau_hoi_benchmark.json")
 TAP_DEV = "dev"
 TAP_TEST = "test"
 CAC_TAP = (TAP_DEV, TAP_TEST)
-# 40% thay vì 20-30% quen thuộc: bộ chỉ có 127 câu, test 20% thì nhóm video còn
+# 40% thay vì 20-30% quen thuộc: bộ gốc chỉ có 127 câu, test 20% thì nhóm video còn
 # đúng 1 câu và Hit@1 của nhóm chỉ có thể là 0% hoặc 100%.
 TY_LE_TEST = 0.4
 HAT_GIONG = 20261001

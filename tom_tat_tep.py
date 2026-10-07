@@ -98,7 +98,7 @@ def tao_chain_giai_thich(llm):
         "mốc thời gian không có trong EVIDENCE.\n"
         "3) Nếu EVIDENCE khác làm rõ thêm nội dung trong đoạn thì bổ sung, kèm số trích dẫn [n].\n"
         "4) Chữ trong đoạn có thể do nhận dạng ảnh nên sai vài ký tự; gặp chỗ nghi sai thì nêu cách hiểu hợp lý nhất.\n"
-        "5) Trình bày: 1-2 câu nói đoạn này nghĩa là gì, rồi tối đa 5 gạch đầu dòng giải thích. "
+        "5) Trình bày: 1-2 câu nói đoạn này nghĩa là gì, rồi tối đa 4 gạch đầu dòng giải thích, mỗi dòng 1-2 câu ngắn. "
         "Không chép lại nguyên cả đoạn, không tạo mục nguồn, không viết ra quá trình suy nghĩ.\n\n"
         "{context}\n\n"
         "YÊU CẦU CỦA NGƯỜI DÙNG:\n{question}\n\n"

@@ -8,8 +8,10 @@ rem mo localhost:8000 se ra nham app. Neu 8010 bi chiem, ung dung bao loi
 rem ro rang thay vi im lang nhay sang cong khac.
 set "RAG_PORT=8010"
 
-rem Nap khoa Google Drive API neu co (xem khoa_api.mau.bat)
-if exist "khoa_api.bat" call "khoa_api.bat"
+rem Nap khoa Google Drive API, SMTP neu co (xem khoa_api.mau.bat). Ghi du
+rem duong dan: neu NoDefaultCurrentDirectoryInExePath duoc dat, cmd khong tim
+rem tep .bat trong thu muc hien tai va bo qua am tham -> mat cau hinh gui thu.
+if exist "%~dp0khoa_api.bat" call "%~dp0khoa_api.bat"
 
 if not exist ".venv\Scripts\python.exe" (
   echo [LOI] Chua co moi truong Python .venv.

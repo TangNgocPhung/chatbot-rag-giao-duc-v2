@@ -62,7 +62,9 @@ def tao_llm(ten_model: str | None = None, so_token_toi_da: int | None = None):
         # trong ngữ cảnh đều phải trả giá bằng thời gian chờ. num_ctx vừa đủ cho
         # bằng chứng đã rút gọn + câu trả lời; nới lên khi chạy được trên GPU.
         num_ctx=int(os.getenv("RAG_CONTEXT_LENGTH", "4096")),
-        num_predict=so_token_toi_da or int(os.getenv("RAG_MAX_OUTPUT_TOKENS", "420")),
+        # 420 cắt cụt câu trả lời 4-6 ý tiếng Việt (chữ có dấu tốn token); câu
+        # vẫn bị cắt thì rag_service rút về ý trọn vẹn cuối cùng.
+        num_predict=so_token_toi_da or int(os.getenv("RAG_MAX_OUTPUT_TOKENS", "700")),
         # Hidden thinking của Qwen 3.5 rất chậm trên máy chỉ có CPU. Prompt vẫn
         # yêu cầu tự kiểm tra trước khi trả lời; có thể bật lại bằng biến môi trường.
         reasoning=os.getenv("RAG_REASONING", "0") == "1",
@@ -264,7 +266,7 @@ def tao_rag_chain(vector_store, llm):
         "7) Dòng \"Hiệu lực:\" là tình trạng văn bản. Khối hết hiệu lực không dùng làm căn cứ cho quy định hiện hành, chỉ nêu là đã bị văn bản nào thay; "
         "khối \"Đi kèm\" là văn bản sửa đổi/thay thế/hướng dẫn một khối khác: nội dung đã sửa thì theo khối đi kèm, "
         "nêu cả hai văn bản.\n"
-        "8) Trình bày: kết luận trước, rồi tối đa 6 ý; bước/trình tự thì đánh số 1. 2. 3., còn lại gạch đầu dòng. "
+        "8) Trình bày: kết luận 1-2 câu trước, rồi tối đa 4 ý, mỗi ý 1-2 câu ngắn; bước/trình tự thì đánh số 1. 2. 3., còn lại gạch đầu dòng. "
         "Từ 3 con số so sánh được trở lên (mức, hạn, tỉ lệ...) thì lập bảng markdown, ô số kèm [n]. Không lặp lại câu hỏi, "
         "không lời dẫn chung chung, không tạo mục nguồn (giao diện đã hiển thị nguồn) và không viết ra quá trình suy nghĩ.\n\n"
         "{context}\n\n"
