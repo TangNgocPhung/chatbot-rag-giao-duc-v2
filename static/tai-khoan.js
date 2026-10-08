@@ -604,6 +604,11 @@
       window.phanLoaiYDinh?.mo();
       return;
     }
+    if (viec === 'do-thi-quan-he') {
+      closeSidebar();
+      window.doThiQuanHe?.mo();
+      return;
+    }
     if (viec !== 'dang-xuat') return;
     try {
       await fetch('/api/tai-khoan/dang-xuat', { method: 'POST' });

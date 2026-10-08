@@ -107,10 +107,64 @@ class CsdlQuanHeTests(unittest.TestCase):
             )
         self.assertTrue(nap.het_hieu_luc("cu.pdf", self.HOM_NAY))
 
+    def test_do_thi_vung_lan_can(self):
+        self.so.luu(self.db)
+        ca = csdl_quan_he.do_thi(duong_dan=self.db)
+        self.assertEqual(len(ca["canh"]), len(self.so.quan_he))
+        self.assertEqual(len(ca["loai_quan_he"]), 5)
+        # Văn bản không có quan hệ nào không vẽ, nhưng vẫn tìm được.
+        so_nut = {n["so_hieu"] for n in ca["nut"]}
+        self.assertNotIn("tep:du_thao.docx", so_nut)
+        self.assertTrue(any(v["so_hieu"] == "29/2023/TT-BGDĐT" for v in ca["tat_ca"]))
+
+        # 1 bước quanh Thông tư 7/2026: hai văn bản nó thay, không có 52/2020.
+        vung = csdl_quan_he.do_thi(["7/2026/TT-BGDĐT"], 1, duong_dan=self.db)
+        self.assertEqual(
+            {n["so_hieu"] for n in vung["nut"]},
+            {"7/2026/TT-BGDĐT", "29/2023/TT-BGDĐT", "12/2020/TT-BGDĐT"},
+        )
+        self.assertEqual(vung["goc"], ["7/2026/TT-BGDĐT"])
+        self.assertTrue(next(n for n in vung["nut"] if n["so_hieu"] == "7/2026/TT-BGDĐT")["goc"])
+        self.assertTrue(all(c["tu"] == "7/2026/TT-BGDĐT" for c in vung["canh"]))
+
+        # Đi được theo chiều ngược của cạnh: từ 29/2023 tới 7/2026 rồi tới 12/2020.
+        hai_buoc = csdl_quan_he.do_thi(["29/2023/TT-BGDĐT"], 2, duong_dan=self.db)
+        self.assertIn("12/2020/TT-BGDĐT", {n["so_hieu"] for n in hai_buoc["nut"]})
+
+        khong_co = csdl_quan_he.do_thi(["999/2099/TT-BGDĐT"], 2, duong_dan=self.db)
+        self.assertEqual((khong_co["nut"], khong_co["goc"]), ([], []))
+
     def test_chua_co_csdl_thi_do_thi_rong_va_khong_tao_tep(self):
+        self.assertIsNone(csdl_quan_he.do_thi(duong_dan=self.db))
         nap = qh.SoQuanHe.tu_csdl(self.db)
         self.assertEqual(nap.quan_he, [])
         self.assertFalse(os.path.exists(self.db))
+
+    def test_api_do_thi(self):
+        from fastapi.testclient import TestClient
+
+        from api import app
+
+        client = TestClient(app)
+        with mock.patch.object(csdl_quan_he, "DUONG_DAN_CSDL", self.db):
+            self.assertEqual(client.get("/api/quan-ly/do-thi").status_code, 503)
+            self.so.luu()
+            ca = client.get("/api/quan-ly/do-thi").json()
+            self.assertEqual(len(ca["canh"]), len(self.so.quan_he))
+            vung = client.get(
+                "/api/quan-ly/do-thi", params={"goc": "7/2026/TT-BGDĐT", "buoc": 1}
+            ).json()
+            self.assertEqual(vung["goc"], ["7/2026/TT-BGDĐT"])
+            self.assertEqual(len(vung["nut"]), 3)
+
+    def test_api_do_thi_chi_quan_tri(self):
+        from fastapi.testclient import TestClient
+
+        from api import app
+
+        with mock.patch.dict(os.environ, {"RAG_KHOA_QUAN_TRI": "1"}):
+            phan_hoi = TestClient(app).get("/api/quan-ly/do-thi")
+        self.assertIn(phan_hoi.status_code, (401, 403))
 
     def test_duong_dan_mac_dinh_da_cach_ly(self):
         # conftest chuyển CSDL sang thư mục tạm; test nào gọi luu() không đối số

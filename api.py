@@ -21,6 +21,7 @@ from starlette.concurrency import run_in_threadpool
 import bao_ve_truy_cap
 import cache_ngu_nghia
 import chuyen_pdf
+import csdl_quan_he
 import dich_thuat
 import giong_noi
 import goi_y_cau_hoi
@@ -1585,6 +1586,24 @@ def thu_cau_y_dinh(thong_tin: CauThu, request: Request):
     if y_dinh is None:
         raise HTTPException(status_code=503, detail="Không phân loại được câu này.")
     return {**y_dinh, "hanh_dong": phan_loai_y_dinh.du_chac_de_hanh_dong(y_dinh)}
+
+
+# ============================================================
+# ĐỒ THỊ QUAN HỆ VĂN BẢN - chỉ quản trị viên
+# ============================================================
+@app.get("/api/quan-ly/do-thi")
+def do_thi_quan_he(request: Request, goc: str = "", buoc: int = 2):
+    """Nút và cạnh đọc từ quan_he_van_ban.db. goc: một hoặc vài số hiệu, cách
+    nhau bởi dấu phẩy - để trống là cả đồ thị."""
+    _nguoi_quan_tri(request)
+    cac_goc = [g.strip() for g in goc.split(",") if g.strip()][:10]
+    du_lieu = csdl_quan_he.do_thi(cac_goc, max(1, min(buoc, 4)))
+    if du_lieu is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Chưa có CSDL quan hệ - đợi chỉ mục nạp xong (hoặc chạy python quan_he_van_ban.py --ghi-csdl).",
+        )
+    return du_lieu
 
 
 # ============================================================

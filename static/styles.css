@@ -1387,3 +1387,54 @@ body:not([data-so-tay="1"]) .can-so-tay { display: none !important; }
   .tn-o-tu { grid-column: 1 / -1; }
   .tn-goi-y, .tn-xem-truoc { margin-inline: 12px; }
 }
+
+/* ---------- Đồ thị quan hệ văn bản (quản trị) ---------- */
+.dt-dialog { width: min(1180px, calc(100vw - 30px)); height: min(820px, calc(100dvh - 36px)); }
+.dt-dialog[open] { display: flex; flex-direction: column; }
+.dt-thanh-cong-cu { display: flex; align-items: center; gap: 10px; margin: 0 24px 10px; }
+.dt-thanh-cong-cu .dt-tim { flex: 1; min-width: 0; margin: 0; }
+.dt-buoc { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
+.dt-buoc select { padding: 7px 8px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.dt-nut { padding: 8px 13px; color: var(--ink-body); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.dt-nut:hover { background: var(--surface-3); }
+.dt-nut:focus-visible, .dt-lien-ket:focus-visible, .dt-tep:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.dt-nut-chinh { margin-top: 16px; color: var(--blue-ink); background: var(--blue-soft); border-color: var(--blue-soft-2); }
+.dt-nut-chinh:hover { background: var(--blue-soft-2); }
+.dt-tom-tat { padding-bottom: 10px; }
+.dt-than { display: grid; flex: 1; grid-template-columns: minmax(0, 1fr) 290px; min-height: 0; border-top: 1px solid var(--line); }
+.dt-khung { min-width: 0; min-height: 0; background: var(--surface-2); }
+.dt-chi-tiet { padding: 16px 18px; overflow-y: auto; border-left: 1px solid var(--line); font-size: 12.5px; }
+.dt-goi-y p { margin: 0 0 10px; color: var(--ink-mute); line-height: 1.6; }
+.dt-ten { margin: 0 0 8px; color: var(--ink); font-size: 15px; font-weight: 650; line-height: 1.4; }
+.dt-trang-thai { margin: 0 0 6px; color: var(--ink-soft); }
+.dt-nhan { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.dt-nhan.tt-con_hieu_luc { color: var(--ok); background: var(--ok-soft); }
+.dt-nhan.tt-da_sua_doi { color: var(--warn-ink); background: var(--warn-soft); }
+.dt-nhan.tt-het_mot_phan { color: var(--coral); background: var(--coral-soft); }
+.dt-nhan.tt-sap_het_hieu_luc { color: var(--purple); background: var(--purple-soft); }
+.dt-nhan.tt-chua_hieu_luc { color: var(--ink-soft); background: var(--surface-3); }
+.dt-nhan.tt-het_hieu_luc { color: var(--danger-ink); background: var(--danger-soft); }
+.dt-phu { margin: 0 0 6px; color: var(--ink-mute); font-size: 11.5px; line-height: 1.55; overflow-wrap: anywhere; }
+.dt-muc { margin: 16px 0 6px; color: var(--ink-soft); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.dt-ds-tep, .dt-ds-quan-he { margin: 0; padding: 0; list-style: none; }
+.dt-tep { display: block; width: 100%; padding: 5px 0; color: var(--blue-ink); background: none; border: 0; font: inherit; font-size: 12px; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.dt-tep:hover { text-decoration: underline; }
+.dt-ds-quan-he li { padding: 6px 0 6px 10px; border-left: 3px solid var(--mau-canh, var(--line)); border-bottom: 1px solid var(--surface-3); line-height: 1.5; }
+.dt-loai { color: var(--ink-soft); }
+.dt-lien-ket { padding: 0; color: var(--blue-ink); background: none; border: 0; font: inherit; font-weight: 650; cursor: pointer; }
+.dt-lien-ket:hover { text-decoration: underline; }
+.dt-nguon { margin-left: 6px; padding: 1px 6px; color: var(--ink-mute); background: var(--surface-3); border-radius: 999px; font-size: 10px; }
+.dt-cau-canh { margin: 0 0 10px; color: var(--ink-body); line-height: 1.6; }
+.dt-chu-giai { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 24px 14px; color: var(--ink-soft); border-top: 1px solid var(--line); font-size: 11px; }
+.dt-chu-giai-muc { display: inline-flex; align-items: center; gap: 6px; }
+.dt-cham { width: 10px; height: 10px; border-radius: 50%; }
+.dt-vach { width: 18px; height: 2px; border-radius: 0; }
+.dt-vach-dut { background: repeating-linear-gradient(90deg, var(--ink-mute) 0 4px, transparent 4px 7px) !important; }
+.dt-khung .vis-tooltip { position: absolute; padding: 6px 9px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); font-size: 12px; white-space: pre-line; pointer-events: none; }
+@media (max-width: 760px) {
+  .dt-thanh-cong-cu { flex-wrap: wrap; margin-inline: 17px; }
+  .dt-thanh-cong-cu .dt-tim { flex-basis: 100%; }
+  .dt-than { grid-template-columns: 1fr; grid-template-rows: minmax(260px, 1fr) minmax(0, 40%); }
+  .dt-chi-tiet { border-top: 1px solid var(--line); border-left: 0; }
+  .dt-chu-giai { padding-inline: 17px; }
+}

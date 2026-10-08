@@ -133,6 +133,80 @@ def ghi(du_lieu: dict, duong_dan: str | None = None) -> None:
         conn.close()
 
 
+def do_thi(goc: list[str] | None = None, so_buoc: int = 2,
+           duong_dan: str | None = None) -> dict | None:
+    """
+    Nút và cạnh để vẽ: không có goc thì mọi văn bản có quan hệ (văn bản đứng
+    riêng chỉ làm rối hình); có goc thì vùng đi tối đa so_buoc bước theo cạnh
+    cả hai chiều - truy vấn đệ quy ngay trong SQLite. None khi chưa có CSDL.
+    """
+    duong_dan = duong_dan or DUONG_DAN_CSDL
+    if not os.path.exists(duong_dan):
+        return None
+    goc = [g for g in (goc or []) if g]
+    conn = ket_noi(duong_dan)
+    try:
+        if goc:
+            tap_nut = {dong[0] for dong in conn.execute(f"""
+                WITH RECURSIVE canh(a, b) AS (
+                    SELECT tu, den FROM quan_he UNION SELECT den, tu FROM quan_he
+                ), vung(so_hieu, buoc) AS (
+                    SELECT so_hieu, 0 FROM van_ban WHERE so_hieu IN ({",".join("?" * len(goc))})
+                    UNION
+                    SELECT canh.b, vung.buoc + 1 FROM canh JOIN vung ON canh.a = vung.so_hieu
+                    WHERE vung.buoc < ?
+                )
+                SELECT DISTINCT so_hieu FROM vung""", (*goc, so_buoc))}
+        else:
+            tap_nut = {dong[0] for dong in conn.execute(
+                "SELECT tu FROM quan_he UNION SELECT den FROM quan_he"
+            )}
+        tep_cua: dict[str, list[str]] = {}
+        for dong in conn.execute("SELECT ten_file, so_hieu FROM tep ORDER BY ten_file"):
+            tep_cua.setdefault(dong["so_hieu"], []).append(dong["ten_file"])
+        nut = [
+            {
+                "so_hieu": dong["so_hieu"],
+                "nhan": dong["nhan"],
+                "loai_van_ban": dong["loai_van_ban"],
+                "ngay_hieu_luc": dong["ngay_hieu_luc"],
+                "tinh_trang": dong["tinh_trang"],
+                "tu_ngay": dong["tu_ngay"],
+                "tep": tep_cua.get(dong["so_hieu"], []),
+                "goc": dong["so_hieu"] in goc,
+            }
+            for dong in conn.execute("SELECT * FROM van_ban ORDER BY so_hieu")
+            if dong["so_hieu"] in tap_nut
+        ]
+        canh = [
+            {"tu": dong["tu"], "den": dong["den"], "loai": dong["loai"], "ten": dong["quan_he"],
+             "nguon": dong["nguon"], "can_cu": dong["can_cu"]}
+            for dong in conn.execute("SELECT * FROM quan_he_de_doc ORDER BY den, loai, tu")
+            if dong["tu"] in tap_nut and dong["den"] in tap_nut
+        ]
+        # Danh sách để tìm: mọi văn bản, kể cả văn bản không có quan hệ nào.
+        tat_ca = [
+            {"so_hieu": dong["so_hieu"], "nhan": dong["nhan"], "tep": tep_cua.get(dong["so_hieu"], [])}
+            for dong in conn.execute("SELECT so_hieu, nhan FROM van_ban ORDER BY so_hieu")
+        ]
+        ngay_tinh = conn.execute(
+            "SELECT gia_tri FROM thong_tin WHERE khoa = 'ngay_tinh'"
+        ).fetchone()
+        return {
+            "ngay_tinh": ngay_tinh[0] if ngay_tinh else None,
+            "loai_quan_he": {
+                dong["ma"]: [dong["ten_xuoi"], dong["ten_nguoc"]]
+                for dong in conn.execute("SELECT * FROM loai_quan_he")
+            },
+            "goc": [g for g in goc if any(n["so_hieu"] == g for n in nut)],
+            "nut": nut,
+            "canh": canh,
+            "tat_ca": tat_ca,
+        }
+    finally:
+        conn.close()
+
+
 def doc(duong_dan: str | None = None) -> dict | None:
     """
     Đồ thị đã lưu, cùng dạng SoQuanHe.xuat() (thiếu thong_ke); None khi chưa

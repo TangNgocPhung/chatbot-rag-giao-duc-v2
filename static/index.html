@@ -6,7 +6,7 @@
   <meta name="description" content="Chatbot RAG hỗ trợ tra cứu văn bản quy phạm pháp luật về giáo dục Việt Nam.">
   <title>XÂY DỰNG CHATBOT RAG HỖ TRỢ TRA CỨU VĂN BẢN QUY PHẠM PHÁP LUẬT VỀ GIÁO DỤC VIỆT NAM</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=1.9.33">
+  <link rel="stylesheet" href="./styles.css?v=1.9.35">
   <script>
     /* Đặt nền đúng ngay từ lần vẽ đầu: app.js dùng defer nên nếu đợi nó thì
        người dùng chế độ tối sẽ thấy một nháy màu trắng khi mở trang. */
@@ -464,6 +464,10 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.2"/><circle cx="5" cy="6" r="1.6"/><circle cx="19" cy="6" r="1.6"/><circle cx="5" cy="18" r="1.6"/><circle cx="19" cy="18" r="1.6"/><path d="m6.3 7 4 3.6M17.7 7l-4 3.6M6.3 17l4-3.6M17.7 17l-4-3.6"/></svg>
       Phân loại câu hỏi (KNN)
     </button>
+    <button type="button" role="menuitem" data-tk="do-thi-quan-he" class="chi-quan-tri">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="6" height="4.5" rx="1"/><rect x="14.5" y="4" width="6" height="4.5" rx="1"/><rect x="9" y="15.5" width="6" height="4.5" rx="1"/><path d="M6.5 8.5v2.5h11V8.5M12 11v4.5"/></svg>
+      Đồ thị quan hệ văn bản
+    </button>
     <button type="button" role="menuitem" data-tk="sua-thong-tin">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 10.5-10.5-3-3L5 16l-1 4Z"/><path d="m13.5 7.5 3 3"/></svg>
       Sửa họ tên / email
@@ -829,6 +833,41 @@
     <div class="document-list" id="ydNoiDung"></div>
   </dialog>
 
+  <dialog class="document-dialog dt-dialog" id="dtDialog" aria-labelledby="dtTitle">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">QUẢN TRỊ · CƠ SỞ DỮ LIỆU</p>
+        <h2 id="dtTitle">Đồ thị quan hệ văn bản</h2>
+      </div>
+      <div class="dialog-header-actions">
+        <button class="icon-button" id="dtDong" type="button" aria-label="Đóng đồ thị quan hệ">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="dt-thanh-cong-cu">
+      <label class="document-search dt-tim">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+        <input id="dtTim" type="search" list="dtDanhSach" autocomplete="off" placeholder="Số hiệu hoặc tên tệp, vd 43/2019/QH14 - Enter để xem vùng quanh văn bản">
+      </label>
+      <datalist id="dtDanhSach"></datalist>
+      <label class="dt-buoc">Bước
+        <select id="dtBuoc" aria-label="Số bước quanh văn bản">
+          <option value="1">1</option>
+          <option value="2" selected>2</option>
+          <option value="3">3</option>
+        </select>
+      </label>
+      <button class="dt-nut" id="dtCaDoThi" type="button">Cả đồ thị</button>
+    </div>
+    <p class="document-summary dt-tom-tat" id="dtTomTat" aria-live="polite"></p>
+    <div class="dt-than">
+      <div class="dt-khung" id="dtKhung"></div>
+      <aside class="dt-chi-tiet" id="dtChiTiet" aria-live="polite"></aside>
+    </div>
+    <div class="dt-chu-giai" id="dtChuGiai"></div>
+  </dialog>
+
   <dialog class="confirm-dialog" id="confirmDialog" aria-labelledby="confirmTitle">
     <div class="confirm-body">
       <h2 id="confirmTitle">Xác nhận</h2>
@@ -843,10 +882,11 @@
   <script src="./loc-tu-ngu.js?v=1.9.31" defer></script>
   <script src="./app.js?v=1.9.33" defer></script>
   <script src="./so-tay.js?v=1.9.19" defer></script>
-  <script src="./tai-khoan.js?v=1.9.34" defer></script>
+  <script src="./tai-khoan.js?v=1.9.35" defer></script>
   <script src="./quan-ly-tai-khoan.js?v=1.9.9" defer></script>
   <script src="./quan-ly-tu-ngu.js?v=1.9.31" defer></script>
   <script src="./phan-loai-y-dinh.js?v=1.9.33" defer></script>
+  <script src="./do-thi-quan-he.js?v=1.9.35" defer></script>
   <script src="./dich.js?v=1.9.12" defer></script>
   <script src="./huong-dan.js?v=1.9.22" defer></script>
   <script src="./gioi-thieu.js?v=1.9.26" defer></script>
