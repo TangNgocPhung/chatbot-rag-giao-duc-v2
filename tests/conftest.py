@@ -66,6 +66,14 @@ def cach_ly_tep_dinh_kem(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def cach_ly_csdl_quan_he(tmp_path, monkeypatch):
+    """Đồ thị quan hệ văn bản: test dựng đồ thị giả không được ghi đè CSDL thật."""
+    import csdl_quan_he
+
+    monkeypatch.setattr(csdl_quan_he, "DUONG_DAN_CSDL", str(tmp_path / "quan_he_van_ban.db"))
+
+
+@pytest.fixture(autouse=True)
 def cach_ly_tu_ngu_cam(tmp_path, monkeypatch):
     """Từ cấm quản trị viên thêm: mỗi test một sổ riêng, bộ lọc dựng lại từ đầu."""
     import loc_tu_ngu

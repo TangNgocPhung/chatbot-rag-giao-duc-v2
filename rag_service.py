@@ -509,14 +509,22 @@ class RAGService:
             self.so_quan_he = quan_he_van_ban.SoQuanHe(
                 self.ho_so_van_ban, self.tinh_trang_hieu_luc
             )
-            self.so_quan_he.luu()
         except Exception as exc:
-            # Hồ sơ văn bản là lớp thông tin thêm; hỏng thì chatbot vẫn phải chạy.
+            # Hồ sơ văn bản là lớp thông tin thêm; hỏng thì chatbot vẫn phải chạy,
+            # với đồ thị đã lưu ở lần dựng trước nếu còn.
             self.ho_so_van_ban = {}
             self.tinh_trang_hieu_luc = {}
-            self.so_quan_he = quan_he_van_ban.SoQuanHe(so_tay={})
+            try:
+                self.so_quan_he = quan_he_van_ban.SoQuanHe.tu_csdl()
+            except Exception:
+                self.so_quan_he = quan_he_van_ban.SoQuanHe(so_tay={})
             print(f"⚠️  Không lập được hồ sơ văn bản: {exc}")
             return
+        try:
+            self.so_quan_he.luu()
+        except Exception as exc:
+            # Đồ thị trong bộ nhớ vẫn đúng; chỉ bản lưu trên đĩa là cũ.
+            print(f"⚠️  Không ghi được CSDL quan hệ văn bản: {exc}")
 
         doan_theo_tep: dict[str, list] = {}
         for doc in self.vector_store.docstore._dict.values():

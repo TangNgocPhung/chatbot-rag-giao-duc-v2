@@ -24,6 +24,10 @@ này từ nội dung -> văn bản cũ tự đổi nhãn "Hết hiệu lực" v�
 chuyển sang văn bản mới. Sổ tay chỉ dùng khi máy đọc sót (ảnh quét hỏng) hoặc
 đọc sai (ghi vào "loai_bo").
 
+LƯU Ở ĐÂU: sổ tay vẫn là JSON (sửa tay, xem diff trên Git); đồ thị đã gộp được
+ghi vào SQLite quan_he_van_ban.db (csdl_quan_he.py) mỗi lần dựng lại. Khi chạy,
+đồ thị nằm trong bộ nhớ (self.ra / self.vao) để tra trên đường trả lời.
+
 Chạy trực tiếp để xem báo cáo:  python quan_he_van_ban.py
 """
 
@@ -35,6 +39,7 @@ import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+import csdl_quan_he
 import van_ban_meta
 
 THU_MUC_DU_AN = os.path.dirname(os.path.abspath(__file__))
@@ -95,9 +100,6 @@ MAU_SO_NAM = re.compile(r"(?<![\d/])(\d{1,4})\s*/\s*(\d{4})(?![\d/])")
 MAU_NGAY_CU_THE = re.compile(r"\bngay\s+(\d{1,2})\s*(?:/|-|\s+thang\s+)(\d{1,2})\s*(?:/|-|\s+nam\s+)(\d{4})\b")
 MAU_THANG_NAM = re.compile(r"\bthang\s+(\d{1,2})\s*(?:/|-|\s+nam\s+)(\d{4})\b")
 MAU_NAM = re.compile(r"\b(?:nam|nam hoc|thoi diem|vao|trong|tai)\s+(\d{4})\b")
-DUONG_DAN_XUAT = os.path.abspath(os.getenv(
-    "RAG_QUAN_HE_XUAT", os.path.join(THU_MUC_DU_AN, "quan_he_van_ban.json")
-))
 
 
 def thoi_diem_trong_cau_hoi(cau_hoi: str, hom_nay: date | None = None) -> date | None:
@@ -169,6 +171,8 @@ class QuanHe:
 def chuan_so_hieu(so_hieu: str) -> str:
     """'08/2012/QH13' -> '8/2012/QH13', 'ND' -> 'NĐ' - cùng dạng van_ban_meta sinh ra."""
     so_hieu = (so_hieu or "").strip()
+    if so_hieu.startswith("tep:"):
+        return so_hieu  # nút phụ lục: tên tệp có thể chứa số hiệu của văn bản khác
     cac_so = van_ban_meta.trich_so_hieu(so_hieu)
     return cac_so[0] if cac_so else so_hieu
 
@@ -217,6 +221,7 @@ class SoQuanHe:
             (chuan_so_hieu(q.get("tu", "")), q.get("loai"), chuan_so_hieu(q.get("den", "")))
             for q in so_tay.get("loai_bo") or []
         }
+        self.loai_bo = sorted(loai_bo)
         cac_quan_he: dict[tuple, QuanHe] = {}
         for ten_file, muc in self.ho_so.items():
             nut = self.nut_cua_tep.get(ten_file)
@@ -240,7 +245,9 @@ class SoQuanHe:
         for q in so_tay.get("quan_he") or []:
             tu, den, loai = chuan_so_hieu(q.get("tu", "")), chuan_so_hieu(q.get("den", "")), q.get("loai")
             if tu and den and loai in TEN_QUAN_HE:
-                cac_quan_he[(tu, loai, den)] = QuanHe(tu, loai, den, "so_tay", q.get("can_cu", ""))
+                # "nguon" chỉ có khi nạp lại từ CSDL; sổ tay viết tay không ghi.
+                nguon = "tu_dong" if q.get("nguon") == "tu_dong" else "so_tay"
+                cac_quan_he[(tu, loai, den)] = QuanHe(tu, loai, den, nguon, q.get("can_cu", ""))
         # Vừa thay toàn bộ vừa bãi bỏ một phần (hai câu khác nhau) -> toàn bộ.
         self.quan_he = [
             q for q in cac_quan_he.values()
@@ -639,18 +646,20 @@ class SoQuanHe:
     def xuat(self, hom_nay: date | None = None) -> dict:
         """
         Bảng trạng thái hiệu lực của MỌI văn bản đồ thị biết - kể cả văn bản cũ
-        không còn trong kho - cùng các quan hệ. Ghi ra quan_he_van_ban.json mỗi
-        lần dựng lại, để xem/đối chiếu như một bảng trong cơ sở dữ liệu: văn
+        không còn trong kho - cùng các quan hệ, để luu() ghi vào CSDL: văn
         bản 124 mang trạng thái het_hieu_luc và "boi": ["125/..."], văn bản
         125 mang con_hieu_luc; nội dung và vector của cả hai vẫn nằm riêng.
         """
         van_ban = {}
         for nut in sorted(self._cac_nut_da_biet() | {
             n for n in self.tep_cua_nut if n.startswith("tep:")
-        }):
+        } | {n for q in self.quan_he for n in (q.tu, q.den)}):
             tt = self.tinh_trang_nut(nut, hom_nay)
+            la_phu_luc = nut.startswith("tep:")
             van_ban[nut] = {
                 "nhan": self.nhan_nut(nut),
+                "loai_van_ban": None if la_phu_luc else van_ban_meta.suy_loai_van_ban(nut),
+                "ngay_ban_hanh": None if la_phu_luc else self._ngay_ban_hanh(nut),
                 "tinh_trang": tt["code"],
                 "boi": tt.get("boi", []),
                 "tu_ngay": tt.get("tu_ngay"),
@@ -665,11 +674,42 @@ class SoQuanHe:
                 {"tu": q.tu, "loai": q.loai, "den": q.den, "nguon": q.nguon, "can_cu": q.can_cu}
                 for q in sorted(self.quan_he, key=lambda q: (q.den, q.loai, q.tu))
             ],
+            "loai_quan_he": TEN_QUAN_HE,
+            "loai_bo": [{"tu": tu, "loai": loai, "den": den} for tu, loai, den in self.loai_bo],
         }
 
-    def luu(self, duong_dan: str = DUONG_DAN_XUAT) -> None:
-        with open(duong_dan, "w", encoding="utf-8") as tep:
-            json.dump(self.xuat(), tep, ensure_ascii=False, indent=1)
+    def luu(self, duong_dan: str | None = None) -> None:
+        """Ghi đè đồ thị vào SQLite (csdl_quan_he.DUONG_DAN_CSDL nếu không chỉ định)."""
+        csdl_quan_he.ghi(self.xuat(), duong_dan)
+
+    @classmethod
+    def tu_csdl(cls, duong_dan: str | None = None) -> "SoQuanHe":
+        """
+        Đồ thị đã lưu ở lần dựng gần nhất - dùng khi không dựng lại được từ
+        kho (chỉ mục hỏng, chưa nạp xong): biết văn bản nào đã bị thay vẫn hơn
+        không biết gì. Chưa từng lưu thì trả đồ thị rỗng.
+
+        Dựng lại qua đường sổ tay: tên gọi Luật lấy từ sổ tay thật, tệp và
+        ngày lấy từ CSDL, cạnh giữ nguyên nguồn tu_dong/so_tay.
+        """
+        du_lieu = csdl_quan_he.doc(duong_dan)
+        if not du_lieu:
+            return cls(so_tay={})
+        thong_tin = {
+            chuan_so_hieu(so_hieu): dict(muc or {})
+            for so_hieu, muc in (tai_so_tay().get("van_ban") or {}).items()
+        }
+        for so_hieu, muc in du_lieu["van_ban"].items():
+            dich = thong_tin.setdefault(so_hieu, {})
+            dich["tep"] = muc["tep"]
+            for khoa in ("ngay_ban_hanh", "ngay_hieu_luc"):
+                if muc.get(khoa) and not dich.get(khoa):
+                    dich[khoa] = muc[khoa]
+        return cls(so_tay={
+            "van_ban": thong_tin,
+            "quan_he": du_lieu["quan_he"],
+            "loai_bo": du_lieu["loai_bo"],
+        })
 
     def thong_ke(self) -> dict:
         dem: dict[str, int] = {}
@@ -718,7 +758,8 @@ def chon_doan_tot_nhat(cac_doan: list, cau_hoi: str, so_hieu_lien_quan: str | No
 
 
 def main() -> int:
-    """Báo cáo đồ thị quan hệ từ hồ sơ đã lưu (không cần nạp mô hình)."""
+    """Báo cáo đồ thị quan hệ từ hồ sơ đã lưu (không cần nạp mô hình).
+    Thêm --ghi-csdl để ghi luôn đồ thị vào quan_he_van_ban.db."""
     import sys
 
     import hieu_luc_bo_sung
@@ -733,6 +774,9 @@ def main() -> int:
         tt = so.tinh_trang_nut(nut)
         if tt["code"] != "con_hieu_luc":
             print(f"  {so.nhan_nut(nut)} [{tt['code']}] <- {', '.join(tt.get('boi', []))}  ({cac_tep[0][:50]})")
+    if "--ghi-csdl" in sys.argv[1:]:
+        so.luu()
+        print(f"Đã ghi đồ thị vào {csdl_quan_he.DUONG_DAN_CSDL}")
     return 0
 
 
