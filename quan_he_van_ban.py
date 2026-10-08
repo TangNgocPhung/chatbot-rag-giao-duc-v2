@@ -268,7 +268,11 @@ class SoQuanHe:
     def _tra_ten_luat(self, ten: str, ngay_van_ban: str | None) -> str | None:
         """'Luật Giáo dục' -> số hiệu. Nhiều Luật cùng tên (2005, 2019) thì lấy
         bản mới nhất ban hành TRƯỚC văn bản đang xét: Nghị định năm 2020 hướng
-        dẫn Luật Giáo dục 2019, không phải Luật 2005."""
+        dẫn Luật Giáo dục 2019, không phải Luật 2005.
+
+        Không có bản nào ban hành trước văn bản đang xét thì trả None: Nghị định
+        2001 nhắc "Luật Giáo dục" là Luật 1998 mà sổ tay không có, gán sang Luật
+        2019 thì thành "Luật 2019 được hướng dẫn bởi Nghị định 2001"."""
         ten_chuan = " ".join(ten.lower().split())
         nam_van_ban = int(ngay_van_ban[:4]) if ngay_van_ban else 9999
         ung_vien = []
@@ -276,7 +280,7 @@ class SoQuanHe:
             if any(" ".join(t.lower().split()) == ten_chuan for t in muc.get("ten_goi") or []):
                 ung_vien.append((self._nam(so_hieu), so_hieu))
         truoc = [uv for uv in ung_vien if uv[0] <= nam_van_ban]
-        chon = max(truoc or ung_vien, default=None)
+        chon = max(truoc, default=None)
         return chon[1] if chon else None
 
     def _nam(self, nut: str) -> int:

@@ -64,6 +64,21 @@ class TrichQuanHeTests(unittest.TestCase):
         self.assertEqual(quan_he["bai_bo_mot_phan"], ["142/2025/NĐ-CP"])
         self.assertEqual(quan_he["thay_the"], [])
 
+    def test_bi_dong_ocr_sai_dau_chu_bo(self):
+        # Câu thật trong Nghị định 317/2026 sau OCR: "bổ" thành "bồ"/"bố". Vẫn là
+        # bị động - Nghị định không sửa đổi Luật.
+        for chu in ("bồ", "bố", "bổ"):
+            cau = (
+                "theo quy định tại khoản 4a Điều 85 Luật Giáo dục năm 2019\r\n"
+                f"được sửa đổi, {chu} sung bởi điểm b khoản 23 Điều 1 Luật số 123/2025/QH15"
+            )
+            self.assertEqual(vm.trich_quan_he_day_du(cau)["sua_doi"], [], chu)
+        # Chủ động thì vẫn nhận, dù OCR sai dấu.
+        quan_he = vm.trich_quan_he_day_du(
+            "Thông tư này sửa đổi, bồ sung một số điều của Thông tư số 21/2025/TT-BGDĐT"
+        )
+        self.assertEqual(quan_he["sua_doi"], ["21/2025/TT-BGDĐT"])
+
     def test_so_hieu_thu_tuong_giu_chu_g(self):
         self.assertEqual(vm.trich_so_hieu("Quyết định số 05/2013/QĐ-TTg ngày 15"), ["5/2013/QĐ-TTg"])
 
@@ -250,6 +265,9 @@ class DoThiTests(unittest.TestCase):
         self.assertEqual(self.so._tra_ten_luat("Luật Giáo dục", "2020-06-30"), "43/2019/QH14")
         self.assertEqual(self.so._tra_ten_luat("Luật Giáo dục", "2010-01-01"), "38/2005/QH11")
         self.assertIsNone(self.so._tra_ten_luat("Luật Đất đai", "2020-01-01"))
+        # Văn bản 2001 nhắc Luật Giáo dục 1998 - không có trong sổ thì không đoán
+        # sang Luật mới hơn chính văn bản đó.
+        self.assertIsNone(self.so._tra_ten_luat("Luật Giáo dục", "2001-11-22"))
 
     def test_canh_bao_chi_ra_nguon_thay_the(self):
         canh_bao = self.so.canh_bao([

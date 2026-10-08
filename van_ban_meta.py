@@ -70,8 +70,12 @@ MAU_NGAY = re.compile(r"ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})"
 # Chỉ nhận là quan hệ văn bản khi ngay sau động từ có một số hiệu thật. Nếu bắt
 # theo động từ trần thì dính hàng loạt câu vô can: "thay thế thành viên Hội
 # đồng trường", "thay thế việc nộp bản sao", "hết hiệu lực sau khi thanh lý".
+# OCR hay đọc sai dấu chữ "bổ" ("bồ sung", "bố sung"). Không nuốt được cả cụm
+# thì chữ "bởi" phía sau không còn đứng ngay sau động từ, câu bị động "được sửa
+# đổi, bồ sung bởi Luật số 123/2025/QH15" bị đọc thành chủ động - Nghị định
+# 317/2026 từng bị ghi là sửa đổi Luật 123/2025 vì vậy.
 MAU_QUAN_HE = re.compile(
-    r"(bãi bỏ|thay thế|sửa đổi,?\s*(?:bổ sung)?|hết hiệu lực)"
+    r"(bãi bỏ|thay thế|sửa đổi,?\s*(?:b[ổồốỗộôoóòỏõọ]\s*sung)?|hết hiệu lực)"
     r"(\s+(?:bởi|tại))?"
     r"([^.;\n]{0,140})",
     re.IGNORECASE,
