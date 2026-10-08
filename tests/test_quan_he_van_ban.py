@@ -98,6 +98,33 @@ class TrichQuanHeTests(unittest.TestCase):
         self.assertEqual(so, [])
         self.assertEqual(ten, ["Luật Giáo dục"])
 
+    def test_huong_dan_trong_cau_can_cu_la_cua_van_ban_khac(self):
+        # Thông tư 22/2019 sau OCR: "Căn cứ Điều 1 của Nghị định ..." không phải
+        # chỗ hết khối căn cứ, và cụm "hướng dẫn thi hành Luật Giáo dục" là nói
+        # về Nghị định 75/2006 đứng ngay trước.
+        so, ten = vm.trich_huong_dan(
+            "BỘ GIÁO DỤC VÀ ĐÀO TẠO\nSố: 22/2019/TT-BGDĐT Hà Nội, ngày 20 tháng 12 năm 2019\n"
+            "THÔNG TƯ\nBan hành Quy định về Hội thi giáo viên dạy giỏi\n"
+            "Căn cứ Nghị định số 69/2017/NĐ-CP ngày 25 tháng 5 năm 2017 của Chính phủ;\n"
+            "Căn cứ Điều 1 của Nghị định 31/2011/NĐ-CP ngày 11 tháng 5 năm 2011 của Chính phủ sửa "
+            "đổi, bổ sung một số điều của Nghị định số 75/2006/NĐ-CP ngày 02 tháng 8 năm 2006 của "
+            "Chính phủ quy định chỉ tiết và hướng dẫn thì hành một số điều của Luật Giáo dục;\n"
+            "Theo đề nghị của Cục trưởng Cục Nhà giáo;\nĐiều 1. Ban hành kèm theo Thông tư này ...",
+            "22/2019/TT-BGDĐT",
+        )
+        self.assertEqual((so, ten), ([], []))
+
+    def test_huong_dan_o_trich_yeu_khi_o_so_doc_lech(self):
+        # Ô số OCR ra "42/2021" trong khi tệp đã nhận là 32/2021: số trong ô
+        # vẫn là của chính nó, trích yếu vẫn là quan hệ của nó.
+        so, _ = vm.trich_huong_dan(
+            "Số: 42/2021/TT-BGDĐT Hà Nội, ngày 5 tháng 11 năm 2021\nTHÔNG TƯ\n"
+            "Hướng dẫn thực hiện một số điều Nghị định số 82/2010/NĐ-CP ngày 15 tháng 7 năm 2010\n"
+            "Căn cứ Luật Giáo dục;\nĐiều 1. Phạm vi",
+            "32/2021/TT-BGDĐT",
+        )
+        self.assertEqual(so, ["82/2010/NĐ-CP"])
+
     def test_phu_luc_tach_tep_la_kem_theo(self):
         self.assertEqual(
             vm.trich_kem_theo("PHỤ LỤC\nBiểu mẫu (Kèm theo Thông tư số 44/2026/TT-BGDĐT ngày 9/6/2026)"),

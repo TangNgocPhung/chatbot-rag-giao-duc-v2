@@ -131,8 +131,14 @@ DO_DAI_VUNG_KEM_THEO = 600
 MAU_CAN_CU_QUAN_HE = re.compile(r"C[ăâa]n\s*c[^\s]{0,3}\s+([^;\n]{0,220})", re.IGNORECASE)
 # Khối "Căn cứ" nằm giữa tiêu đề và phần nội dung. Quét quá chỗ này sẽ nhặt
 # phải "căn cứ vào kết quả đánh giá" trong thân bài.
+# Chính khối căn cứ cũng có chữ "Điều 1": "Căn cứ Điều 1 của Nghị định số
+# 31/2011/NĐ-CP ...". Nhận đó là hết khối thì phần còn lại của căn cứ lọt vào
+# vùng phạm vi - Thông tư 22/2019 từng bị ghi là hướng dẫn Luật Giáo dục vì
+# câu căn cứ kể về Nghị định 75/2006 nằm ngay sau.
 MAU_HET_KHOI_CAN_CU = re.compile(
-    r"(Đi[eề]u\s*1\b|QUY[ỂẾE]T\s*Đ[ỊI]NH\s*:|Ch[uư][oơ]ng\s*I\b)", re.IGNORECASE
+    r"(Đi[eề]u\s*1\b(?!\s*(?:của|[,;]|Luật|Nghị|Thông|Quyết|Pháp|Bộ))"
+    r"|QUY[ỂẾE]T\s*Đ[ỊI]NH\s*:|Ch[uư][oơ]ng\s*I\b)",
+    re.IGNORECASE,
 )
 
 LOAI_VAN_BAN = {
@@ -542,7 +548,17 @@ def _vung_pham_vi(van_ban: str) -> str:
     return tieu_de + "\n" + than_dau
 
 
-def trich_huong_dan(van_ban: str) -> tuple[list[str], list[str]]:
+def _noi_ve_van_ban_khac(vung: str, vi_tri: int, cua_minh: set[str]) -> bool:
+    """Trong cùng mệnh đề, ngay trước động từ đã có số hiệu của một văn bản
+    khác: "Nghị định số 75/2006/NĐ-CP ... quy định chi tiết và hướng dẫn thi
+    hành Luật Giáo dục" kể về Nghị định 75, không phải văn bản đang đọc. Số hiệu
+    của chính nó (ô "Số: 93/2026/NĐ-CP ... NGHỊ ĐỊNH Quy định chi tiết...") thì
+    không tính."""
+    truoc = re.split(r";|\.\s", vung[max(0, vi_tri - 160): vi_tri])[-1]
+    return any(so not in cua_minh for so in trich_so_hieu(truoc))
+
+
+def trich_huong_dan(van_ban: str, so_hieu_chinh: str | None = None) -> tuple[list[str], list[str]]:
     """
     (số hiệu, tên Luật chưa có số) mà văn bản này quy định chi tiết / hướng dẫn.
 
@@ -551,7 +567,19 @@ def trich_huong_dan(van_ban: str) -> tuple[list[str], list[str]]:
     """
     so_hieu: list[str] = []
     ten: list[str] = []
-    for khop in MAU_HUONG_DAN.finditer(_vung_pham_vi(van_ban)):
+    vung = _vung_pham_vi(van_ban)
+    # Số trong ô "Số:" cũng là của chính nó, kể cả khi OCR đọc lệch khỏi số
+    # hiệu đã nhận cho tệp (ô ghi "42/2021" mà tệp là Thông tư 32/2021).
+    cua_minh = {so_hieu_chinh} if so_hieu_chinh else set()
+    tieu_de = cat_khoi_tieu_de((van_ban or "")[:DO_DAI_PHAN_DAU])
+    for o_so in MAU_DONG_SO.finditer(tieu_de):
+        so_trong_o = trich_so_hieu(tieu_de[o_so.end(): o_so.end() + 40])
+        if so_trong_o:
+            cua_minh.add(so_trong_o[0])
+            break
+    for khop in MAU_HUONG_DAN.finditer(vung):
+        if _noi_ve_van_ban_khac(vung, khop.start(), cua_minh):
+            continue
         phan_sau = khop.group(2)
         cac_so = trich_so_hieu(phan_sau)
         for so in cac_so:
@@ -689,7 +717,7 @@ def xay_dung_ho_so(van_ban_theo_file: dict[str, str]) -> dict[str, HoSoVanBan]:
 
         quan_he = trich_quan_he_day_du(van_ban)
         can_cu = trich_can_cu(van_ban)
-        huong_dan, huong_dan_ten = trich_huong_dan(van_ban)
+        huong_dan, huong_dan_ten = trich_huong_dan(van_ban, so_hieu)
         kem_theo = trich_kem_theo(van_ban)
         if kem_theo and kem_theo == so_hieu and not _co_o_so_hieu(tieu_de, so_hieu):
             # "PHỤ LỤC TT 44.docx" + "(Kèm theo Thông tư số 44/2026/TT-BGDĐT)":
