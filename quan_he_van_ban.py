@@ -33,6 +33,7 @@ Chạy trực tiếp để xem báo cáo:  python quan_he_van_ban.py
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -710,6 +711,24 @@ class SoQuanHe:
             "quan_he": du_lieu["quan_he"],
             "loai_bo": du_lieu["loai_bo"],
         })
+
+    def dau_hieu_luc(self, hom_nay: date | None = None) -> str:
+        """
+        Mã băm ngắn của trạng thái hiệu lực mọi văn bản và mọi quan hệ, tính
+        tại `hom_nay`. Cache câu trả lời lưu nguyên nhãn "Đang hiệu lực / Đã
+        được sửa đổi..." của từng nguồn; ghép mã này vào vân tay cache thì đồ
+        thị đổi (sửa cách đọc, thêm văn bản thay thế) hay sang ngày văn bản mới
+        bắt đầu có hiệu lực, câu trả lời cũ không còn được phát lại với nhãn cũ.
+        Tính một lần mỗi ngày.
+        """
+        ngay = (hom_nay or date.today()).isoformat()
+        if getattr(self, "_dau_hieu_luc", (None,))[0] != ngay:
+            bang = self.xuat(date.fromisoformat(ngay))
+            noi_dung = json.dumps(
+                [bang["van_ban"], bang["quan_he"]], ensure_ascii=False, sort_keys=True
+            )
+            self._dau_hieu_luc = (ngay, hashlib.sha256(noi_dung.encode("utf-8")).hexdigest()[:10])
+        return self._dau_hieu_luc[1]
 
     def thong_ke(self) -> dict:
         dem: dict[str, int] = {}

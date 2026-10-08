@@ -218,6 +218,18 @@ class DoThiTests(unittest.TestCase):
         # Quan hệ trong sổ tay, văn bản cũ không có trong kho.
         self.assertEqual(tt("37/2025/NĐ-CP"), "het_hieu_luc")
 
+    def test_dau_hieu_luc_doi_khi_nhan_doi(self):
+        # Dấu này ghép vào vân tay cache câu trả lời: nhãn đổi thì cache cũ hết khớp.
+        self.so.thong_tin["7/2026/TT-BGDĐT"] = {"ngay_hieu_luc": "2026-11-15"}
+        truoc = self.so.dau_hieu_luc(date(2026, 11, 14))
+        self.assertEqual(truoc, self.so.dau_hieu_luc(date(2026, 11, 14)))
+        # Văn bản thay thế tới ngày hiệu lực: 29/2023 chuyển sang hết hiệu lực.
+        self.assertNotEqual(truoc, self.so.dau_hieu_luc(date(2026, 11, 15)))
+        # Đồ thị dựng lại khác đi (bớt một cạnh) thì dấu cũng khác.
+        so_khac, _ = kho_mau()
+        so_khac.quan_he = so_khac.quan_he[1:]
+        self.assertNotEqual(self.so.dau_hieu_luc(self.HOM_NAY), so_khac.dau_hieu_luc(self.HOM_NAY))
+
     def test_du_thao_khong_sua_doi_duoc_gi(self):
         boi = self.so.tinh_trang_nut("52/2020/TT-BGDĐT", self.HOM_NAY)["boi"]
         self.assertEqual(boi, ["51/2026/TT-BGDĐT"])

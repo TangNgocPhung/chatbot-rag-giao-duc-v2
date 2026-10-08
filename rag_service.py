@@ -1837,10 +1837,17 @@ class RAGService:
     # CACHE NGỮ NGHĨA
     # ============================================================
     def _van_tay_chi_muc(self) -> str:
-        return cache_ngu_nghia.van_tay_chi_muc(
+        van_tay = cache_ngu_nghia.van_tay_chi_muc(
             self.status.vector_count, self.status.document_count,
             self._dau_noi_dung_chi_muc,
         )
+        # Câu trả lời cache mang theo nhãn hiệu lực của từng nguồn: đồ thị quan
+        # hệ đổi, hay hôm nay có văn bản vừa tới ngày hiệu lực, thì nhãn cũ sai.
+        try:
+            return f"{van_tay}-hl{self.so_quan_he.dau_hieu_luc()}"
+        except Exception as exc:
+            print(f"⚠️  Không tính được dấu hiệu lực cho cache: {exc}")
+            return van_tay
 
     @staticmethod
     def _cache_duoc(question: str, history: list[dict] | None,
