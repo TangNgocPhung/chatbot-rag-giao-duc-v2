@@ -1,0 +1,219 @@
+{
+  "hoan_tat_200": true,
+  "so_cau_da_chay": 200,
+  "so_cau_hop_le": 200,
+  "so_cau_loi_hoac_khong_done": 0,
+  "so_cau_test": 200,
+  "so_cau_ngoai_pham_vi_trong_test": 30,
+  "tu_choi_dung_ngoai_pham_vi": {
+    "tu_so": 28,
+    "mau_so": 30,
+    "ty_le": 0.9333333333333333
+  },
+  "tu_choi_trong_pham_vi": {
+    "tu_so": 83,
+    "mau_so": 170,
+    "ty_le": 0.48823529411764705
+  },
+  "co_canh_bao_hau_kiem": {
+    "tu_so": 16,
+    "mau_so": 200,
+    "ty_le": 0.08
+  },
+  "trich_dan_khong_vuot_so_nguon_tren_cau_co_trich_dan": {
+    "tu_so": 10,
+    "mau_so": 10,
+    "ty_le": 1.0
+  },
+  "co_trich_dan_tren_cau_tra_loi_noi_dung": {
+    "tu_so": 10,
+    "mau_so": 89,
+    "ty_le": 0.11235955056179775
+  },
+  "co_trich_dan_va_khong_vuot_so_nguon_tren_cau_tra_loi_noi_dung": {
+    "tu_so": 10,
+    "mau_so": 89,
+    "ty_le": 0.11235955056179775
+  },
+  "canh_bao_trich_dan": {
+    "tu_so": 0,
+    "mau_so": 200,
+    "ty_le": 0.0
+  },
+  "canh_bao_so_lieu": {
+    "tu_so": 16,
+    "mau_so": 200,
+    "ty_le": 0.08
+  },
+  "thoi_gian_giay_tb": 47.92,
+  "thoi_gian_giay_trung_vi": 46.5,
+  "cau_bi_canh_bao": [
+    {
+      "thu_tu": 10,
+      "cau_hoi": "Việc ứng dụng công nghệ trong giáo dục đại học và giáo dục nghề nghiệp được quy định ra sao?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 2026 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 11,
+      "cau_hoi": "Luật Giáo dục quy định thế nào về mục tiêu và tính chất của nền giáo dục Việt Nam?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 104 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 35,
+      "cau_hoi": "Bài thao tác với thư mục và tệp dạy những thao tác gì?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 11, 12, 13 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 73,
+      "cau_hoi": "Mục tiêu phổ cập giáo dục mầm non cho trẻ em từ 3 đến 5 tuổi là gì?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 11 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 85,
+      "cau_hoi": "Cấu trúc chương trình đào tạo trình độ trung cấp, trình độ cao đẳng gồm những phần nào?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 143, 2016 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 88,
+      "cau_hoi": "Khung năng lực số đối với giáo viên mầm non, phổ thông được dùng để làm gì?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 45 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 89,
+      "cau_hoi": "Định mức giờ chuẩn giảng dạy của giảng viên đại học trong một năm học là bao nhiêu?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 720 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 91,
+      "cau_hoi": "Tiêu chuẩn tham dự Hội thi giáo viên chủ nhiệm lớp giỏi là gì?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 01, 09 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 93,
+      "cau_hoi": "Giáo viên chưa đáp ứng trình độ chuẩn được đào tạo được bố trí sử dụng như thế nào?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 28 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 97,
+      "cau_hoi": "Phụ lục văn bằng giáo dục đại học ghi những nội dung chính nào?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 21 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 120,
+      "cau_hoi": "Tháng hành động vì trẻ em là tháng mấy trong năm?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 19, 16 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 124,
+      "cau_hoi": "Học phí được thu theo tháng hay theo học kỳ?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 45 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 154,
+      "cau_hoi": "Học sinh trường phổ thông nội trú ở xã biên giới đất liền được cấp gạo như thế nào?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 36 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 160,
+      "cau_hoi": "Giám đốc Trung tâm giáo dục nghề nghiệp - giáo dục thường xuyên có nhiệm vụ gì?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 17 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 161,
+      "cau_hoi": "Chương trình đào tạo trình độ trung cấp, cao đẳng được thẩm định như thế nào?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 2016, 29 không thấy trong đoạn được trích."
+        }
+      ]
+    },
+    {
+      "thu_tu": 171,
+      "cau_hoi": "Chủ tịch hội đồng trường đại học tư thục được bầu, bổ nhiệm như thế nào?",
+      "canh_bao": [
+        {
+          "type": "warning",
+          "message": "Cần đối chiếu lại: số liệu 12 không thấy trong đoạn được trích."
+        }
+      ]
+    }
+  ],
+  "gioi_han": [
+    "Hậu kiểm chỉ kiểm tra chỉ mục [n] và sự xuất hiện của số; không xác nhận phát biểu được nguồn hỗ trợ về ngữ nghĩa.",
+    "Số liệu được đối chiếu với mọi evidence, không chỉ evidence gắn với từng phát biểu.",
+    "Câu không có [n] vẫn có thể được cờ trich_dan_hop_le=True; vì vậy báo riêng độ bao phủ trích dẫn.",
+    "Lỗi thực thi không được tính thành từ chối đúng.",
+    "Tỉ lệ từ chối trong phạm vi là dấu hiệu thiếu trả lời; cần chấm nội dung để xác định có thực sự từ chối oan."
+  ]
+}

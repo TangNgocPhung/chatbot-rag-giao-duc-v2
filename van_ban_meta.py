@@ -368,7 +368,16 @@ def suy_so_hieu_chinh(ten_file: str, phan_dau: str) -> tuple[str | None, bool]:
     thông tin nó là ID tải về chứ không phải số hiệu - "1483-ttg.signed.pdf"
     thật ra là Quyết định 92/QĐ-TTg, "281-cp.signed.pdf" là Nghị quyết 29/NQ-CP.
     """
-    # Tên tệp ghi đủ số hiệu thì lấy luôn: đó là chữ gõ máy, không qua OCR.
+    # Ô số hiệu/ngày bỏ trống trong nội dung không được tên file điền hộ.
+    # Không nhập hieu_luc_bo_sung ở mức module vì nó cũng nhập van_ban_meta.
+    from hieu_luc_bo_sung import nen, MAU_O_SO_HIEU_TRONG, MAU_O_NGAY_TRONG, MAU_DU_THAO
+    dau = nen(cat_khoi_tieu_de(phan_dau))
+    if MAU_DU_THAO.search(dau) or (
+        "signed" not in (ten_file or "").lower()
+        and (MAU_O_SO_HIEU_TRONG.search(dau) or MAU_O_NGAY_TRONG.search(dau))
+    ):
+        return None, False
+    # Chỉ dùng tên đầy đủ khi nội dung không có dấu định danh bỏ trống.
     so_hieu_ten_file = so_hieu_tu_ten_file(ten_file)
     if so_hieu_ten_file:
         return so_hieu_ten_file, False

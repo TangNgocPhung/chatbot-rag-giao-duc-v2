@@ -27,6 +27,7 @@ import goi_y_cau_hoi
 import kiem_tra_tra_loi
 import hieu_luc_bo_sung
 import loc_tu_ngu
+import loc_nguon
 import phan_loai_giao_duc
 import phan_loai_y_dinh
 import quan_he_van_ban
@@ -494,6 +495,14 @@ class RAGService:
         bộ xếp hạng hạ bậc được văn bản đã hết hiệu lực mà không cần biết gì về
         pháp luật - và phải làm TRƯỚC khi dựng BM25 vì BM25 sao chép metadata.
         """
+        # Danh mục nguồn phải có cả khi trích đồ thị/hồ sơ thất bại: lỗi phần
+        # làm giàu metadata không được vô tình mở lại nguồn đã cách ly.
+        doan_theo_tep = {}
+        for doc in self.vector_store.docstore._dict.values():
+            doan_theo_tep.setdefault(doc.metadata.get("source_file"), []).append(doc)
+        self._doan_theo_tep = doan_theo_tep
+        self.danh_muc_nguon = loc_nguon.xay_dung(doan_theo_tep)
+        self._dau_danh_muc_nguon = loc_nguon.dau_danh_muc(self.danh_muc_nguon)
         try:
             self.ho_so_van_ban = van_ban_meta.xay_dung_tu_vector_store(self.vector_store)
             van_ban_meta.luu_ho_so(self.ho_so_van_ban)
@@ -1324,12 +1333,21 @@ class RAGService:
         # văn bản cũ - chính vì thế văn bản cũ được giữ chứ không xoá. Hiệu lực
         # tính theo đồ thị ngay lúc hỏi, nên văn bản thay thế vừa tới ngày hiệu
         # lực là có tác dụng luôn, không đợi khởi động lại.
-        che_do, _ = quan_he_van_ban.che_do_thoi_gian(question)
+        che_do, thoi_diem = quan_he_van_ban.che_do_thoi_gian(question)
         lich_su = che_do == "lich_su"
         loc_hieu_luc = None
         if not lich_su and os.getenv("RAG_LOC_HIEU_LUC", "1") == "1":
             so = self.so_quan_he
             loc_hieu_luc = lambda doc: not so.het_hieu_luc(doc.metadata.get("source_file"))
+        if os.getenv("RAG_LOC_NGUON", "1") == "1":
+            loc_cu = bo_loc
+            bo_loc = lambda doc: (
+                (loc_cu is None or loc_cu(doc))
+                and not loc_nguon.ly_do_loai(
+                    doc, question, getattr(self, "danh_muc_nguon", {}),
+                    getattr(self, "tinh_trang_hieu_luc", {}), thoi_diem,
+                )
+            )
         return truy_hoi(
             question, self.vector_store, self.bm25_retriever,
             so_ket_qua or SO_KET_QUA_CUOI, bo_loc, self.tu_vung,
@@ -1367,9 +1385,14 @@ class RAGService:
             nhan = so.nhan_hieu_luc(doc.metadata.get("source_file"), doc.page_content, hom_nay)
             return f"{nhan['label']} - {nhan['note']}" if nhan else None
 
-        ket_qua = [
-            ban_sao(doc, _hieu_luc=hieu_luc_cho_prompt(doc)) for doc in documents
-        ]
+        loc_bat = os.getenv("RAG_LOC_NGUON", "1") == "1"
+        def nguon_duoc_dung(doc, di_kem=False):
+            return not loc_bat or not loc_nguon.ly_do_loai(
+                doc, question, getattr(self, "danh_muc_nguon", {}),
+                getattr(self, "tinh_trang_hieu_luc", {}), hom_nay, di_kem,
+            )
+        documents = [doc for doc in documents if nguon_duoc_dung(doc)]
+        ket_qua = [ban_sao(doc, _hieu_luc=hieu_luc_cho_prompt(doc)) for doc in documents]
         gioi_han = int(os.getenv("RAG_SO_DOAN_DI_KEM", "2"))
         if gioi_han <= 0 or not self._doan_theo_tep:
             return ket_qua, ghi_chu
@@ -1395,7 +1418,9 @@ class RAGService:
             doan = quan_he_van_ban.chon_doan_tot_nhat(
                 self._doan_theo_tep.get(muc["tep"], []), question, muc.get("so_hieu_goc")
             )
-            if doan is None:
+            if (doan is None or not nguon_duoc_dung(
+                    doan, di_kem=muc.get("quan_he") != "huong_dan")
+                    or (loc_bat and not loc_nguon.di_kem_dung_chu_de(muc, doan, question))):
                 continue
             tep_da_co.add(muc["tep"])
             so_da_them += 1
@@ -1841,6 +1866,7 @@ class RAGService:
             self.status.vector_count, self.status.document_count,
             self._dau_noi_dung_chi_muc,
         )
+        van_tay += f"-{loc_nguon.PHIEN_BAN}-{os.getenv('RAG_LOC_NGUON', '1')}-{getattr(self, '_dau_danh_muc_nguon', '')}"
         # Câu trả lời cache mang theo nhãn hiệu lực của từng nguồn: đồ thị quan
         # hệ đổi, hay hôm nay có văn bản vừa tới ngày hiệu lực, thì nhãn cũ sai.
         try:

@@ -68,3 +68,12 @@ ban_pdf_tam/
 mo_hinh_y_dinh.npz
 bo_nho_vector_y_dinh.npz
 ket_qua_phan_loai_y_dinh.json
+nhat_ky_lam_sach_kho/*.json
+nhat_ky_lam_sach_kho/*.csv
+nhat_ky_lam_sach_kho*.log
+.runtime/
+
+# Hồ sơ kiểm toán có đoạn tài liệu gốc và nhật ký riêng; dùng bản xuất công khai.
+nhat_ky_do_test/
+nhat_ky_lam_sach_kho/
+ket_qua_llm_khong_rag*.json
