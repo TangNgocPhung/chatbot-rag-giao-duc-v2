@@ -348,6 +348,52 @@ Chạy tay: `.\.venv\Scripts\python.exe drive_sync.py` (thêm `--thu` để ch�
 | `RAG_Y_DINH_NGUONG` | `0.7` | Tỉ lệ phiếu tối thiểu để tự từ chối câu ngoài phạm vi / đáp lời chào |
 | `RAG_GOI_Y_MO_DAU` | `tinh` | Gợi ý màn hình chào: `tinh` là bộ 17 câu cố định theo 4 chủ đề, `metadata` là câu dựng từ metadata văn bản qua cây quyết định |
 
+## Lọc nguồn và kiểm kho
+
+Bộ lọc nguồn bật mặc định (biến RAG_LOC_NGUON=1). Khi nạp kho, dịch vụ dựng
+danh mục từ nội dung tài liệu, cách ly bản có dấu dự thảo/định danh chưa đầy đủ
+và giữ một bản chính cho các tệp trùng toàn bộ tập nội dung đoạn. Tệp nguồn
+và chỉ mục được giữ nguyên; cách ly ở bước truy hồi để có thể kiểm tra lại.
+
+Ô số hiệu hoặc ngày để trống trong nội dung không được tên tệp điền hộ.
+Bản OCR chưa rõ định danh cần kiểm tra bản ban hành, không được tự coi là
+văn bản hợp lệ chỉ vì tên tệp có số hiệu. Đây là kiểm tra tự động, không phải
+xác minh pháp lý hoặc kiểm tra chữ ký số.
+
+Bộ lọc cũng loại phạm vi cấp học/môn/lớp mâu thuẫn rõ ràng; phạm vi cấp học
+được đọc cả từ trích yếu, kể cả khi tên chỉ là số hiệu. Văn bản hướng dẫn
+không cùng chủ đề không được tự kéo thêm chỉ vì cùng hướng dẫn một Luật.
+Văn bản sửa đổi cần thiết vẫn được giữ qua quan hệ pháp lý nhưng phải qua
+kiểm tra nguồn và thời điểm. Câu hỏi nêu rõ dự thảo có thể tra dự thảo.
+
+Xuất danh mục kiểm kho:
+
+    python lam_sach_kho.py
+
+Kết quả ở nhat_ky_lam_sach_kho/bao_cao_lam_sach.md và
+nhat_ky_lam_sach_kho/danh_sach_kiem_kho.csv.
+
+Đối chiếu bật/tắt bộ lọc trên 50 câu dev cố định, không sinh câu trả lời:
+
+    python do_loc_nguon_dev.py
+
+Không dùng tập test đã xem để tinh chỉnh. RAG_LOC_NGUON=0 chỉ phục vụ đối
+chiếu; bật/tắt bộ lọc hoặc thay danh mục sẽ đổi khóa cache để câu trả lời cũ
+không đi vòng qua chính sách nguồn mới. Thay đổi mã được áp dụng khi khởi
+động lại tiến trình ứng dụng.
+
+## Kết quả thực nghiệm sau lọc nguồn
+
+[Báo cáo ngày 16/10/2026](bao_cao_thuc_nghiem/2026-10-16/README.md)
+gồm kết quả đầy đủ 200 câu, đối chứng 50 câu, bảng điểm và nhận xét trên
+30 cặp đủ căn cứ, cùng kết quả kiểm kho và đối chiếu 50 câu dev.
+Phần chấm nội dung do trợ lý AI đối chiếu, chưa được người chấm độc lập xác nhận.
+Lượt đo chưa cho thấy lọc nguồn cải thiện chất lượng câu trả lời cuối.
+
+Bản công khai chỉ xuất điểm, nhận xét, câu hỏi và số liệu tổng hợp.
+Đáp án nguyên văn, các đoạn tài liệu gốc đưa vào prompt, nguồn chuẩn để chấm,
+nhật ký và cấu hình riêng được giữ cục bộ trong các thư mục nhật ký.
+
 ## Chạy công khai
 
 Sao chép `mat_khau.mau.bat` thành `mat_khau.bat`, đặt tài khoản và mật khẩu, rồi chạy:
@@ -360,6 +406,6 @@ Sao chép `mat_khau.mau.bat` thành `mat_khau.bat`, đặt tài khoản và mậ
 
 ## Dữ liệu không nằm trong repository
 
-Repository chỉ chứa mã nguồn. Những thứ sau không được commit vì có thể chứa dữ liệu riêng tư hoặc tệp dung lượng lớn: tài liệu gốc, chỉ mục FAISS và các bản sao lưu của nó, cache OCR (`ocr_cache/`), bản phiên âm, lịch sử chat, cơ sở dữ liệu tài khoản, sổ tay và hàng chờ duyệt (`*.db`), tệp đính kèm và tài liệu riêng của người dùng (`tep_dinh_kem/`), tệp chờ duyệt và thùng rác của kho (`kho_cho_duyet/`, `thung_rac_kho/`), tệp gỡ khỏi Drive (`tep_go_khoi_drive/`), bản PDF chuyển từ Word/HTML (`ban_pdf_tam/`), khóa API, mật khẩu và cấu hình riêng của máy.
+Repository chứa mã nguồn và báo cáo thực nghiệm đã chọn lọc. Những thứ sau không được commit vì có thể chứa dữ liệu riêng tư hoặc tệp dung lượng lớn: tài liệu gốc, chỉ mục FAISS và các bản sao lưu của nó, cache OCR (`ocr_cache/`), bản phiên âm, lịch sử chat, cơ sở dữ liệu tài khoản, sổ tay và hàng chờ duyệt (`*.db`), tệp đính kèm và tài liệu riêng của người dùng (`tep_dinh_kem/`), tệp chờ duyệt và thùng rác của kho (`kho_cho_duyet/`, `thung_rac_kho/`), tệp gỡ khỏi Drive (`tep_go_khoi_drive/`), bản PDF chuyển từ Word/HTML (`ban_pdf_tam/`), khóa API, mật khẩu và cấu hình riêng của máy.
 
 Xem thêm [hướng dẫn chạy giao diện](HUONG_DAN_CHAY_GIAO_DIEN.md) (bảng biến môi trường, API) và [tài liệu bàn giao](HUONG_DAN_BAN_GIAO_UI.md).

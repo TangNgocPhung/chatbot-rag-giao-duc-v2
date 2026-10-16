@@ -1,0 +1,61 @@
+{
+  "bat_dau": "2026-10-16T09:17:39.695269+07:00",
+  "ket_thuc": "2026-10-16T14:11:33.683725+07:00",
+  "so_cau": 200,
+  "so_cau_so_sanh": 50,
+  "so_cap_cham": 30,
+  "seed_mau": 20261015,
+  "loc_nguon": true,
+  "cache": false,
+  "model": "llama3.2:3b",
+  "tham_so_sinh": {
+    "model": "llama3.2:3b",
+    "num_ctx": 4096,
+    "num_predict": 700,
+    "repeat_penalty": 1.08,
+    "temperature": 0.15,
+    "seed": null,
+    "top_p": 0.9
+  },
+  "models": [
+    {
+      "name": "llama3.2:3b",
+      "digest": "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72"
+    },
+    {
+      "name": "bge-m3:latest",
+      "digest": "7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab"
+    }
+  ],
+  "hash_khop": true,
+  "hash_truoc": {
+    "benchmark_chatbot.py": "5c2a3481f40f4304ab9e7ef86a222b8323358132081f57b7ebe1450db1df863c",
+    "rag_service.py": "9d1e3e4290a62b8e6a5e7c3ada8515efcaf4b521317e50fa2ac20db56c445444",
+    "main.py": "00d0983598e1784ed8bd4aaa8ba02fbf7f49d54c230a6fb8d421526339fcc0d1",
+    "hybrid_retrieval.py": "50d40cca838361852c2adca5265398c3c4117d56ec479a6490f0cd8562d3a095",
+    "kiem_tra_tra_loi.py": "7e9d16578de5d62be016e70025b0408f7b885e8b1934710af2dcabf38b277969",
+    "tu_vung_kho.py": "9e0a532666daf729d5395aa245e5c37c2a92b52767268d111176a7054155a3ef",
+    "bo_cau_hoi_benchmark.json": "6422ba33c57a889e60343785336b98291b9d532b03aac1d673bc3d417d4f0bfb",
+    "loc_nguon.py": "fc3d4a6471d74a824cff16ac46c608a2c8e9248bfd3d111b0208dc600051921f",
+    "van_ban_meta.py": "f84588510a6f520cf664894b84272b7ae77d79b1ce3382dd405b93bf02416ce2",
+    "hieu_luc_bo_sung.py": "1867d7924e3df3b965a95a3bfd64c63cdf34100e4bf0e41370243ea502f44291",
+    "faiss_index_data_giao_duc/index.faiss": "86c91e2d319bc64d9fa527928334e8385e5ed2c634f4bb5dba6b56dee6b86f02",
+    "faiss_index_data_giao_duc/index.pkl": "d5becee9f6bb53a54b07ba2809b79f91a982d18dcf34e2700b34ffefb9526fdb"
+  },
+  "hash_sau": {
+    "benchmark_chatbot.py": "5c2a3481f40f4304ab9e7ef86a222b8323358132081f57b7ebe1450db1df863c",
+    "rag_service.py": "9d1e3e4290a62b8e6a5e7c3ada8515efcaf4b521317e50fa2ac20db56c445444",
+    "main.py": "00d0983598e1784ed8bd4aaa8ba02fbf7f49d54c230a6fb8d421526339fcc0d1",
+    "hybrid_retrieval.py": "50d40cca838361852c2adca5265398c3c4117d56ec479a6490f0cd8562d3a095",
+    "kiem_tra_tra_loi.py": "7e9d16578de5d62be016e70025b0408f7b885e8b1934710af2dcabf38b277969",
+    "tu_vung_kho.py": "9e0a532666daf729d5395aa245e5c37c2a92b52767268d111176a7054155a3ef",
+    "bo_cau_hoi_benchmark.json": "6422ba33c57a889e60343785336b98291b9d532b03aac1d673bc3d417d4f0bfb",
+    "loc_nguon.py": "fc3d4a6471d74a824cff16ac46c608a2c8e9248bfd3d111b0208dc600051921f",
+    "van_ban_meta.py": "f84588510a6f520cf664894b84272b7ae77d79b1ce3382dd405b93bf02416ce2",
+    "hieu_luc_bo_sung.py": "1867d7924e3df3b965a95a3bfd64c63cdf34100e4bf0e41370243ea502f44291",
+    "faiss_index_data_giao_duc/index.faiss": "86c91e2d319bc64d9fa527928334e8385e5ed2c634f4bb5dba6b56dee6b86f02",
+    "faiss_index_data_giao_duc/index.pkl": "d5becee9f6bb53a54b07ba2809b79f91a982d18dcf34e2700b34ffefb9526fdb"
+  },
+  "gioi_han": "Chấm bởi AI, chưa độc lập;20 cặp thiếu căn cứ nguồn giữ riêng; đánh giá lặp trên test đã xem.",
+  "gian_doan": "54 lượt lỗi hạ tầng do cập nhật Ollama giữ riêng, chỉ sinh lại câu chưa hoàn tất; khôi phục runtime0.40.4, không đổi model hoặc embedding."
+}

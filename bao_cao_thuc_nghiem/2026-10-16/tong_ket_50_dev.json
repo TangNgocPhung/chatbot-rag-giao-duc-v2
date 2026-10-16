@@ -1,0 +1,17 @@
+{
+  "so_cau": 50,
+  "loi": 0,
+  "co_nguon_nhan_dung_duoc_dung": 32,
+  "tat": {
+    "trung_nguon_toan_mau": 44,
+    "trung_nguon_nguon_duoc_dung": 28,
+    "cau_prompt_co_nguon_can_loai": 30,
+    "so_nguon_can_loai_trong_prompt": 72
+  },
+  "bat": {
+    "trung_nguon_toan_mau": 29,
+    "trung_nguon_nguon_duoc_dung": 29,
+    "cau_prompt_co_nguon_can_loai": 0,
+    "so_nguon_can_loai_trong_prompt": 0
+  }
+}

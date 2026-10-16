@@ -105,6 +105,15 @@ class TinhTrangThoiGian:
         return f"{int(ngay)}/{int(thang)}/{nam}"
 
 
+def co_tieu_de_hanh_chinh(phan_dau: str) -> bool:
+    header = van_ban_meta.cat_khoi_tieu_de(phan_dau)
+    ascii_header = "".join(c for c in unicodedata.normalize("NFD", header)
+                           if not unicodedata.combining(c)).replace("đ", "d").replace("Đ", "D").lower()
+    return ("conghoaxahoi" in nen(header) or bool(re.search(
+        r"(?m)^\s*(?:thong\s*tu|nghi\s*dinh|quyet\s*dinh|nghi\s*quyet|luat)\b", ascii_header
+    )) or bool(re.match(r"\s*so\s*:", ascii_header)))
+
+
 def phat_hien_du_thao(phan_dau: str, ten_file: str = "") -> bool:
     """Nhận diện bản dự thảo qua hai ô còn bỏ trống ở khối tiêu đề.
 
@@ -113,10 +122,14 @@ def phat_hien_du_thao(phan_dau: str, ten_file: str = "") -> bool:
     /2023/TT-BGDĐT"), trông y như ô bỏ trống - 13 văn bản đã ký từng bị gắn
     nhãn dự thảo vì vậy.
     """
-    if "signed" in (ten_file or "").lower():
-        return False
     tieu_de = nen(van_ban_meta.cat_khoi_tieu_de(phan_dau))
+    if not co_tieu_de_hanh_chinh(phan_dau):
+        return False
     if not MAU_DANG_VAN_BAN.search(tieu_de):
+        return False
+    if MAU_DU_THAO.search(tieu_de):
+        return True
+    if "signed" in (ten_file or "").lower():
         return False
     return bool(
         MAU_O_SO_HIEU_TRONG.search(tieu_de)

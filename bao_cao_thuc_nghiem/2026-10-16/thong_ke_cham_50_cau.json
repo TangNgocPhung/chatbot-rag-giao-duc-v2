@@ -1,0 +1,50 @@
+{
+  "so_cap_sinh": 50,
+  "so_cap_doi_chieu": 30,
+  "so_cap_chua_xac_nhan_nguon": 20,
+  "rag": {
+    "dung": 4,
+    "co_phat_bieu_sai_hoac_thieu_can_cu": 10,
+    "tu_choi_hoan_toan": 11,
+    "stt_co_phat_bieu_sai": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      9,
+      20,
+      25,
+      34,
+      35
+    ]
+  },
+  "khong_rag": {
+    "dung": 0,
+    "co_phat_bieu_sai_hoac_thieu_can_cu": 19,
+    "tu_choi_hoan_toan": 2,
+    "stt_co_phat_bieu_sai": [
+      1,
+      2,
+      3,
+      5,
+      6,
+      9,
+      12,
+      14,
+      16,
+      17,
+      20,
+      24,
+      25,
+      28,
+      30,
+      31,
+      38,
+      44,
+      47
+    ]
+  },
+  "rag_cai_thien_diem": 4,
+  "rag_kem_hon_diem": 0
+}
